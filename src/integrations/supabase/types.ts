@@ -328,72 +328,7 @@ export type Database = {
       }
     }
     Views: {
-      student_directory: {
-        Row: {
-          country: string | null
-          created_at: string | null
-          current_level: string | null
-          current_rotation: string | null
-          daily_study_target_minutes: number | null
-          id: string | null
-          level: number | null
-          longest_streak: number | null
-          medical_program: string | null
-          name: string | null
-          notification_prefs: Json | null
-          specialty_interests: string[] | null
-          streak_days: number | null
-          study_goal: string | null
-          subjects_studying: string[] | null
-          university: string | null
-          weak_areas: string[] | null
-          xp: number | null
-          year_of_study: number | null
-        }
-        Insert: {
-          country?: string | null
-          created_at?: string | null
-          current_level?: string | null
-          current_rotation?: string | null
-          daily_study_target_minutes?: number | null
-          id?: string | null
-          level?: number | null
-          longest_streak?: number | null
-          medical_program?: string | null
-          name?: string | null
-          notification_prefs?: Json | null
-          specialty_interests?: string[] | null
-          streak_days?: number | null
-          study_goal?: string | null
-          subjects_studying?: string[] | null
-          university?: string | null
-          weak_areas?: string[] | null
-          xp?: number | null
-          year_of_study?: number | null
-        }
-        Update: {
-          country?: string | null
-          created_at?: string | null
-          current_level?: string | null
-          current_rotation?: string | null
-          daily_study_target_minutes?: number | null
-          id?: string | null
-          level?: number | null
-          longest_streak?: number | null
-          medical_program?: string | null
-          name?: string | null
-          notification_prefs?: Json | null
-          specialty_interests?: string[] | null
-          streak_days?: number | null
-          study_goal?: string | null
-          subjects_studying?: string[] | null
-          university?: string | null
-          weak_areas?: string[] | null
-          xp?: number | null
-          year_of_study?: number | null
-        }
-        Relationships: []
-      }
+      [_ in never]: never
     }
     Functions: {
       [_ in never]: never
