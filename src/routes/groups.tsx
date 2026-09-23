@@ -10,5 +10,5 @@ export const Route = createFileRoute("/groups")({
     { property: "og:type", content: "website" },
     { name: "twitter:card", content: "summary_large_image" },
   ] }),
-  component: () => <StudyApp view="Groups" />,
+  component: () => <StudyApp view="groups" />,
 });
