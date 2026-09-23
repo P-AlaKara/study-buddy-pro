@@ -1,0 +1,4 @@
+GRANT SELECT (id, name, university, country, year_of_study, medical_program, current_level, subjects_studying, current_rotation, specialty_interests, weak_areas, study_goal, daily_study_target_minutes, notification_prefs, xp, level, streak_days, longest_streak, created_at) ON public.students TO anon;
+CREATE POLICY "Demo student directory is public" ON public.students FOR SELECT TO anon USING (true);
+DROP POLICY "Anyone can create a demo student" ON public.students;
+CREATE POLICY "Anyone can create a starter demo student" ON public.students FOR INSERT TO anon WITH CHECK (xp = 0 AND level = 1 AND streak_days = 0 AND longest_streak = 0 AND country IS NOT NULL);

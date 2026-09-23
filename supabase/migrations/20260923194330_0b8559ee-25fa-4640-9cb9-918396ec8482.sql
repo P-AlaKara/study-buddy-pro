@@ -1,0 +1,17 @@
+DROP VIEW public.student_directory;
+CREATE POLICY "Placeholder remains private" ON public.cases FOR SELECT TO anon USING (false);
+CREATE POLICY "Placeholder remains private" ON public.case_attempts FOR SELECT TO anon USING (false);
+CREATE POLICY "Placeholder remains private" ON public.osce_stations FOR SELECT TO anon USING (false);
+CREATE POLICY "Placeholder remains private" ON public.osce_attempts FOR SELECT TO anon USING (false);
+CREATE POLICY "Placeholder remains private" ON public.quiz_questions FOR SELECT TO anon USING (false);
+CREATE POLICY "Placeholder remains private" ON public.quiz_sessions FOR SELECT TO anon USING (false);
+CREATE POLICY "Placeholder remains private" ON public.flashcard_decks FOR SELECT TO anon USING (false);
+CREATE POLICY "Placeholder remains private" ON public.flashcards FOR SELECT TO anon USING (false);
+CREATE POLICY "Placeholder remains private" ON public.flashcard_reviews FOR SELECT TO anon USING (false);
+CREATE POLICY "Placeholder remains private" ON public.groups FOR SELECT TO anon USING (false);
+CREATE POLICY "Placeholder remains private" ON public.group_members FOR SELECT TO anon USING (false);
+CREATE POLICY "Placeholder remains private" ON public.achievements FOR SELECT TO anon USING (false);
+CREATE POLICY "Placeholder remains private" ON public.student_achievements FOR SELECT TO anon USING (false);
+CREATE POLICY "Placeholder remains private" ON public.xp_events FOR SELECT TO anon USING (false);
+CREATE POLICY "Placeholder remains private" ON public.notifications FOR SELECT TO anon USING (false);
+CREATE POLICY "Placeholder remains private" ON public.mastery_scores FOR SELECT TO anon USING (false);
