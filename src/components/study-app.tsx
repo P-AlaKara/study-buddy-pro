@@ -96,7 +96,7 @@ export function StudyApp({ view }: { view: View }) {
     </main>
     <nav aria-label="Main navigation" className="fixed bottom-0 left-0 right-0 z-20 rounded-t-[24px] bg-card px-2 pb-[max(10px,env(safe-area-inset-bottom))] pt-2 shadow-[0_-8px_30px_-14px_var(--border)] md:hidden"><div className="mx-auto flex max-w-lg items-center justify-around">{nav.map(item => { const Icon = item.icon; const active = view === item.label.toLowerCase(); return <Link key={item.label} to={item.to} className={`flex min-w-[58px] flex-col items-center gap-1 rounded-2xl px-2 py-2 text-[10px] font-extrabold transition-colors ${active ? "bg-lavender-soft text-foreground" : "text-muted-foreground"}`}><Icon size={21} strokeWidth={active ? 2.5 : 2}/>{item.label}</Link>; })}</div></nav>
     {activity && <div className="fixed inset-0 z-50 flex items-center justify-center bg-foreground/25 p-5" onClick={() => setActivity(null)}><div role="dialog" aria-modal="true" aria-label="Coming soon" className="clay-card w-full max-w-sm bg-card p-7 text-center" onClick={e => e.stopPropagation()}><span className="mx-auto flex size-14 items-center justify-center rounded-2xl bg-lavender-soft"><Sparkles/></span><h2 className="mt-4 font-display text-xl font-black">Coming soon</h2><p className="mt-2 text-sm leading-relaxed text-muted-foreground">{activity}</p><Button onClick={() => setActivity(null)} className="mt-6 w-full">Got it</Button></div></div>}
-    {onboarding && <Onboarding onClose={() => setOnboarding(false)} onCreated={(created) => { setStudents(prev => [...prev, created]); selectStudent(created.id); setOnboarding(false); }}/ >}
+    {onboarding && <Onboarding onClose={() => setOnboarding(false)} onCreated={(created) => { setStudents(prev => [...prev, created]); selectStudent(created.id); setOnboarding(false); }} />}
   </div>;
 }
 
@@ -126,15 +126,10 @@ function Onboarding({ onClose, onCreated }: { onClose: () => void; onCreated: (s
     const values = { name: form.name.trim(), email: form.email.trim(), university: form.university.trim(), country: form.country.trim(), year_of_study: Number(form.year), medical_program: form.program.trim(), current_level: Number(form.year) <= 2 ? "Pre-clinical" : "Clinical years", subjects_studying: form.subjects, current_rotation: form.rotation.trim() || null, specialty_interests: form.interests.split(",").map(x => x.trim()).filter(Boolean), weak_areas: form.weak.split(",").map(x => x.trim()).filter(Boolean), study_goal: form.goal.trim() || null, daily_study_target_minutes: target, notification_prefs: { study_reminders: form.reminders, weekly_digest: form.digest } };
     const { error: insertError } = await supabase.from("students").insert(values);
     if (insertError) { setError("We couldn't create your demo profile. Please try again."); setSaving(false); return; }
-    const { data, error: readError } = await supabase.from("students").select(columns).eq("email", form.email.trim()).order("created_at", { ascending: false }).limit(1);
-    // Email is not publicly readable; refresh the safe directory and match by recently-created name.
-    if (readError || !data?.length) {
-      const { data: directory } = await supabase.from("students").select(columns).order("created_at", { ascending: false }).limit(30);
-      const created = (directory as Student[] | null)?.find(item => item.name === form.name.trim() && item.university === form.university.trim());
-      if (created) { onCreated(created); return; }
-      setError("Profile created, but it couldn't be selected. Refresh to find it in the student switcher."); setSaving(false); return;
-    }
-    onCreated(data[0] as Student);
+    const { data: directory } = await supabase.from("students").select(columns).order("created_at", { ascending: false }).limit(30);
+    const created = (directory as Student[] | null)?.find(item => item.name === form.name.trim() && item.university === form.university.trim());
+    if (created) { onCreated(created); return; }
+    setError("Profile created, but it couldn't be selected. Refresh to find it in the student switcher."); setSaving(false);
   }
   return <div className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto bg-foreground/25 p-4" role="dialog" aria-modal="true" aria-label="Create demo profile"><div className="clay-card my-auto w-full max-w-lg bg-card p-6 md:p-8"><div className="flex items-center justify-between"><span className="text-xs font-black uppercase text-muted-foreground">Create demo profile · {step + 1} of 4</span><Button variant="ghost" size="icon" aria-label="Close" onClick={onClose}><X/></Button></div><div className="mt-4 flex gap-2">{titles.map((_, i) => <div key={i} className={`h-2 flex-1 rounded-full ${i <= step ? "bg-lavender" : "bg-muted"}`}/>)}</div><h2 className="mt-7 font-display text-2xl font-black md:text-3xl">{titles[step]}</h2><p className="mt-1 text-sm text-muted-foreground">{descriptions[step]}</p><div className="mt-7 max-h-[48vh] space-y-4 overflow-y-auto pr-1">
     {step === 0 && <>{input("Your name", "name", "e.g. Aline Uwimana", "text", true)}{input("Email address", "email", "you@example.com", "email", true)}</>}

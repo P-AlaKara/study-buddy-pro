@@ -1,5 +1,6 @@
 @import "tailwindcss" source(none);
 @source "../src";
+@source inline("bg-lavender-soft bg-pink-soft bg-blue-soft bg-mint-soft bg-yellow-soft text-lavender text-pink text-blue text-mint text-yellow");
 @import "tw-animate-css";
 
 @theme inline {
