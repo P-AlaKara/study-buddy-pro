@@ -14,10 +14,386 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      achievements: {
+        Row: {
+          created_at: string
+          id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+        }
+        Relationships: []
+      }
+      case_attempts: {
+        Row: {
+          created_at: string
+          id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+        }
+        Relationships: []
+      }
+      cases: {
+        Row: {
+          created_at: string
+          id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+        }
+        Relationships: []
+      }
+      flashcard_decks: {
+        Row: {
+          created_at: string
+          id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+        }
+        Relationships: []
+      }
+      flashcard_reviews: {
+        Row: {
+          created_at: string
+          id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+        }
+        Relationships: []
+      }
+      flashcards: {
+        Row: {
+          created_at: string
+          id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+        }
+        Relationships: []
+      }
+      group_members: {
+        Row: {
+          created_at: string
+          id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+        }
+        Relationships: []
+      }
+      groups: {
+        Row: {
+          created_at: string
+          id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+        }
+        Relationships: []
+      }
+      mastery_scores: {
+        Row: {
+          created_at: string
+          id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+        }
+        Relationships: []
+      }
+      notifications: {
+        Row: {
+          created_at: string
+          id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+        }
+        Relationships: []
+      }
+      osce_attempts: {
+        Row: {
+          created_at: string
+          id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+        }
+        Relationships: []
+      }
+      osce_stations: {
+        Row: {
+          created_at: string
+          id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+        }
+        Relationships: []
+      }
+      quiz_questions: {
+        Row: {
+          created_at: string
+          id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+        }
+        Relationships: []
+      }
+      quiz_sessions: {
+        Row: {
+          created_at: string
+          id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+        }
+        Relationships: []
+      }
+      student_achievements: {
+        Row: {
+          created_at: string
+          id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+        }
+        Relationships: []
+      }
+      students: {
+        Row: {
+          country: string
+          created_at: string
+          current_level: string | null
+          current_rotation: string | null
+          daily_study_target_minutes: number
+          email: string
+          id: string
+          level: number
+          longest_streak: number
+          medical_program: string
+          name: string
+          notification_prefs: Json
+          specialty_interests: string[]
+          streak_days: number
+          study_goal: string | null
+          subjects_studying: string[]
+          university: string
+          updated_at: string
+          weak_areas: string[]
+          xp: number
+          year_of_study: number
+        }
+        Insert: {
+          country?: string
+          created_at?: string
+          current_level?: string | null
+          current_rotation?: string | null
+          daily_study_target_minutes?: number
+          email: string
+          id?: string
+          level?: number
+          longest_streak?: number
+          medical_program: string
+          name: string
+          notification_prefs?: Json
+          specialty_interests?: string[]
+          streak_days?: number
+          study_goal?: string | null
+          subjects_studying?: string[]
+          university: string
+          updated_at?: string
+          weak_areas?: string[]
+          xp?: number
+          year_of_study: number
+        }
+        Update: {
+          country?: string
+          created_at?: string
+          current_level?: string | null
+          current_rotation?: string | null
+          daily_study_target_minutes?: number
+          email?: string
+          id?: string
+          level?: number
+          longest_streak?: number
+          medical_program?: string
+          name?: string
+          notification_prefs?: Json
+          specialty_interests?: string[]
+          streak_days?: number
+          study_goal?: string | null
+          subjects_studying?: string[]
+          university?: string
+          updated_at?: string
+          weak_areas?: string[]
+          xp?: number
+          year_of_study?: number
+        }
+        Relationships: []
+      }
+      xp_events: {
+        Row: {
+          created_at: string
+          id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
-      [_ in never]: never
+      student_directory: {
+        Row: {
+          country: string | null
+          created_at: string | null
+          current_level: string | null
+          current_rotation: string | null
+          daily_study_target_minutes: number | null
+          id: string | null
+          level: number | null
+          longest_streak: number | null
+          medical_program: string | null
+          name: string | null
+          notification_prefs: Json | null
+          specialty_interests: string[] | null
+          streak_days: number | null
+          study_goal: string | null
+          subjects_studying: string[] | null
+          university: string | null
+          weak_areas: string[] | null
+          xp: number | null
+          year_of_study: number | null
+        }
+        Insert: {
+          country?: string | null
+          created_at?: string | null
+          current_level?: string | null
+          current_rotation?: string | null
+          daily_study_target_minutes?: number | null
+          id?: string | null
+          level?: number | null
+          longest_streak?: number | null
+          medical_program?: string | null
+          name?: string | null
+          notification_prefs?: Json | null
+          specialty_interests?: string[] | null
+          streak_days?: number | null
+          study_goal?: string | null
+          subjects_studying?: string[] | null
+          university?: string | null
+          weak_areas?: string[] | null
+          xp?: number | null
+          year_of_study?: number | null
+        }
+        Update: {
+          country?: string | null
+          created_at?: string | null
+          current_level?: string | null
+          current_rotation?: string | null
+          daily_study_target_minutes?: number | null
+          id?: string | null
+          level?: number | null
+          longest_streak?: number | null
+          medical_program?: string | null
+          name?: string | null
+          notification_prefs?: Json | null
+          specialty_interests?: string[] | null
+          streak_days?: number | null
+          study_goal?: string | null
+          subjects_studying?: string[] | null
+          university?: string | null
+          weak_areas?: string[] | null
+          xp?: number | null
+          year_of_study?: number | null
+        }
+        Relationships: []
+      }
     }
     Functions: {
       [_ in never]: never
