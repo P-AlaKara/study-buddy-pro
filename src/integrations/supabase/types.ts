@@ -31,33 +31,415 @@ export type Database = {
       }
       case_attempts: {
         Row: {
+          case_id: string
+          communication_response: Json | null
+          completed_at: string | null
           created_at: string
+          current_stage: string
+          differential_submission: Json | null
+          exams_performed: Json
+          final_diagnosis: string | null
+          final_diagnosis_details: Json | null
+          history_questions_asked: Json
           id: string
+          interpretation_answer: string | null
+          investigations_ordered: Json
+          management_choices: Json
+          management_path_outcome: string | null
+          management_reasoning: string | null
+          mode: string
+          room_id: string | null
+          score_breakdown: Json | null
+          started_at: string
+          status: string
+          student_id: string
+          total_score: number | null
         }
         Insert: {
+          case_id: string
+          communication_response?: Json | null
+          completed_at?: string | null
           created_at?: string
+          current_stage?: string
+          differential_submission?: Json | null
+          exams_performed?: Json
+          final_diagnosis?: string | null
+          final_diagnosis_details?: Json | null
+          history_questions_asked?: Json
           id?: string
+          interpretation_answer?: string | null
+          investigations_ordered?: Json
+          management_choices?: Json
+          management_path_outcome?: string | null
+          management_reasoning?: string | null
+          mode?: string
+          room_id?: string | null
+          score_breakdown?: Json | null
+          started_at?: string
+          status?: string
+          student_id: string
+          total_score?: number | null
         }
         Update: {
+          case_id?: string
+          communication_response?: Json | null
+          completed_at?: string | null
           created_at?: string
+          current_stage?: string
+          differential_submission?: Json | null
+          exams_performed?: Json
+          final_diagnosis?: string | null
+          final_diagnosis_details?: Json | null
+          history_questions_asked?: Json
           id?: string
+          interpretation_answer?: string | null
+          investigations_ordered?: Json
+          management_choices?: Json
+          management_path_outcome?: string | null
+          management_reasoning?: string | null
+          mode?: string
+          room_id?: string | null
+          score_breakdown?: Json | null
+          started_at?: string
+          status?: string
+          student_id?: string
+          total_score?: number | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "case_attempts_case_id_fkey"
+            columns: ["case_id"]
+            isOneToOne: false
+            referencedRelation: "cases"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "case_attempts_student_id_fkey"
+            columns: ["student_id"]
+            isOneToOne: false
+            referencedRelation: "students"
+            referencedColumns: ["id"]
+          },
+        ]
       }
-      cases: {
+      case_room_messages: {
         Row: {
           created_at: string
           id: string
+          kind: string
+          message: string
+          room_id: string
+          student_id: string
         }
         Insert: {
           created_at?: string
           id?: string
+          kind?: string
+          message: string
+          room_id: string
+          student_id: string
         }
         Update: {
           created_at?: string
           id?: string
+          kind?: string
+          message?: string
+          room_id?: string
+          student_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "case_room_messages_room_id_fkey"
+            columns: ["room_id"]
+            isOneToOne: false
+            referencedRelation: "case_rooms"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "case_room_messages_student_id_fkey"
+            columns: ["student_id"]
+            isOneToOne: false
+            referencedRelation: "students"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      case_room_votes: {
+        Row: {
+          created_at: string
+          decision_type: string
+          id: string
+          option: string
+          room_id: string
+          student_id: string
+        }
+        Insert: {
+          created_at?: string
+          decision_type: string
+          id?: string
+          option: string
+          room_id: string
+          student_id: string
+        }
+        Update: {
+          created_at?: string
+          decision_type?: string
+          id?: string
+          option?: string
+          room_id?: string
+          student_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "case_room_votes_room_id_fkey"
+            columns: ["room_id"]
+            isOneToOne: false
+            referencedRelation: "case_rooms"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "case_room_votes_student_id_fkey"
+            columns: ["student_id"]
+            isOneToOne: false
+            referencedRelation: "students"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      case_rooms: {
+        Row: {
+          case_id: string
+          created_at: string
+          created_by: string | null
+          differential_board: Json
+          group_id: string | null
+          id: string
+          name: string
+          shared_notes: string
+          status: string
+          timer_seconds: number
+          updated_at: string
+        }
+        Insert: {
+          case_id: string
+          created_at?: string
+          created_by?: string | null
+          differential_board?: Json
+          group_id?: string | null
+          id?: string
+          name?: string
+          shared_notes?: string
+          status?: string
+          timer_seconds?: number
+          updated_at?: string
+        }
+        Update: {
+          case_id?: string
+          created_at?: string
+          created_by?: string | null
+          differential_board?: Json
+          group_id?: string | null
+          id?: string
+          name?: string
+          shared_notes?: string
+          status?: string
+          timer_seconds?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "case_rooms_case_id_fkey"
+            columns: ["case_id"]
+            isOneToOne: false
+            referencedRelation: "cases"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "case_rooms_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "students"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "case_rooms_group_id_fkey"
+            columns: ["group_id"]
+            isOneToOne: false
+            referencedRelation: "groups"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      cases: {
+        Row: {
+          answer_key: Json
+          challenge_end: string | null
+          challenge_start: string | null
+          clinical_setting: string
+          communication_task: Json | null
+          completions_count: number
+          correct_diagnosis: string
+          correct_differentials: string[]
+          created_at: string
+          debrief: Json
+          diagnosis_options: string[]
+          differential_prompt: string
+          difficulty: string
+          estimated_minutes: number
+          examinations: Json
+          history_categories: Json
+          id: string
+          initial_presentation: string
+          interpretation_task: Json
+          investigations: Json
+          is_published: boolean
+          is_weekly_challenge: boolean
+          management_options: Json
+          mode: string
+          organ_system: string
+          outcomes: Json
+          patient: Json
+          scoring_weights: Json
+          specialty: string
+          teaser: string
+          title: string
+          topic: string
+          xp_reward: number
+          year_level: number
+        }
+        Insert: {
+          answer_key?: Json
+          challenge_end?: string | null
+          challenge_start?: string | null
+          clinical_setting?: string
+          communication_task?: Json | null
+          completions_count?: number
+          correct_diagnosis?: string
+          correct_differentials?: string[]
+          created_at?: string
+          debrief?: Json
+          diagnosis_options?: string[]
+          differential_prompt?: string
+          difficulty?: string
+          estimated_minutes?: number
+          examinations?: Json
+          history_categories?: Json
+          id?: string
+          initial_presentation?: string
+          interpretation_task?: Json
+          investigations?: Json
+          is_published?: boolean
+          is_weekly_challenge?: boolean
+          management_options?: Json
+          mode?: string
+          organ_system?: string
+          outcomes?: Json
+          patient?: Json
+          scoring_weights?: Json
+          specialty?: string
+          teaser?: string
+          title?: string
+          topic?: string
+          xp_reward?: number
+          year_level?: number
+        }
+        Update: {
+          answer_key?: Json
+          challenge_end?: string | null
+          challenge_start?: string | null
+          clinical_setting?: string
+          communication_task?: Json | null
+          completions_count?: number
+          correct_diagnosis?: string
+          correct_differentials?: string[]
+          created_at?: string
+          debrief?: Json
+          diagnosis_options?: string[]
+          differential_prompt?: string
+          difficulty?: string
+          estimated_minutes?: number
+          examinations?: Json
+          history_categories?: Json
+          id?: string
+          initial_presentation?: string
+          interpretation_task?: Json
+          investigations?: Json
+          is_published?: boolean
+          is_weekly_challenge?: boolean
+          management_options?: Json
+          mode?: string
+          organ_system?: string
+          outcomes?: Json
+          patient?: Json
+          scoring_weights?: Json
+          specialty?: string
+          teaser?: string
+          title?: string
+          topic?: string
+          xp_reward?: number
+          year_level?: number
         }
         Relationships: []
+      }
+      challenge_participants: {
+        Row: {
+          challenge_id: string
+          created_at: string
+          display_name: string
+          group_name: string | null
+          id: string
+          mode: string
+          rank: number | null
+          score: number
+          student_id: string | null
+          team_id: string | null
+          team_name: string | null
+          time_taken_seconds: number
+        }
+        Insert: {
+          challenge_id: string
+          created_at?: string
+          display_name: string
+          group_name?: string | null
+          id?: string
+          mode?: string
+          rank?: number | null
+          score?: number
+          student_id?: string | null
+          team_id?: string | null
+          team_name?: string | null
+          time_taken_seconds?: number
+        }
+        Update: {
+          challenge_id?: string
+          created_at?: string
+          display_name?: string
+          group_name?: string | null
+          id?: string
+          mode?: string
+          rank?: number | null
+          score?: number
+          student_id?: string | null
+          team_id?: string | null
+          team_name?: string | null
+          time_taken_seconds?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "challenge_participants_challenge_id_fkey"
+            columns: ["challenge_id"]
+            isOneToOne: false
+            referencedRelation: "weekly_challenges"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "challenge_participants_student_id_fkey"
+            columns: ["student_id"]
+            isOneToOne: false
+            referencedRelation: "students"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       flashcard_decks: {
         Row: {
@@ -310,6 +692,41 @@ export type Database = {
           year_of_study?: number
         }
         Relationships: []
+      }
+      weekly_challenges: {
+        Row: {
+          case_id: string
+          created_at: string
+          ends_at: string
+          id: string
+          rules: string[]
+          starts_at: string
+        }
+        Insert: {
+          case_id: string
+          created_at?: string
+          ends_at: string
+          id?: string
+          rules?: string[]
+          starts_at: string
+        }
+        Update: {
+          case_id?: string
+          created_at?: string
+          ends_at?: string
+          id?: string
+          rules?: string[]
+          starts_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "weekly_challenges_case_id_fkey"
+            columns: ["case_id"]
+            isOneToOne: false
+            referencedRelation: "cases"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       xp_events: {
         Row: {
