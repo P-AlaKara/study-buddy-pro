@@ -32,7 +32,7 @@ export const completeAttempt = createServerFn({ method: "POST" })
       const comm = (attempt.communication_response as { id?: string } | null)?.id;
       const harmful = mgmt.filter((m) => key.management_harmful.includes(m)).length;
       const unnecessary = inv.filter((i) => key.unnecessary_investigations.includes(i)).length;
-      const w = c.scoring_weights as Record<string, number>;
+      const w = c.scoring_weights as { diagnostic_accuracy: number; clinical_reasoning: number; investigations: number; management: number; patient_safety: number; communication: number };
       const diffScore = c.correct_differentials.filter((d: string) => diffs.includes(d)).length / Math.max(1, c.correct_differentials.length);
       const r = (n: number) => Math.max(0, Math.round(n));
       breakdown = {
