@@ -548,33 +548,259 @@ export type Database = {
       }
       osce_attempts: {
         Row: {
+          checklist_results: Json
+          completed_at: string
           created_at: string
           id: string
+          mode: string
+          score: number
+          station_id: string
+          student_id: string
+          time_taken_seconds: number
+        }
+        Insert: {
+          checklist_results?: Json
+          completed_at?: string
+          created_at?: string
+          id?: string
+          mode?: string
+          score?: number
+          station_id: string
+          student_id: string
+          time_taken_seconds?: number
+        }
+        Update: {
+          checklist_results?: Json
+          completed_at?: string
+          created_at?: string
+          id?: string
+          mode?: string
+          score?: number
+          station_id?: string
+          student_id?: string
+          time_taken_seconds?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "osce_attempts_station_id_fkey"
+            columns: ["station_id"]
+            isOneToOne: false
+            referencedRelation: "osce_stations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "osce_attempts_student_id_fkey"
+            columns: ["student_id"]
+            isOneToOne: false
+            referencedRelation: "students"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      osce_circuit_attempts: {
+        Row: {
+          circuit_id: string
+          competency_breakdown: Json
+          completed_at: string
+          created_at: string
+          id: string
+          overall_result: string
+          per_station_results: Json
+          student_id: string
+        }
+        Insert: {
+          circuit_id: string
+          competency_breakdown?: Json
+          completed_at?: string
+          created_at?: string
+          id?: string
+          overall_result?: string
+          per_station_results?: Json
+          student_id: string
+        }
+        Update: {
+          circuit_id?: string
+          competency_breakdown?: Json
+          completed_at?: string
+          created_at?: string
+          id?: string
+          overall_result?: string
+          per_station_results?: Json
+          student_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "osce_circuit_attempts_circuit_id_fkey"
+            columns: ["circuit_id"]
+            isOneToOne: false
+            referencedRelation: "osce_circuits"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "osce_circuit_attempts_student_id_fkey"
+            columns: ["student_id"]
+            isOneToOne: false
+            referencedRelation: "students"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      osce_circuits: {
+        Row: {
+          created_at: string
+          created_by_student_id: string | null
+          id: string
+          name: string
+          station_ids: string[]
+          type: string
         }
         Insert: {
           created_at?: string
+          created_by_student_id?: string | null
           id?: string
+          name: string
+          station_ids: string[]
+          type: string
         }
         Update: {
           created_at?: string
+          created_by_student_id?: string | null
           id?: string
+          name?: string
+          station_ids?: string[]
+          type?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "osce_circuits_created_by_student_id_fkey"
+            columns: ["created_by_student_id"]
+            isOneToOne: false
+            referencedRelation: "students"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       osce_stations: {
         Row: {
+          candidate_instructions: string
+          category: string
           created_at: string
+          difficulty: string
+          duration_minutes: number
+          examiner_checklist: Json
+          global_assessment_criteria: Json
+          hints: string[]
           id: string
+          is_published: boolean
+          learning_points: string[]
+          patient_instructions: Json
+          resources: Json
+          specialty: string
+          suggested_structure: string[]
+          title: string
+          topic: string
+          year: number
         }
         Insert: {
+          candidate_instructions?: string
+          category?: string
           created_at?: string
+          difficulty?: string
+          duration_minutes?: number
+          examiner_checklist?: Json
+          global_assessment_criteria?: Json
+          hints?: string[]
           id?: string
+          is_published?: boolean
+          learning_points?: string[]
+          patient_instructions?: Json
+          resources?: Json
+          specialty?: string
+          suggested_structure?: string[]
+          title?: string
+          topic?: string
+          year?: number
         }
         Update: {
+          candidate_instructions?: string
+          category?: string
           created_at?: string
+          difficulty?: string
+          duration_minutes?: number
+          examiner_checklist?: Json
+          global_assessment_criteria?: Json
+          hints?: string[]
           id?: string
+          is_published?: boolean
+          learning_points?: string[]
+          patient_instructions?: Json
+          resources?: Json
+          specialty?: string
+          suggested_structure?: string[]
+          title?: string
+          topic?: string
+          year?: number
         }
         Relationships: []
+      }
+      peer_osce_sessions: {
+        Row: {
+          candidate_student_id: string | null
+          created_at: string
+          examiner_student_id: string | null
+          id: string
+          patient_student_id: string | null
+          station_id: string
+          status: string
+        }
+        Insert: {
+          candidate_student_id?: string | null
+          created_at?: string
+          examiner_student_id?: string | null
+          id?: string
+          patient_student_id?: string | null
+          station_id: string
+          status?: string
+        }
+        Update: {
+          candidate_student_id?: string | null
+          created_at?: string
+          examiner_student_id?: string | null
+          id?: string
+          patient_student_id?: string | null
+          station_id?: string
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "peer_osce_sessions_candidate_student_id_fkey"
+            columns: ["candidate_student_id"]
+            isOneToOne: false
+            referencedRelation: "students"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "peer_osce_sessions_examiner_student_id_fkey"
+            columns: ["examiner_student_id"]
+            isOneToOne: false
+            referencedRelation: "students"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "peer_osce_sessions_patient_student_id_fkey"
+            columns: ["patient_student_id"]
+            isOneToOne: false
+            referencedRelation: "students"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "peer_osce_sessions_station_id_fkey"
+            columns: ["station_id"]
+            isOneToOne: false
+            referencedRelation: "osce_stations"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       quiz_questions: {
         Row: {

@@ -12,10 +12,14 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as CasesRouteImport } from './routes/cases'
 import { Route as GroupsRouteImport } from './routes/groups'
+import { Route as OsceRouteImport } from './routes/osce'
 import { Route as PracticeRouteImport } from './routes/practice'
 import { Route as ProfileRouteImport } from './routes/profile'
 import { Route as CasesIndexRouteImport } from './routes/cases.index'
 import { Route as CasesCaseIdRouteImport } from './routes/cases.$caseId'
+import { Route as OsceIndexRouteImport } from './routes/osce.index'
+import { Route as OsceStationIdRouteImport } from './routes/osce.$stationId'
+import { Route as OsceExamRouteImport } from './routes/osce.exam'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -30,6 +34,11 @@ const CasesRoute = CasesRouteImport.update({
 const GroupsRoute = GroupsRouteImport.update({
   id: '/groups',
   path: '/groups',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const OsceRoute = OsceRouteImport.update({
+  id: '/osce',
+  path: '/osce',
   getParentRoute: () => rootRouteImport,
 } as any)
 const PracticeRoute = PracticeRouteImport.update({
@@ -52,15 +61,34 @@ const CasesCaseIdRoute = CasesCaseIdRouteImport.update({
   path: '/$caseId',
   getParentRoute: () => CasesRoute,
 } as any)
+const OsceIndexRoute = OsceIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => OsceRoute,
+} as any)
+const OsceStationIdRoute = OsceStationIdRouteImport.update({
+  id: '/$stationId',
+  path: '/$stationId',
+  getParentRoute: () => OsceRoute,
+} as any)
+const OsceExamRoute = OsceExamRouteImport.update({
+  id: '/exam',
+  path: '/exam',
+  getParentRoute: () => OsceRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/cases': typeof CasesRouteWithChildren
   '/groups': typeof GroupsRoute
+  '/osce': typeof OsceRouteWithChildren
   '/practice': typeof PracticeRoute
   '/profile': typeof ProfileRoute
   '/cases/$caseId': typeof CasesCaseIdRoute
+  '/osce/$stationId': typeof OsceStationIdRoute
+  '/osce/exam': typeof OsceExamRoute
   '/cases/': typeof CasesIndexRoute
+  '/osce/': typeof OsceIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -68,17 +96,24 @@ export interface FileRoutesByTo {
   '/practice': typeof PracticeRoute
   '/profile': typeof ProfileRoute
   '/cases/$caseId': typeof CasesCaseIdRoute
+  '/osce/$stationId': typeof OsceStationIdRoute
+  '/osce/exam': typeof OsceExamRoute
   '/cases': typeof CasesIndexRoute
+  '/osce': typeof OsceIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/cases': typeof CasesRouteWithChildren
   '/groups': typeof GroupsRoute
+  '/osce': typeof OsceRouteWithChildren
   '/practice': typeof PracticeRoute
   '/profile': typeof ProfileRoute
   '/cases/$caseId': typeof CasesCaseIdRoute
+  '/osce/$stationId': typeof OsceStationIdRoute
+  '/osce/exam': typeof OsceExamRoute
   '/cases/': typeof CasesIndexRoute
+  '/osce/': typeof OsceIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -86,27 +121,45 @@ export interface FileRouteTypes {
     | '/'
     | '/cases'
     | '/groups'
+    | '/osce'
     | '/practice'
     | '/profile'
     | '/cases/$caseId'
+    | '/osce/$stationId'
+    | '/osce/exam'
     | '/cases/'
+    | '/osce/'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/groups' | '/practice' | '/profile' | '/cases/$caseId' | '/cases'
+  to:
+    | '/'
+    | '/groups'
+    | '/practice'
+    | '/profile'
+    | '/cases/$caseId'
+    | '/osce/$stationId'
+    | '/osce/exam'
+    | '/cases'
+    | '/osce'
   id:
     | '__root__'
     | '/'
     | '/cases'
     | '/groups'
+    | '/osce'
     | '/practice'
     | '/profile'
     | '/cases/$caseId'
+    | '/osce/$stationId'
+    | '/osce/exam'
     | '/cases/'
+    | '/osce/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   CasesRoute: typeof CasesRouteWithChildren
   GroupsRoute: typeof GroupsRoute
+  OsceRoute: typeof OsceRouteWithChildren
   PracticeRoute: typeof PracticeRoute
   ProfileRoute: typeof ProfileRoute
 }
@@ -132,6 +185,13 @@ declare module '@tanstack/react-router' {
       path: '/groups'
       fullPath: '/groups'
       preLoaderRoute: typeof GroupsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/osce': {
+      id: '/osce'
+      path: '/osce'
+      fullPath: '/osce'
+      preLoaderRoute: typeof OsceRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/practice': {
@@ -162,6 +222,27 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof CasesCaseIdRouteImport
       parentRoute: typeof CasesRoute
     }
+    '/osce/': {
+      id: '/osce/'
+      path: '/'
+      fullPath: '/osce/'
+      preLoaderRoute: typeof OsceIndexRouteImport
+      parentRoute: typeof OsceRoute
+    }
+    '/osce/$stationId': {
+      id: '/osce/$stationId'
+      path: '/$stationId'
+      fullPath: '/osce/$stationId'
+      preLoaderRoute: typeof OsceStationIdRouteImport
+      parentRoute: typeof OsceRoute
+    }
+    '/osce/exam': {
+      id: '/osce/exam'
+      path: '/exam'
+      fullPath: '/osce/exam'
+      preLoaderRoute: typeof OsceExamRouteImport
+      parentRoute: typeof OsceRoute
+    }
   }
 }
 
@@ -177,10 +258,25 @@ const CasesRouteChildren: CasesRouteChildren = {
 
 const CasesRouteWithChildren = CasesRoute._addFileChildren(CasesRouteChildren)
 
+interface OsceRouteChildren {
+  OsceStationIdRoute: typeof OsceStationIdRoute
+  OsceExamRoute: typeof OsceExamRoute
+  OsceIndexRoute: typeof OsceIndexRoute
+}
+
+const OsceRouteChildren: OsceRouteChildren = {
+  OsceStationIdRoute: OsceStationIdRoute,
+  OsceExamRoute: OsceExamRoute,
+  OsceIndexRoute: OsceIndexRoute,
+}
+
+const OsceRouteWithChildren = OsceRoute._addFileChildren(OsceRouteChildren)
+
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   CasesRoute: CasesRouteWithChildren,
   GroupsRoute: GroupsRoute,
+  OsceRoute: OsceRouteWithChildren,
   PracticeRoute: PracticeRoute,
   ProfileRoute: ProfileRoute,
 }
