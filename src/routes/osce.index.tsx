@@ -39,7 +39,7 @@ function StationBank() {
   function chooseType(t: string) {
     setType(t);
     const n = TYPES.find(x => x.id === t)!.n;
-    if (n) setPicked(Array.from({ length: n }, (_, i) => stations[i % stations.length]?.id).filter(Boolean));
+    if (n) setPicked(Array.from({ length: n }, (_, i) => stations[i % stations.length]?.id).filter((x): x is string => !!x));
   }
   const toggle = (id: string) => type === "single" ? setPicked([id]) : setPicked(picked.includes(id) && type === "custom" ? picked.filter(x => x !== id) : [...picked, id]);
 

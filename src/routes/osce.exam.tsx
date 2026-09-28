@@ -35,7 +35,7 @@ function ExamCircuit() {
   const [open, setOpen] = useState<number | null>(null);
   useEffect(() => { fetchStations().then(setAll); }, []);
   const circuit = ids.split(",").map(id => all.find(s => s.id === id)).filter(Boolean) as Station[];
-  const s = circuit[i];
+  const s = circuit[i] as Station;
   const limit = s ? s.duration_minutes * 60 : 0;
 
   useEffect(() => {
