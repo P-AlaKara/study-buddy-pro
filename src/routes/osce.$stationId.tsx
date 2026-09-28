@@ -80,7 +80,7 @@ function StationPage() {
       <Panel className="bg-card">
         <p className="mb-2 text-sm font-extrabold">Who is holding the phone?</p>
         <div className="flex flex-wrap gap-2">{ROLES.map(r => <button key={r} onClick={() => setRole(r)} className={`rounded-full px-4 py-2 text-sm font-extrabold capitalize active:scale-95 ${role === r ? "bg-pink text-primary-foreground shadow-md" : "bg-pink-soft"}`}>{r}</button>)}
-          <button onClick={() => setRole(ROLES[(ROLES.indexOf(role) + 1) % 3])} className="flex items-center gap-1 rounded-full bg-muted px-4 py-2 text-sm font-extrabold active:scale-95"><RotateCw className="h-4 w-4" />Rotate roles</button></div>
+          <button onClick={() => setRole(ROLES[(ROLES.indexOf(role) + 1) % 3]!)} className="flex items-center gap-1 rounded-full bg-muted px-4 py-2 text-sm font-extrabold active:scale-95"><RotateCw className="h-4 w-4" />Rotate roles</button></div>
         <p className="mt-2 text-xs text-muted-foreground">Each role sees only its own brief. Pass the phone and rotate.</p>
       </Panel>
       {role === "candidate" && <Panel title="Candidate — your task"><p className="leading-relaxed">{s.candidate_instructions}</p></Panel>}
