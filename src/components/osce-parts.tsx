@@ -2,7 +2,7 @@ import type { ReactNode } from "react";
 import { CheckCircle2, XCircle } from "lucide-react";
 import { DOMAIN_LABELS, band, type Station } from "@/lib/osce";
 
-export const pinkBtn = "rounded-full bg-pink px-6 py-3 font-extrabold text-primary-foreground shadow-md transition-transform active:scale-95 disabled:opacity-50";
+export const pinkBtn = "rounded-full bg-pink px-6 py-3 font-extrabold text-foreground shadow-md transition-transform active:scale-95 disabled:opacity-50";
 export const softBtn = "rounded-full bg-pink-soft px-5 py-2.5 font-extrabold transition-transform active:scale-95";
 
 export function Panel({ title, children, className = "bg-card" }: { title?: string; children: ReactNode; className?: string }) {
