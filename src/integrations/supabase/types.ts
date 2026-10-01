@@ -29,6 +29,42 @@ export type Database = {
         }
         Relationships: []
       }
+      bookmarked_questions: {
+        Row: {
+          created_at: string
+          id: string
+          question_id: string
+          student_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          question_id: string
+          student_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          question_id?: string
+          student_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bookmarked_questions_question_id_fkey"
+            columns: ["question_id"]
+            isOneToOne: false
+            referencedRelation: "quiz_questions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bookmarked_questions_student_id_fkey"
+            columns: ["student_id"]
+            isOneToOne: false
+            referencedRelation: "students"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       case_attempts: {
         Row: {
           case_id: string
@@ -444,77 +480,317 @@ export type Database = {
       flashcard_decks: {
         Row: {
           created_at: string
+          description: string
+          difficulty: string
           id: string
+          is_official: boolean
+          is_published: boolean
+          organ_system: string
+          owner_student_id: string | null
+          subject: string
+          tags: string[]
+          title: string
+          topic: string
+          updated_at: string
+          year: number
         }
         Insert: {
           created_at?: string
+          description?: string
+          difficulty?: string
           id?: string
+          is_official?: boolean
+          is_published?: boolean
+          organ_system?: string
+          owner_student_id?: string | null
+          subject?: string
+          tags?: string[]
+          title?: string
+          topic?: string
+          updated_at?: string
+          year?: number
         }
         Update: {
           created_at?: string
+          description?: string
+          difficulty?: string
           id?: string
+          is_official?: boolean
+          is_published?: boolean
+          organ_system?: string
+          owner_student_id?: string | null
+          subject?: string
+          tags?: string[]
+          title?: string
+          topic?: string
+          updated_at?: string
+          year?: number
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "flashcard_decks_owner_student_id_fkey"
+            columns: ["owner_student_id"]
+            isOneToOne: false
+            referencedRelation: "students"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       flashcard_reviews: {
         Row: {
           created_at: string
+          due_date: string
+          ease_factor: number
+          flashcard_id: string
           id: string
+          interval_days: number
+          last_rating: string | null
+          last_reviewed_at: string | null
+          repetitions: number
+          student_id: string
         }
         Insert: {
           created_at?: string
+          due_date?: string
+          ease_factor?: number
+          flashcard_id: string
           id?: string
+          interval_days?: number
+          last_rating?: string | null
+          last_reviewed_at?: string | null
+          repetitions?: number
+          student_id: string
         }
         Update: {
           created_at?: string
+          due_date?: string
+          ease_factor?: number
+          flashcard_id?: string
           id?: string
+          interval_days?: number
+          last_rating?: string | null
+          last_reviewed_at?: string | null
+          repetitions?: number
+          student_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "flashcard_reviews_flashcard_id_fkey"
+            columns: ["flashcard_id"]
+            isOneToOne: false
+            referencedRelation: "flashcards"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "flashcard_reviews_student_id_fkey"
+            columns: ["student_id"]
+            isOneToOne: false
+            referencedRelation: "students"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       flashcards: {
         Row: {
+          back: string
+          cloze_text: string | null
           created_at: string
+          deck_id: string
+          front: string
           id: string
+          image_url: string | null
+          position: number
+          type: string
         }
         Insert: {
+          back?: string
+          cloze_text?: string | null
           created_at?: string
+          deck_id: string
+          front?: string
           id?: string
+          image_url?: string | null
+          position?: number
+          type?: string
         }
         Update: {
+          back?: string
+          cloze_text?: string | null
           created_at?: string
+          deck_id?: string
+          front?: string
           id?: string
+          image_url?: string | null
+          position?: number
+          type?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "flashcards_deck_id_fkey"
+            columns: ["deck_id"]
+            isOneToOne: false
+            referencedRelation: "flashcard_decks"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       group_members: {
         Row: {
           created_at: string
+          group_id: string
           id: string
+          role: string
+          student_id: string
         }
         Insert: {
           created_at?: string
+          group_id: string
           id?: string
+          role?: string
+          student_id: string
         }
         Update: {
           created_at?: string
+          group_id?: string
           id?: string
+          role?: string
+          student_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "group_members_group_id_fkey"
+            columns: ["group_id"]
+            isOneToOne: false
+            referencedRelation: "groups"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "group_members_student_id_fkey"
+            columns: ["student_id"]
+            isOneToOne: false
+            referencedRelation: "students"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      group_messages: {
+        Row: {
+          created_at: string
+          group_id: string
+          id: string
+          message: string
+          student_id: string
+        }
+        Insert: {
+          created_at?: string
+          group_id: string
+          id?: string
+          message: string
+          student_id: string
+        }
+        Update: {
+          created_at?: string
+          group_id?: string
+          id?: string
+          message?: string
+          student_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "group_messages_group_id_fkey"
+            columns: ["group_id"]
+            isOneToOne: false
+            referencedRelation: "groups"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "group_messages_student_id_fkey"
+            columns: ["student_id"]
+            isOneToOne: false
+            referencedRelation: "students"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      group_shared_resources: {
+        Row: {
+          created_at: string
+          group_id: string
+          id: string
+          resource_ref: string
+          resource_type: string
+          shared_by_student_id: string | null
+          title: string
+        }
+        Insert: {
+          created_at?: string
+          group_id: string
+          id?: string
+          resource_ref: string
+          resource_type: string
+          shared_by_student_id?: string | null
+          title?: string
+        }
+        Update: {
+          created_at?: string
+          group_id?: string
+          id?: string
+          resource_ref?: string
+          resource_type?: string
+          shared_by_student_id?: string | null
+          title?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "group_shared_resources_group_id_fkey"
+            columns: ["group_id"]
+            isOneToOne: false
+            referencedRelation: "groups"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "group_shared_resources_shared_by_student_id_fkey"
+            columns: ["shared_by_student_id"]
+            isOneToOne: false
+            referencedRelation: "students"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       groups: {
         Row: {
           created_at: string
+          created_by_student_id: string | null
+          description: string
           id: string
+          invite_code: string
+          name: string
         }
         Insert: {
           created_at?: string
+          created_by_student_id?: string | null
+          description?: string
           id?: string
+          invite_code?: string
+          name?: string
         }
         Update: {
           created_at?: string
+          created_by_student_id?: string | null
+          description?: string
           id?: string
+          invite_code?: string
+          name?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "groups_created_by_student_id_fkey"
+            columns: ["created_by_student_id"]
+            isOneToOne: false
+            referencedRelation: "students"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       mastery_scores: {
         Row: {
@@ -804,33 +1080,174 @@ export type Database = {
       }
       quiz_questions: {
         Row: {
+          clinical_competency: string
+          clinical_pearl: string
+          correct_answer: Json
           created_at: string
+          difficulty: string
           id: string
+          key_concept: string
+          media_url: string | null
+          option_explanations: Json
+          options: Json
+          organ_system: string
+          question_text: string
+          question_type: string
+          references: string[]
+          related_case_id: string | null
+          related_flashcard_deck_id: string | null
+          subject: string
+          topic: string
+          year: number
         }
         Insert: {
+          clinical_competency?: string
+          clinical_pearl?: string
+          correct_answer?: Json
           created_at?: string
+          difficulty?: string
           id?: string
+          key_concept?: string
+          media_url?: string | null
+          option_explanations?: Json
+          options?: Json
+          organ_system?: string
+          question_text?: string
+          question_type?: string
+          references?: string[]
+          related_case_id?: string | null
+          related_flashcard_deck_id?: string | null
+          subject?: string
+          topic?: string
+          year?: number
         }
         Update: {
+          clinical_competency?: string
+          clinical_pearl?: string
+          correct_answer?: Json
           created_at?: string
+          difficulty?: string
           id?: string
+          key_concept?: string
+          media_url?: string | null
+          option_explanations?: Json
+          options?: Json
+          organ_system?: string
+          question_text?: string
+          question_type?: string
+          references?: string[]
+          related_case_id?: string | null
+          related_flashcard_deck_id?: string | null
+          subject?: string
+          topic?: string
+          year?: number
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "quiz_questions_deck_fk"
+            columns: ["related_flashcard_deck_id"]
+            isOneToOne: false
+            referencedRelation: "flashcard_decks"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "quiz_questions_related_case_id_fkey"
+            columns: ["related_case_id"]
+            isOneToOne: false
+            referencedRelation: "cases"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       quiz_sessions: {
         Row: {
+          answers: Json
+          completed_at: string | null
           created_at: string
+          group_id: string | null
           id: string
+          mode: string
+          question_ids: string[]
+          score: number | null
+          started_at: string
+          student_id: string
+        }
+        Insert: {
+          answers?: Json
+          completed_at?: string | null
+          created_at?: string
+          group_id?: string | null
+          id?: string
+          mode?: string
+          question_ids?: string[]
+          score?: number | null
+          started_at?: string
+          student_id: string
+        }
+        Update: {
+          answers?: Json
+          completed_at?: string | null
+          created_at?: string
+          group_id?: string | null
+          id?: string
+          mode?: string
+          question_ids?: string[]
+          score?: number | null
+          started_at?: string
+          student_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "quiz_sessions_group_fk"
+            columns: ["group_id"]
+            isOneToOne: false
+            referencedRelation: "groups"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "quiz_sessions_student_id_fkey"
+            columns: ["student_id"]
+            isOneToOne: false
+            referencedRelation: "students"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      saved_decks: {
+        Row: {
+          created_at: string
+          deck_id: string
+          id: string
+          student_id: string
         }
         Insert: {
           created_at?: string
+          deck_id: string
           id?: string
+          student_id: string
         }
         Update: {
           created_at?: string
+          deck_id?: string
           id?: string
+          student_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "saved_decks_deck_id_fkey"
+            columns: ["deck_id"]
+            isOneToOne: false
+            referencedRelation: "flashcard_decks"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "saved_decks_student_id_fkey"
+            columns: ["student_id"]
+            isOneToOne: false
+            referencedRelation: "students"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       student_achievements: {
         Row: {
@@ -918,6 +1335,57 @@ export type Database = {
           year_of_study?: number
         }
         Relationships: []
+      }
+      suggested_flashcards: {
+        Row: {
+          back: string
+          created_at: string
+          front: string
+          id: string
+          source_id: string
+          source_type: string
+          status: string
+          student_id: string
+          suggested_flashcard_id: string | null
+        }
+        Insert: {
+          back: string
+          created_at?: string
+          front: string
+          id?: string
+          source_id: string
+          source_type: string
+          status?: string
+          student_id: string
+          suggested_flashcard_id?: string | null
+        }
+        Update: {
+          back?: string
+          created_at?: string
+          front?: string
+          id?: string
+          source_id?: string
+          source_type?: string
+          status?: string
+          student_id?: string
+          suggested_flashcard_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "suggested_flashcards_student_id_fkey"
+            columns: ["student_id"]
+            isOneToOne: false
+            referencedRelation: "students"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "suggested_flashcards_suggested_flashcard_id_fkey"
+            columns: ["suggested_flashcard_id"]
+            isOneToOne: false
+            referencedRelation: "flashcards"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       weekly_challenges: {
         Row: {
