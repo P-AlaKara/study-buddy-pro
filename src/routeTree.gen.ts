@@ -15,11 +15,14 @@ import { Route as GroupsRouteImport } from './routes/groups'
 import { Route as OsceRouteImport } from './routes/osce'
 import { Route as PracticeRouteImport } from './routes/practice'
 import { Route as ProfileRouteImport } from './routes/profile'
+import { Route as QuizRouteImport } from './routes/quiz'
 import { Route as CasesIndexRouteImport } from './routes/cases.index'
 import { Route as CasesCaseIdRouteImport } from './routes/cases.$caseId'
 import { Route as OsceIndexRouteImport } from './routes/osce.index'
 import { Route as OsceStationIdRouteImport } from './routes/osce.$stationId'
 import { Route as OsceExamRouteImport } from './routes/osce.exam'
+import { Route as QuizIndexRouteImport } from './routes/quiz.index'
+import { Route as QuizPlayRouteImport } from './routes/quiz.play'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -51,6 +54,11 @@ const ProfileRoute = ProfileRouteImport.update({
   path: '/profile',
   getParentRoute: () => rootRouteImport,
 } as any)
+const QuizRoute = QuizRouteImport.update({
+  id: '/quiz',
+  path: '/quiz',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const CasesIndexRoute = CasesIndexRouteImport.update({
   id: '/',
   path: '/',
@@ -76,6 +84,16 @@ const OsceExamRoute = OsceExamRouteImport.update({
   path: '/exam',
   getParentRoute: () => OsceRoute,
 } as any)
+const QuizIndexRoute = QuizIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => QuizRoute,
+} as any)
+const QuizPlayRoute = QuizPlayRouteImport.update({
+  id: '/play',
+  path: '/play',
+  getParentRoute: () => QuizRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -84,11 +102,14 @@ export interface FileRoutesByFullPath {
   '/osce': typeof OsceRouteWithChildren
   '/practice': typeof PracticeRoute
   '/profile': typeof ProfileRoute
+  '/quiz': typeof QuizRouteWithChildren
   '/cases/$caseId': typeof CasesCaseIdRoute
   '/osce/$stationId': typeof OsceStationIdRoute
   '/osce/exam': typeof OsceExamRoute
+  '/quiz/play': typeof QuizPlayRoute
   '/cases/': typeof CasesIndexRoute
   '/osce/': typeof OsceIndexRoute
+  '/quiz/': typeof QuizIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -98,8 +119,10 @@ export interface FileRoutesByTo {
   '/cases/$caseId': typeof CasesCaseIdRoute
   '/osce/$stationId': typeof OsceStationIdRoute
   '/osce/exam': typeof OsceExamRoute
+  '/quiz/play': typeof QuizPlayRoute
   '/cases': typeof CasesIndexRoute
   '/osce': typeof OsceIndexRoute
+  '/quiz': typeof QuizIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -109,11 +132,14 @@ export interface FileRoutesById {
   '/osce': typeof OsceRouteWithChildren
   '/practice': typeof PracticeRoute
   '/profile': typeof ProfileRoute
+  '/quiz': typeof QuizRouteWithChildren
   '/cases/$caseId': typeof CasesCaseIdRoute
   '/osce/$stationId': typeof OsceStationIdRoute
   '/osce/exam': typeof OsceExamRoute
+  '/quiz/play': typeof QuizPlayRoute
   '/cases/': typeof CasesIndexRoute
   '/osce/': typeof OsceIndexRoute
+  '/quiz/': typeof QuizIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -124,11 +150,14 @@ export interface FileRouteTypes {
     | '/osce'
     | '/practice'
     | '/profile'
+    | '/quiz'
     | '/cases/$caseId'
     | '/osce/$stationId'
     | '/osce/exam'
+    | '/quiz/play'
     | '/cases/'
     | '/osce/'
+    | '/quiz/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -138,8 +167,10 @@ export interface FileRouteTypes {
     | '/cases/$caseId'
     | '/osce/$stationId'
     | '/osce/exam'
+    | '/quiz/play'
     | '/cases'
     | '/osce'
+    | '/quiz'
   id:
     | '__root__'
     | '/'
@@ -148,11 +179,14 @@ export interface FileRouteTypes {
     | '/osce'
     | '/practice'
     | '/profile'
+    | '/quiz'
     | '/cases/$caseId'
     | '/osce/$stationId'
     | '/osce/exam'
+    | '/quiz/play'
     | '/cases/'
     | '/osce/'
+    | '/quiz/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -162,6 +196,7 @@ export interface RootRouteChildren {
   OsceRoute: typeof OsceRouteWithChildren
   PracticeRoute: typeof PracticeRoute
   ProfileRoute: typeof ProfileRoute
+  QuizRoute: typeof QuizRouteWithChildren
 }
 
 declare module '@tanstack/react-router' {
@@ -208,6 +243,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ProfileRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/quiz': {
+      id: '/quiz'
+      path: '/quiz'
+      fullPath: '/quiz'
+      preLoaderRoute: typeof QuizRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/cases/': {
       id: '/cases/'
       path: '/'
@@ -243,6 +285,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof OsceExamRouteImport
       parentRoute: typeof OsceRoute
     }
+    '/quiz/': {
+      id: '/quiz/'
+      path: '/'
+      fullPath: '/quiz/'
+      preLoaderRoute: typeof QuizIndexRouteImport
+      parentRoute: typeof QuizRoute
+    }
+    '/quiz/play': {
+      id: '/quiz/play'
+      path: '/play'
+      fullPath: '/quiz/play'
+      preLoaderRoute: typeof QuizPlayRouteImport
+      parentRoute: typeof QuizRoute
+    }
   }
 }
 
@@ -272,6 +328,18 @@ const OsceRouteChildren: OsceRouteChildren = {
 
 const OsceRouteWithChildren = OsceRoute._addFileChildren(OsceRouteChildren)
 
+interface QuizRouteChildren {
+  QuizPlayRoute: typeof QuizPlayRoute
+  QuizIndexRoute: typeof QuizIndexRoute
+}
+
+const QuizRouteChildren: QuizRouteChildren = {
+  QuizPlayRoute: QuizPlayRoute,
+  QuizIndexRoute: QuizIndexRoute,
+}
+
+const QuizRouteWithChildren = QuizRoute._addFileChildren(QuizRouteChildren)
+
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   CasesRoute: CasesRouteWithChildren,
@@ -279,6 +347,7 @@ const rootRouteChildren: RootRouteChildren = {
   OsceRoute: OsceRouteWithChildren,
   PracticeRoute: PracticeRoute,
   ProfileRoute: ProfileRoute,
+  QuizRoute: QuizRouteWithChildren,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
