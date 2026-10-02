@@ -22,6 +22,7 @@ import { Route as OsceIndexRouteImport } from './routes/osce.index'
 import { Route as OsceStationIdRouteImport } from './routes/osce.$stationId'
 import { Route as OsceExamRouteImport } from './routes/osce.exam'
 import { Route as QuizIndexRouteImport } from './routes/quiz.index'
+import { Route as QuizPlayRouteImport } from './routes/quiz.play'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -88,6 +89,11 @@ const QuizIndexRoute = QuizIndexRouteImport.update({
   path: '/',
   getParentRoute: () => QuizRoute,
 } as any)
+const QuizPlayRoute = QuizPlayRouteImport.update({
+  id: '/play',
+  path: '/play',
+  getParentRoute: () => QuizRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -100,6 +106,7 @@ export interface FileRoutesByFullPath {
   '/cases/$caseId': typeof CasesCaseIdRoute
   '/osce/$stationId': typeof OsceStationIdRoute
   '/osce/exam': typeof OsceExamRoute
+  '/quiz/play': typeof QuizPlayRoute
   '/cases/': typeof CasesIndexRoute
   '/osce/': typeof OsceIndexRoute
   '/quiz/': typeof QuizIndexRoute
@@ -112,6 +119,7 @@ export interface FileRoutesByTo {
   '/cases/$caseId': typeof CasesCaseIdRoute
   '/osce/$stationId': typeof OsceStationIdRoute
   '/osce/exam': typeof OsceExamRoute
+  '/quiz/play': typeof QuizPlayRoute
   '/cases': typeof CasesIndexRoute
   '/osce': typeof OsceIndexRoute
   '/quiz': typeof QuizIndexRoute
@@ -128,6 +136,7 @@ export interface FileRoutesById {
   '/cases/$caseId': typeof CasesCaseIdRoute
   '/osce/$stationId': typeof OsceStationIdRoute
   '/osce/exam': typeof OsceExamRoute
+  '/quiz/play': typeof QuizPlayRoute
   '/cases/': typeof CasesIndexRoute
   '/osce/': typeof OsceIndexRoute
   '/quiz/': typeof QuizIndexRoute
@@ -145,6 +154,7 @@ export interface FileRouteTypes {
     | '/cases/$caseId'
     | '/osce/$stationId'
     | '/osce/exam'
+    | '/quiz/play'
     | '/cases/'
     | '/osce/'
     | '/quiz/'
@@ -157,6 +167,7 @@ export interface FileRouteTypes {
     | '/cases/$caseId'
     | '/osce/$stationId'
     | '/osce/exam'
+    | '/quiz/play'
     | '/cases'
     | '/osce'
     | '/quiz'
@@ -172,6 +183,7 @@ export interface FileRouteTypes {
     | '/cases/$caseId'
     | '/osce/$stationId'
     | '/osce/exam'
+    | '/quiz/play'
     | '/cases/'
     | '/osce/'
     | '/quiz/'
@@ -280,6 +292,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof QuizIndexRouteImport
       parentRoute: typeof QuizRoute
     }
+    '/quiz/play': {
+      id: '/quiz/play'
+      path: '/play'
+      fullPath: '/quiz/play'
+      preLoaderRoute: typeof QuizPlayRouteImport
+      parentRoute: typeof QuizRoute
+    }
   }
 }
 
@@ -310,10 +329,12 @@ const OsceRouteChildren: OsceRouteChildren = {
 const OsceRouteWithChildren = OsceRoute._addFileChildren(OsceRouteChildren)
 
 interface QuizRouteChildren {
+  QuizPlayRoute: typeof QuizPlayRoute
   QuizIndexRoute: typeof QuizIndexRoute
 }
 
 const QuizRouteChildren: QuizRouteChildren = {
+  QuizPlayRoute: QuizPlayRoute,
   QuizIndexRoute: QuizIndexRoute,
 }
 
