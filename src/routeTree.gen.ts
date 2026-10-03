@@ -11,6 +11,7 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as CasesRouteImport } from './routes/cases'
+import { Route as FlashcardsRouteImport } from './routes/flashcards'
 import { Route as GroupsRouteImport } from './routes/groups'
 import { Route as OsceRouteImport } from './routes/osce'
 import { Route as PracticeRouteImport } from './routes/practice'
@@ -18,6 +19,11 @@ import { Route as ProfileRouteImport } from './routes/profile'
 import { Route as QuizRouteImport } from './routes/quiz'
 import { Route as CasesIndexRouteImport } from './routes/cases.index'
 import { Route as CasesCaseIdRouteImport } from './routes/cases.$caseId'
+import { Route as FlashcardsIndexRouteImport } from './routes/flashcards.index'
+import { Route as FlashcardsDeckIdRouteImport } from './routes/flashcards.$deckId'
+import { Route as FlashcardsReviewRouteImport } from './routes/flashcards.review'
+import { Route as GroupsIndexRouteImport } from './routes/groups.index'
+import { Route as GroupsGroupIdRouteImport } from './routes/groups.$groupId'
 import { Route as OsceIndexRouteImport } from './routes/osce.index'
 import { Route as OsceStationIdRouteImport } from './routes/osce.$stationId'
 import { Route as OsceExamRouteImport } from './routes/osce.exam'
@@ -32,6 +38,11 @@ const IndexRoute = IndexRouteImport.update({
 const CasesRoute = CasesRouteImport.update({
   id: '/cases',
   path: '/cases',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const FlashcardsRoute = FlashcardsRouteImport.update({
+  id: '/flashcards',
+  path: '/flashcards',
   getParentRoute: () => rootRouteImport,
 } as any)
 const GroupsRoute = GroupsRouteImport.update({
@@ -69,6 +80,31 @@ const CasesCaseIdRoute = CasesCaseIdRouteImport.update({
   path: '/$caseId',
   getParentRoute: () => CasesRoute,
 } as any)
+const FlashcardsIndexRoute = FlashcardsIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => FlashcardsRoute,
+} as any)
+const FlashcardsDeckIdRoute = FlashcardsDeckIdRouteImport.update({
+  id: '/$deckId',
+  path: '/$deckId',
+  getParentRoute: () => FlashcardsRoute,
+} as any)
+const FlashcardsReviewRoute = FlashcardsReviewRouteImport.update({
+  id: '/review',
+  path: '/review',
+  getParentRoute: () => FlashcardsRoute,
+} as any)
+const GroupsIndexRoute = GroupsIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => GroupsRoute,
+} as any)
+const GroupsGroupIdRoute = GroupsGroupIdRouteImport.update({
+  id: '/$groupId',
+  path: '/$groupId',
+  getParentRoute: () => GroupsRoute,
+} as any)
 const OsceIndexRoute = OsceIndexRouteImport.update({
   id: '/',
   path: '/',
@@ -98,29 +134,39 @@ const QuizPlayRoute = QuizPlayRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/cases': typeof CasesRouteWithChildren
-  '/groups': typeof GroupsRoute
+  '/flashcards': typeof FlashcardsRouteWithChildren
+  '/groups': typeof GroupsRouteWithChildren
   '/osce': typeof OsceRouteWithChildren
   '/practice': typeof PracticeRoute
   '/profile': typeof ProfileRoute
   '/quiz': typeof QuizRouteWithChildren
   '/cases/$caseId': typeof CasesCaseIdRoute
+  '/flashcards/$deckId': typeof FlashcardsDeckIdRoute
+  '/flashcards/review': typeof FlashcardsReviewRoute
+  '/groups/$groupId': typeof GroupsGroupIdRoute
   '/osce/$stationId': typeof OsceStationIdRoute
   '/osce/exam': typeof OsceExamRoute
   '/quiz/play': typeof QuizPlayRoute
   '/cases/': typeof CasesIndexRoute
+  '/flashcards/': typeof FlashcardsIndexRoute
+  '/groups/': typeof GroupsIndexRoute
   '/osce/': typeof OsceIndexRoute
   '/quiz/': typeof QuizIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
-  '/groups': typeof GroupsRoute
   '/practice': typeof PracticeRoute
   '/profile': typeof ProfileRoute
   '/cases/$caseId': typeof CasesCaseIdRoute
+  '/flashcards/$deckId': typeof FlashcardsDeckIdRoute
+  '/flashcards/review': typeof FlashcardsReviewRoute
+  '/groups/$groupId': typeof GroupsGroupIdRoute
   '/osce/$stationId': typeof OsceStationIdRoute
   '/osce/exam': typeof OsceExamRoute
   '/quiz/play': typeof QuizPlayRoute
   '/cases': typeof CasesIndexRoute
+  '/flashcards': typeof FlashcardsIndexRoute
+  '/groups': typeof GroupsIndexRoute
   '/osce': typeof OsceIndexRoute
   '/quiz': typeof QuizIndexRoute
 }
@@ -128,16 +174,22 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/cases': typeof CasesRouteWithChildren
-  '/groups': typeof GroupsRoute
+  '/flashcards': typeof FlashcardsRouteWithChildren
+  '/groups': typeof GroupsRouteWithChildren
   '/osce': typeof OsceRouteWithChildren
   '/practice': typeof PracticeRoute
   '/profile': typeof ProfileRoute
   '/quiz': typeof QuizRouteWithChildren
   '/cases/$caseId': typeof CasesCaseIdRoute
+  '/flashcards/$deckId': typeof FlashcardsDeckIdRoute
+  '/flashcards/review': typeof FlashcardsReviewRoute
+  '/groups/$groupId': typeof GroupsGroupIdRoute
   '/osce/$stationId': typeof OsceStationIdRoute
   '/osce/exam': typeof OsceExamRoute
   '/quiz/play': typeof QuizPlayRoute
   '/cases/': typeof CasesIndexRoute
+  '/flashcards/': typeof FlashcardsIndexRoute
+  '/groups/': typeof GroupsIndexRoute
   '/osce/': typeof OsceIndexRoute
   '/quiz/': typeof QuizIndexRoute
 }
@@ -146,45 +198,61 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/cases'
+    | '/flashcards'
     | '/groups'
     | '/osce'
     | '/practice'
     | '/profile'
     | '/quiz'
     | '/cases/$caseId'
+    | '/flashcards/$deckId'
+    | '/flashcards/review'
+    | '/groups/$groupId'
     | '/osce/$stationId'
     | '/osce/exam'
     | '/quiz/play'
     | '/cases/'
+    | '/flashcards/'
+    | '/groups/'
     | '/osce/'
     | '/quiz/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
-    | '/groups'
     | '/practice'
     | '/profile'
     | '/cases/$caseId'
+    | '/flashcards/$deckId'
+    | '/flashcards/review'
+    | '/groups/$groupId'
     | '/osce/$stationId'
     | '/osce/exam'
     | '/quiz/play'
     | '/cases'
+    | '/flashcards'
+    | '/groups'
     | '/osce'
     | '/quiz'
   id:
     | '__root__'
     | '/'
     | '/cases'
+    | '/flashcards'
     | '/groups'
     | '/osce'
     | '/practice'
     | '/profile'
     | '/quiz'
     | '/cases/$caseId'
+    | '/flashcards/$deckId'
+    | '/flashcards/review'
+    | '/groups/$groupId'
     | '/osce/$stationId'
     | '/osce/exam'
     | '/quiz/play'
     | '/cases/'
+    | '/flashcards/'
+    | '/groups/'
     | '/osce/'
     | '/quiz/'
   fileRoutesById: FileRoutesById
@@ -192,7 +260,8 @@ export interface FileRouteTypes {
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   CasesRoute: typeof CasesRouteWithChildren
-  GroupsRoute: typeof GroupsRoute
+  FlashcardsRoute: typeof FlashcardsRouteWithChildren
+  GroupsRoute: typeof GroupsRouteWithChildren
   OsceRoute: typeof OsceRouteWithChildren
   PracticeRoute: typeof PracticeRoute
   ProfileRoute: typeof ProfileRoute
@@ -213,6 +282,13 @@ declare module '@tanstack/react-router' {
       path: '/cases'
       fullPath: '/cases'
       preLoaderRoute: typeof CasesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/flashcards': {
+      id: '/flashcards'
+      path: '/flashcards'
+      fullPath: '/flashcards'
+      preLoaderRoute: typeof FlashcardsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/groups': {
@@ -264,6 +340,41 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof CasesCaseIdRouteImport
       parentRoute: typeof CasesRoute
     }
+    '/flashcards/': {
+      id: '/flashcards/'
+      path: '/'
+      fullPath: '/flashcards/'
+      preLoaderRoute: typeof FlashcardsIndexRouteImport
+      parentRoute: typeof FlashcardsRoute
+    }
+    '/flashcards/$deckId': {
+      id: '/flashcards/$deckId'
+      path: '/$deckId'
+      fullPath: '/flashcards/$deckId'
+      preLoaderRoute: typeof FlashcardsDeckIdRouteImport
+      parentRoute: typeof FlashcardsRoute
+    }
+    '/flashcards/review': {
+      id: '/flashcards/review'
+      path: '/review'
+      fullPath: '/flashcards/review'
+      preLoaderRoute: typeof FlashcardsReviewRouteImport
+      parentRoute: typeof FlashcardsRoute
+    }
+    '/groups/': {
+      id: '/groups/'
+      path: '/'
+      fullPath: '/groups/'
+      preLoaderRoute: typeof GroupsIndexRouteImport
+      parentRoute: typeof GroupsRoute
+    }
+    '/groups/$groupId': {
+      id: '/groups/$groupId'
+      path: '/$groupId'
+      fullPath: '/groups/$groupId'
+      preLoaderRoute: typeof GroupsGroupIdRouteImport
+      parentRoute: typeof GroupsRoute
+    }
     '/osce/': {
       id: '/osce/'
       path: '/'
@@ -314,6 +425,35 @@ const CasesRouteChildren: CasesRouteChildren = {
 
 const CasesRouteWithChildren = CasesRoute._addFileChildren(CasesRouteChildren)
 
+interface FlashcardsRouteChildren {
+  FlashcardsDeckIdRoute: typeof FlashcardsDeckIdRoute
+  FlashcardsReviewRoute: typeof FlashcardsReviewRoute
+  FlashcardsIndexRoute: typeof FlashcardsIndexRoute
+}
+
+const FlashcardsRouteChildren: FlashcardsRouteChildren = {
+  FlashcardsDeckIdRoute: FlashcardsDeckIdRoute,
+  FlashcardsReviewRoute: FlashcardsReviewRoute,
+  FlashcardsIndexRoute: FlashcardsIndexRoute,
+}
+
+const FlashcardsRouteWithChildren = FlashcardsRoute._addFileChildren(
+  FlashcardsRouteChildren,
+)
+
+interface GroupsRouteChildren {
+  GroupsGroupIdRoute: typeof GroupsGroupIdRoute
+  GroupsIndexRoute: typeof GroupsIndexRoute
+}
+
+const GroupsRouteChildren: GroupsRouteChildren = {
+  GroupsGroupIdRoute: GroupsGroupIdRoute,
+  GroupsIndexRoute: GroupsIndexRoute,
+}
+
+const GroupsRouteWithChildren =
+  GroupsRoute._addFileChildren(GroupsRouteChildren)
+
 interface OsceRouteChildren {
   OsceStationIdRoute: typeof OsceStationIdRoute
   OsceExamRoute: typeof OsceExamRoute
@@ -343,7 +483,8 @@ const QuizRouteWithChildren = QuizRoute._addFileChildren(QuizRouteChildren)
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   CasesRoute: CasesRouteWithChildren,
-  GroupsRoute: GroupsRoute,
+  FlashcardsRoute: FlashcardsRouteWithChildren,
+  GroupsRoute: GroupsRouteWithChildren,
   OsceRoute: OsceRouteWithChildren,
   PracticeRoute: PracticeRoute,
   ProfileRoute: ProfileRoute,
