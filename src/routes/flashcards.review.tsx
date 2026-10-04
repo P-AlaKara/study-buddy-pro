@@ -70,6 +70,7 @@ function ReviewSession() {
   async function rate(r: Rating) {
     if (!queue || !student) return;
     const [cur, ...rest] = queue;
+    if (!cur) return;
     const next = schedule(cur.review, r);
     const row = { student_id: student.id, flashcard_id: cur.card.id, ...next, last_rating: r, last_reviewed_at: new Date().toISOString() };
     const { data } = await supabase.from("flashcard_reviews").upsert(row, { onConflict: "student_id,flashcard_id" }).select("*").single();
@@ -98,7 +99,7 @@ function ReviewSession() {
     </div>
   );
 
-  const { card, review } = queue[0];
+  const { card, review } = queue[0]!;
   const isCloze = card.type === "cloze" && card.cloze_text;
 
   return (

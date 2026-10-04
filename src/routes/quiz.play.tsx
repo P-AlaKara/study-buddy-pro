@@ -77,10 +77,10 @@ function Runner() {
 
   useEffect(() => {
     if (mode !== "timed" || done || !questions) return;
-    if (left <= 0 && questions.length) { finish(records); return; }
+    if (left <= 0 && questions.length) { finish(records); return undefined; }
     const t = setTimeout(() => setLeft(l => l - 1), 1000);
     return () => clearTimeout(t);
-  });
+  }); // eslint-disable-line
 
   const q = questions?.[i];
 
@@ -174,7 +174,7 @@ function Runner() {
       </div>
 
       {revealed && rec && <Explanation q={q} correct={rec.correct} />}
-      {revealed && sugg[q.id] && student && <SuggestionPrompt studentId={student.id} s={sugg[q.id]} compact />}
+      {revealed && sugg[q.id] && student && <SuggestionPrompt studentId={student.id} s={sugg[q.id]!} compact />}
     </div>
   );
 }
@@ -204,7 +204,7 @@ function Interaction({ q, answer, setAnswer, revealed }: { q: Question; answer: 
   }
   if (t === "sequencing") {
     const opts = q.options as Opt[]; const a = (answer ?? order) as string[]; const c = q.correct_answer as string[];
-    const move = (idx: number, d: number) => { const n = [...a]; [n[idx], n[idx + d]] = [n[idx + d], n[idx]]; setAnswer(n); };
+    const move = (idx: number, d: number) => { const n = [...a]; [n[idx], n[idx + d]] = [n[idx + d], n[idx]]; setAnswer(n as string[]); };
     return <ol className="space-y-2">{a.map((id, idx) => <li key={id} className={`flex items-center gap-3 rounded-2xl p-3 ${revealed ? (c[idx] === id ? "bg-mint-soft" : "bg-pink-soft") : "bg-blue-soft"}`}>
       <span className="flex size-8 items-center justify-center rounded-full bg-card text-sm font-black">{idx + 1}</span>
       <span className="flex-1 font-bold">{opts.find(o => o.id === id)?.text}</span>

@@ -54,7 +54,7 @@ export function shuffle<T>(arr: T[], seed?: number): T[] {
   const a = [...arr];
   let s = seed ?? Math.floor(Math.random() * 1e9);
   const rnd = () => { s = (s * 1664525 + 1013904223) % 4294967296; return s / 4294967296; };
-  for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(rnd() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; }
+  for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(rnd() * (i + 1)); [a[i], a[j]] = [a[j] as T, a[i] as T]; }
   return a;
 }
 

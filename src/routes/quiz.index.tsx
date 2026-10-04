@@ -59,7 +59,7 @@ function QuizHome() {
         <h2 className="font-display text-xl font-black">Pick a mode</h2>
         <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
           {(Object.keys(MODE_INFO) as (keyof typeof MODE_INFO)[]).map(m => {
-            const Icon = MODE_ICON[m];
+            const Icon = MODE_ICON[m] ?? Brain;
             const disabled = (m === "mistakes" && !counts.mistakes) || (m === "bookmarked" && !counts.bookmarked);
             const extra = m === "mistakes" ? ` · ${counts.mistakes} to retry` : m === "bookmarked" ? ` · ${counts.bookmarked} saved` : m === "adaptive" && student?.weak_areas.length ? ` · ${student.weak_areas.slice(0, 2).join(", ")}` : "";
             return (
@@ -78,7 +78,7 @@ function QuizHome() {
         <p className="text-sm text-muted-foreground">Choose a subject, then start.</p>
         <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
           {SUBJECTS.map(s => {
-            const Icon = SUBJECT_ICON[s]; const n = qs.filter(q => q.subject === s).length; const a = acc[s];
+            const Icon = SUBJECT_ICON[s] ?? Brain; const n = qs.filter(q => q.subject === s).length; const a = acc[s];
             const pct = a ? Math.round((a.right / a.total) * 100) : null;
             return (
               <button key={s} onClick={() => setSubject(s)} disabled={!n} className={`clay-card p-4 text-left disabled:opacity-50 ${subject === s ? "bg-blue" : "bg-card"}`}>
