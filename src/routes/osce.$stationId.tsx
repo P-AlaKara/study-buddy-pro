@@ -4,6 +4,7 @@ import { ArrowLeft, Eye, Lightbulb, RotateCw, Timer } from "lucide-react";
 import { z } from "zod";
 import { supabase } from "@/integrations/supabase/client";
 import { useActingStudent } from "@/components/study-app";
+import { createSuggestion } from "@/lib/flashcards";
 import { Feedback, MarkingSheet, Panel, pinkBtn, softBtn } from "@/components/osce-parts";
 import { CATEGORY_LABELS, fetchStations, fmt, scoreChecklist, toResults, type Station } from "@/lib/osce";
 
@@ -54,6 +55,8 @@ function StationPage() {
     if (student) {
       const { error } = await supabase.from("osce_attempts").insert({ student_id: student.id, station_id: s.id, mode, checklist_results: toResults(s, done), score, time_taken_seconds: elapsed });
       if (error) return setErr(error.message);
+      const missed = s.examiner_checklist.filter(i => !done[i.id]).sort((a, b) => Number(!!b.safety) - Number(!!a.safety) || b.marks - a.marks).slice(0, 3);
+      for (const m of missed) await createSuggestion(student.id, "osce", s.id, `${s.title}: what should you not forget?`, m.item);
       if (sessionId) await supabase.from("peer_osce_sessions").update({ status: "completed" }).eq("id", sessionId);
     }
     setPhase("feedback"); window.scrollTo({ top: 0, behavior: "smooth" });
