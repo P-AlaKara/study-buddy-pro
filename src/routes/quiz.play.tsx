@@ -103,7 +103,7 @@ function Runner() {
   }
   function next() {
     if (!questions) return;
-    if (i + 1 >= questions.length) return finish(records);
+    if (i + 1 >= questions.length) { void finish(records); return; }
     setI(i + 1); setAnswer(undefined); setRevealed(false);
   }
   async function toggleBookmark() {
@@ -204,7 +204,7 @@ function Interaction({ q, answer, setAnswer, revealed }: { q: Question; answer: 
   }
   if (t === "sequencing") {
     const opts = q.options as Opt[]; const a = (answer ?? order) as string[]; const c = q.correct_answer as string[];
-    const move = (idx: number, d: number) => { const n = [...a]; [n[idx], n[idx + d]] = [n[idx + d], n[idx]]; setAnswer(n as string[]); };
+    const move = (idx: number, d: number) => { const n = [...a]; [n[idx], n[idx + d]] = [n[idx + d]!, n[idx]!]; setAnswer(n as string[]); };
     return <ol className="space-y-2">{a.map((id, idx) => <li key={id} className={`flex items-center gap-3 rounded-2xl p-3 ${revealed ? (c[idx] === id ? "bg-mint-soft" : "bg-pink-soft") : "bg-blue-soft"}`}>
       <span className="flex size-8 items-center justify-center rounded-full bg-card text-sm font-black">{idx + 1}</span>
       <span className="flex-1 font-bold">{opts.find(o => o.id === id)?.text}</span>
