@@ -1,0 +1,25 @@
+services:
+  - type: web
+    runtime: node
+    name: medley-study-buddy
+    plan: free
+    buildCommand: bun install --frozen-lockfile && bun run build
+    startCommand: bun run start
+    healthCheckPath: /
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: NITRO_PRESET
+        value: render-com
+      - key: HOST
+        value: 0.0.0.0
+      - key: SUPABASE_URL
+        value: https://lvqatsptuqaqvmivfjkj.supabase.co
+      - key: VITE_SUPABASE_URL
+        value: https://lvqatsptuqaqvmivfjkj.supabase.co
+      - key: SUPABASE_PUBLISHABLE_KEY
+        sync: false
+      - key: VITE_SUPABASE_PUBLISHABLE_KEY
+        sync: false
+      - key: SUPABASE_SECRET_KEY
+        sync: false
