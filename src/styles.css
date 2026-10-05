@@ -65,28 +65,127 @@
 }
 
 @layer base {
-  * { box-sizing: border-box; }
-  body { margin: 0; background: var(--background); color: var(--foreground); font-family: "Nunito Sans", sans-serif; }
-  h1, h2, h3, h4 { font-family: "Nunito", sans-serif; }
-  button, input, textarea, select { font: inherit; }
+  * {
+    box-sizing: border-box;
+  }
+  body {
+    margin: 0;
+    background: var(--background);
+    color: var(--foreground);
+    font-family: "Nunito Sans", sans-serif;
+  }
+  h1,
+  h2,
+  h3,
+  h4 {
+    font-family: "Nunito", sans-serif;
+  }
+  button,
+  input,
+  textarea,
+  select {
+    font: inherit;
+  }
 }
 
 @utility clay-card {
   border-radius: 24px;
-  box-shadow: 0 10px 22px -12px oklch(0.43 0.035 280 / 18%), inset 0 2px 1px oklch(1 0 0 / 85%);
-  transition: transform .2s ease, box-shadow .2s ease;
-  &:hover { transform: translateY(-3px); box-shadow: 0 16px 26px -13px oklch(0.43 0.035 280 / 21%), inset 0 2px 1px oklch(1 0 0 / 85%); }
+  box-shadow:
+    0 10px 22px -12px oklch(0.43 0.035 280 / 18%),
+    inset 0 2px 1px oklch(1 0 0 / 85%);
+  transition:
+    transform 0.2s ease,
+    box-shadow 0.2s ease;
+  &:hover {
+    transform: translateY(-3px);
+    box-shadow:
+      0 16px 26px -13px oklch(0.43 0.035 280 / 21%),
+      inset 0 2px 1px oklch(1 0 0 / 85%);
+  }
 }
 @utility clay-button {
   border-radius: 999px;
-  box-shadow: 0 6px 12px -5px oklch(0.42 0.065 280 / 26%), inset 0 2px 1px oklch(1 0 0 / 42%);
-  transition: transform .16s ease, box-shadow .16s ease, filter .16s ease;
-  &:hover { filter: brightness(1.03); transform: translateY(-2px); }
-  &:active { transform: translateY(2px) scale(.98); box-shadow: 0 2px 5px -2px oklch(0.42 0.065 280 / 24%); }
+  box-shadow:
+    0 6px 12px -5px oklch(0.42 0.065 280 / 26%),
+    inset 0 2px 1px oklch(1 0 0 / 42%);
+  transition:
+    transform 0.16s ease,
+    box-shadow 0.16s ease,
+    filter 0.16s ease;
+  &:hover {
+    filter: brightness(1.03);
+    transform: translateY(-2px);
+  }
+  &:active {
+    transform: translateY(2px) scale(0.98);
+    box-shadow: 0 2px 5px -2px oklch(0.42 0.065 280 / 24%);
+  }
 }
-@utility soft-inset { box-shadow: inset 0 2px 5px oklch(0.43 0.035 280 / 7%); }
-@utility progress-gradient { background: linear-gradient(105deg, var(--lavender), var(--pink), var(--peach)); }
+@utility soft-inset {
+  box-shadow: inset 0 2px 5px oklch(0.43 0.035 280 / 7%);
+}
+@utility progress-gradient {
+  background: linear-gradient(105deg, var(--lavender), var(--pink), var(--peach));
+}
+
+@keyframes xp-shine {
+  from {
+    transform: translateX(-120%);
+  }
+  to {
+    transform: translateX(420%);
+  }
+}
+@keyframes confetti-fall {
+  0% {
+    transform: translateY(-12vh) rotate(0deg);
+    opacity: 1;
+  }
+  100% {
+    transform: translateY(112vh) rotate(760deg);
+    opacity: 0.85;
+  }
+}
+@keyframes celebration-in {
+  from {
+    opacity: 0;
+    transform: scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+.xp-shimmer {
+  position: relative;
+  overflow: hidden;
+}
+.xp-shimmer::after {
+  content: "";
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 24%;
+  background: linear-gradient(90deg, transparent, rgb(255 255 255 / 0.7), transparent);
+  animation: xp-shine 2.2s ease-in-out infinite;
+}
+.celebration {
+  animation: celebration-in 0.35s ease-out both;
+}
+.confetti-piece {
+  position: absolute;
+  top: -10vh;
+  width: 10px;
+  height: 18px;
+  border-radius: 4px;
+  animation: confetti-fall 3s linear infinite;
+}
 
 @media (prefers-reduced-motion: reduce) {
-  *, *::before, *::after { transition-duration: .01ms !important; animation-duration: .01ms !important; scroll-behavior: auto !important; }
+  *,
+  *::before,
+  *::after {
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
 }

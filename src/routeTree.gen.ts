@@ -13,6 +13,7 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as CasesRouteImport } from './routes/cases'
 import { Route as FlashcardsRouteImport } from './routes/flashcards'
 import { Route as GroupsRouteImport } from './routes/groups'
+import { Route as LeaderboardsRouteImport } from './routes/leaderboards'
 import { Route as OsceRouteImport } from './routes/osce'
 import { Route as PracticeRouteImport } from './routes/practice'
 import { Route as ProfileRouteImport } from './routes/profile'
@@ -48,6 +49,11 @@ const FlashcardsRoute = FlashcardsRouteImport.update({
 const GroupsRoute = GroupsRouteImport.update({
   id: '/groups',
   path: '/groups',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const LeaderboardsRoute = LeaderboardsRouteImport.update({
+  id: '/leaderboards',
+  path: '/leaderboards',
   getParentRoute: () => rootRouteImport,
 } as any)
 const OsceRoute = OsceRouteImport.update({
@@ -136,6 +142,7 @@ export interface FileRoutesByFullPath {
   '/cases': typeof CasesRouteWithChildren
   '/flashcards': typeof FlashcardsRouteWithChildren
   '/groups': typeof GroupsRouteWithChildren
+  '/leaderboards': typeof LeaderboardsRoute
   '/osce': typeof OsceRouteWithChildren
   '/practice': typeof PracticeRoute
   '/profile': typeof ProfileRoute
@@ -155,6 +162,7 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/leaderboards': typeof LeaderboardsRoute
   '/practice': typeof PracticeRoute
   '/profile': typeof ProfileRoute
   '/cases/$caseId': typeof CasesCaseIdRoute
@@ -176,6 +184,7 @@ export interface FileRoutesById {
   '/cases': typeof CasesRouteWithChildren
   '/flashcards': typeof FlashcardsRouteWithChildren
   '/groups': typeof GroupsRouteWithChildren
+  '/leaderboards': typeof LeaderboardsRoute
   '/osce': typeof OsceRouteWithChildren
   '/practice': typeof PracticeRoute
   '/profile': typeof ProfileRoute
@@ -200,6 +209,7 @@ export interface FileRouteTypes {
     | '/cases'
     | '/flashcards'
     | '/groups'
+    | '/leaderboards'
     | '/osce'
     | '/practice'
     | '/profile'
@@ -219,6 +229,7 @@ export interface FileRouteTypes {
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
+    | '/leaderboards'
     | '/practice'
     | '/profile'
     | '/cases/$caseId'
@@ -239,6 +250,7 @@ export interface FileRouteTypes {
     | '/cases'
     | '/flashcards'
     | '/groups'
+    | '/leaderboards'
     | '/osce'
     | '/practice'
     | '/profile'
@@ -262,6 +274,7 @@ export interface RootRouteChildren {
   CasesRoute: typeof CasesRouteWithChildren
   FlashcardsRoute: typeof FlashcardsRouteWithChildren
   GroupsRoute: typeof GroupsRouteWithChildren
+  LeaderboardsRoute: typeof LeaderboardsRoute
   OsceRoute: typeof OsceRouteWithChildren
   PracticeRoute: typeof PracticeRoute
   ProfileRoute: typeof ProfileRoute
@@ -296,6 +309,13 @@ declare module '@tanstack/react-router' {
       path: '/groups'
       fullPath: '/groups'
       preLoaderRoute: typeof GroupsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/leaderboards': {
+      id: '/leaderboards'
+      path: '/leaderboards'
+      fullPath: '/leaderboards'
+      preLoaderRoute: typeof LeaderboardsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/osce': {
@@ -485,6 +505,7 @@ const rootRouteChildren: RootRouteChildren = {
   CasesRoute: CasesRouteWithChildren,
   FlashcardsRoute: FlashcardsRouteWithChildren,
   GroupsRoute: GroupsRouteWithChildren,
+  LeaderboardsRoute: LeaderboardsRoute,
   OsceRoute: OsceRouteWithChildren,
   PracticeRoute: PracticeRoute,
   ProfileRoute: ProfileRoute,
