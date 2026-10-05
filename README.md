@@ -78,3 +78,9 @@ cd <repository-name>
 npm i
 npm run dev
 ```
+
+## Supabase
+
+This repository now targets the standalone Supabase project
+`lvqatsptuqaqvmivfjkj`. See [docs/SUPABASE_MIGRATION.md](docs/SUPABASE_MIGRATION.md)
+for the credential, CLI linking, migration, validation, and deployment steps.
