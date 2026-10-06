@@ -1,5 +1,7 @@
 # Study Buddy Pro
 
+> **Clinical review required:** Interactive case content is marked `needs_clinician_review` and must be reviewed by a qualified clinician before release. Educational use only, not medical advice.
+
 I'm building a mobile-first medical education platform for medical students in Rwanda. The flagship feature (built in a later step) is an interactive clinical case simulator; other tools (OSCE prep, quizzes, flashcards, groups, gamification) orbit around it. Skip authentication entirely — no login/signup/logout. Instead, build a lightweight "Acting as" student switcher (a dropdown in the top bar) that lets a tester pick between a few seeded demo student profiles. Whichever profile is selected drives all personalized data on screen. Store the selection in local state/localStorage.
 
 DESIGN SYSTEM (apply everywhere, this is core to the product):

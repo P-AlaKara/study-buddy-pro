@@ -1,0 +1,32 @@
+[
+  {
+    "id": "dissection_cxr_wide_mediastinum",
+    "filename": "widened-mediastinum-placeholder.svg",
+    "sourceUrl": "",
+    "author": "Placeholder",
+    "license": "Not applicable — replacement required",
+    "requiredAttributionText": "Placeholder image; replace with a verified open-licensed chest radiograph showing a widened mediastinum.",
+    "altText": "Placeholder for a chest X-ray with a widened mediastinum.",
+    "isPlaceholder": true
+  },
+  {
+    "id": "dissection_ct_flap",
+    "filename": "aortic-dissection-ct-placeholder.svg",
+    "sourceUrl": "",
+    "author": "Placeholder",
+    "license": "Not applicable — replacement required",
+    "requiredAttributionText": "Placeholder image; replace with a verified open-licensed CT angiogram showing an aortic dissection flap.",
+    "altText": "Placeholder for an axial CT angiogram showing an aortic dissection flap.",
+    "isPlaceholder": true
+  },
+  {
+    "id": "dissection_ecg",
+    "filename": "dissection-ecg-placeholder.svg",
+    "sourceUrl": "",
+    "author": "Placeholder",
+    "license": "Not applicable — replacement required",
+    "requiredAttributionText": "Placeholder image; replace with a verified open-licensed ECG without an acute STEMI pattern.",
+    "altText": "Placeholder for a 12-lead ECG showing sinus tachycardia and left ventricular hypertrophy.",
+    "isPlaceholder": true
+  }
+]

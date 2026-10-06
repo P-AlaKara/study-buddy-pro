@@ -315,6 +315,7 @@ export type Database = {
       cases: {
         Row: {
           answer_key: Json;
+          case_slug: string | null;
           challenge_end: string | null;
           challenge_start: string | null;
           clinical_setting: string;
@@ -341,6 +342,7 @@ export type Database = {
           organ_system: string;
           outcomes: Json;
           patient: Json;
+          review_status: string;
           scoring_weights: Json;
           specialty: string;
           teaser: string;
@@ -351,6 +353,7 @@ export type Database = {
         };
         Insert: {
           answer_key?: Json;
+          case_slug?: string | null;
           challenge_end?: string | null;
           challenge_start?: string | null;
           clinical_setting?: string;
@@ -377,6 +380,7 @@ export type Database = {
           organ_system?: string;
           outcomes?: Json;
           patient?: Json;
+          review_status?: string;
           scoring_weights?: Json;
           specialty?: string;
           teaser?: string;
@@ -387,6 +391,7 @@ export type Database = {
         };
         Update: {
           answer_key?: Json;
+          case_slug?: string | null;
           challenge_end?: string | null;
           challenge_start?: string | null;
           clinical_setting?: string;
@@ -413,6 +418,7 @@ export type Database = {
           organ_system?: string;
           outcomes?: Json;
           patient?: Json;
+          review_status?: string;
           scoring_weights?: Json;
           specialty?: string;
           teaser?: string;

@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 720" role="img" aria-labelledby="title desc">
+  <title id="title">Widened mediastinum chest X-ray placeholder</title>
+  <desc id="desc">A labelled placeholder awaiting a verified open-licensed chest radiograph showing a widened mediastinum.</desc>
+  <rect width="960" height="720" rx="32" fill="#18212b"/>
+  <path d="M270 150c-96 75-130 200-112 330 17 124 85 178 205 164 62-7 78-55 74-125l-15-299c-4-82-66-128-152-70Zm420 0c96 75 130 200 112 330-17 124-85 178-205 164-62-7-78-55-74-125l15-299c4-82 66-128 152-70Z" fill="#6d7b88" opacity=".62"/>
+  <path d="M410 120h142l74 370H342Z" fill="#aeb8be" opacity=".7"/>
+  <ellipse cx="500" cy="235" rx="96" ry="78" fill="none" stroke="#ef596d" stroke-width="12"/>
+  <rect x="148" y="530" width="664" height="112" rx="20" fill="#f8f4ea" opacity=".95"/>
+  <text x="480" y="576" fill="#26343f" font-family="sans-serif" font-size="27" font-weight="700" text-anchor="middle">PLACEHOLDER — WIDENED MEDIASTINUM</text>
+  <text x="480" y="612" fill="#52616d" font-family="sans-serif" font-size="19" text-anchor="middle">Verified open-licensed image required</text>
+</svg>

@@ -1,0 +1,32 @@
+[
+  {
+    "id": "pe_cxr_normal",
+    "filename": "normal-chest-xray-placeholder.svg",
+    "sourceUrl": "",
+    "author": "Placeholder",
+    "license": "Not applicable — replacement required",
+    "requiredAttributionText": "Placeholder image; replace with a verified open-licensed normal frontal chest radiograph.",
+    "altText": "Placeholder for a normal frontal chest X-ray.",
+    "isPlaceholder": true
+  },
+  {
+    "id": "pe_ecg_tachycardia",
+    "filename": "sinus-tachycardia-ecg-placeholder.svg",
+    "sourceUrl": "",
+    "author": "Placeholder",
+    "license": "Not applicable — replacement required",
+    "requiredAttributionText": "Placeholder image; replace with a verified open-licensed sinus tachycardia ECG.",
+    "altText": "Placeholder for a 12-lead ECG showing sinus tachycardia.",
+    "isPlaceholder": true
+  },
+  {
+    "id": "pe_ctpa_filling_defect",
+    "filename": "ctpa-pe-placeholder.svg",
+    "sourceUrl": "",
+    "author": "Placeholder",
+    "license": "Not applicable — replacement required",
+    "requiredAttributionText": "Placeholder image; replace with a verified open-licensed CTPA showing pulmonary embolism.",
+    "altText": "Placeholder for an axial CT pulmonary angiogram with a pulmonary arterial filling defect.",
+    "isPlaceholder": true
+  }
+]

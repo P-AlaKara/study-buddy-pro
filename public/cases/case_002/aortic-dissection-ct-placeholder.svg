@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 800" role="img" aria-labelledby="title desc">
+  <title id="title">Aortic dissection CT placeholder</title>
+  <desc id="desc">A labelled placeholder awaiting a verified open-licensed CT angiogram showing an aortic dissection flap.</desc>
+  <rect width="800" height="800" rx="32" fill="#111922"/>
+  <circle cx="400" cy="395" r="305" fill="#828a91"/>
+  <ellipse cx="270" cy="390" rx="135" ry="205" fill="#202b35"/>
+  <ellipse cx="530" cy="390" rx="135" ry="205" fill="#202b35"/>
+  <ellipse cx="480" cy="315" rx="112" ry="94" fill="#e6eaec"/>
+  <path d="M392 266c62 18 95 70 154 92" fill="none" stroke="#c7394f" stroke-width="12" stroke-linecap="round"/>
+  <rect x="92" y="635" width="616" height="105" rx="18" fill="#f8f4ea" opacity=".96"/>
+  <text x="400" y="678" fill="#26343f" font-family="sans-serif" font-size="25" font-weight="700" text-anchor="middle">PLACEHOLDER — AORTIC DISSECTION CT</text>
+  <text x="400" y="713" fill="#52616d" font-family="sans-serif" font-size="18" text-anchor="middle">Verified open-licensed image required</text>
+</svg>

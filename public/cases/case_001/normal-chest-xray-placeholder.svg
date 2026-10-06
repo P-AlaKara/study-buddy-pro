@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 720" role="img" aria-labelledby="title desc">
+  <title id="title">Normal chest X-ray placeholder</title>
+  <desc id="desc">A labelled placeholder awaiting a verified open-licensed normal frontal chest radiograph.</desc>
+  <rect width="960" height="720" rx="32" fill="#18212b"/>
+  <path d="M480 110v500M275 150c-90 70-130 170-122 300 9 138 77 208 199 198 62-5 91-42 92-109V214c0-86-74-115-169-64Zm410 0c90 70 130 170 122 300-9 138-77 208-199 198-62-5-91-42-92-109V214c0-86 74-115 169-64Z" fill="#6d7b88" opacity=".62"/>
+  <path d="M480 126c-22 94-28 236-18 426M480 126c22 94 28 236 18 426" stroke="#dce6ec" stroke-width="14" opacity=".65"/>
+  <rect x="180" y="302" width="600" height="116" rx="20" fill="#f8f4ea" opacity=".94"/>
+  <text x="480" y="352" fill="#26343f" font-family="sans-serif" font-size="28" font-weight="700" text-anchor="middle">PLACEHOLDER — NORMAL FRONTAL CXR</text>
+  <text x="480" y="390" fill="#52616d" font-family="sans-serif" font-size="20" text-anchor="middle">Verified open-licensed image required</text>
+</svg>

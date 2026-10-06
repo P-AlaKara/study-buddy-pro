@@ -9,6 +9,7 @@
     "build:dev": "vite build --mode development",
     "start": "node .output/server/index.mjs",
     "preview": "vite preview",
+    "validate:cases": "tsc --outDir /tmp/study-buddy-case-validation --noEmit false --allowImportingTsExtensions false --module CommonJS --moduleResolution Node --target ES2022 --skipLibCheck --strict scripts/validate-cases.ts && node /tmp/study-buddy-case-validation/scripts/validate-cases.js",
     "lint": "eslint .",
     "format": "prettier --write ."
   },
