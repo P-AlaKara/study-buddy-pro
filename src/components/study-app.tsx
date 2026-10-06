@@ -862,7 +862,7 @@ export function StudyApp({ view, children }: { view: View; children?: ReactNode 
       </main>
       <nav
         aria-label="Main navigation"
-        className="fixed bottom-0 left-0 right-0 z-20 rounded-t-[24px] bg-card px-2 pb-[max(10px,env(safe-area-inset-bottom))] pt-2 shadow-[0_-8px_30px_-14px_var(--border)] md:hidden"
+        className="app-main-nav fixed bottom-0 left-0 right-0 z-20 rounded-t-[24px] bg-card px-2 pb-[max(10px,env(safe-area-inset-bottom))] pt-2 shadow-[0_-8px_30px_-14px_var(--border)] md:hidden"
       >
         <div className="mx-auto flex max-w-lg items-center justify-around">
           {nav.map((item) => {

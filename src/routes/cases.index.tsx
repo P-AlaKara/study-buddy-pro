@@ -1,28 +1,21 @@
+import { useMemo, useState, type ReactNode } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useEffect, useMemo, useState } from "react";
-import { Clock, Flame, Stethoscope, Trophy, Users } from "lucide-react";
-import { supabase } from "@/integrations/supabase/client";
-import {
-  DIFFICULTY_COLOR,
-  SETTING_LABELS,
-  fetchCases,
-  formatCountdown,
-  type CaseRow,
-} from "@/lib/cases";
+import { Activity, ArrowRight, Clock3, SearchX, ShieldCheck, Stethoscope } from "lucide-react";
+import { CASE_BANK } from "@/features/case-challenge/cases";
 
 export const Route = createFileRoute("/cases/")({
   head: () => ({
     meta: [
-      { title: "Clinical cases | Medley" },
+      { title: "Clinical case challenges | Medley" },
       {
         name: "description",
         content:
-          "Work through realistic patient cases, from history to management, and join the weekly challenge.",
+          "Investigate realistic emergencies, manage deterioration and receive a scored clinical debrief.",
       },
-      { property: "og:title", content: "Clinical cases | Medley" },
+      { property: "og:title", content: "Clinical case challenges | Medley" },
       {
         property: "og:description",
-        content: "Work through realistic patient cases and join the weekly challenge.",
+        content: "Make time-sensitive clinical decisions in two replayable cases.",
       },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
@@ -31,201 +24,201 @@ export const Route = createFileRoute("/cases/")({
   component: CaseLibrary,
 });
 
-type Entry = {
-  id: string;
-  student_id: string | null;
-  display_name: string;
-  mode: string;
-  score: number;
-  time_taken_seconds: number;
-  group_name: string | null;
-};
+type DifficultyFilter = "all" | "2" | "3";
 
 function CaseLibrary() {
-  const [cases, setCases] = useState<CaseRow[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [difficulty, setDifficulty] = useState("all");
+  const [difficulty, setDifficulty] = useState<DifficultyFilter>("all");
   const [specialty, setSpecialty] = useState("all");
-  const [board, setBoard] = useState<Entry[]>([]);
-  const [boardMode, setBoardMode] = useState<"solo" | "team">("solo");
-  const [now, setNow] = useState(Date.now());
-
-  useEffect(() => {
-    fetchCases()
-      .then(setCases)
-      .finally(() => setLoading(false));
-    Promise.all([
-      supabase
-        .from("challenge_participants")
-        .select("id,student_id,display_name,mode,score,time_taken_seconds,group_name")
-        .order("score", { ascending: false })
-        .order("time_taken_seconds"),
-      supabase.from("leaderboard_opt_outs").select("student_id"),
-    ]).then(([participants, optOuts]) => {
-      const excluded = new Set((optOuts.data ?? []).map((item) => item.student_id));
-      setBoard(
-        ((participants.data ?? []) as Entry[]).filter(
-          (item) => !item.student_id || !excluded.has(item.student_id),
-        ),
-      );
-    });
-    const t = setInterval(() => setNow(Date.now()), 1000);
-    return () => clearInterval(t);
-  }, []);
-
-  const weekly = cases.find((c) => c.is_weekly_challenge);
-  const specialties = useMemo(() => ["all", ...new Set(cases.map((c) => c.specialty))], [cases]);
-  const shown = cases.filter(
-    (c) =>
-      (difficulty === "all" || c.difficulty === difficulty) &&
-      (specialty === "all" || c.specialty === specialty),
+  const specialties = useMemo(
+    () => ["all", ...new Set(CASE_BANK.flatMap((item) => item.specialty))],
+    [],
   );
+  const shown = CASE_BANK.filter(
+    (item) =>
+      (difficulty === "all" || item.difficulty === Number(difficulty)) &&
+      (specialty === "all" || item.specialty.includes(specialty)),
+  );
+  const spotlight = CASE_BANK[0];
 
   return (
-    <div className="max-w-5xl space-y-8">
-      <div>
-        <p className="text-xs font-extrabold tracking-widest text-lavender">CLINICAL CASES</p>
-        <h1 className="mt-1 text-3xl font-black">Think like a clinician</h1>
-        <p className="mt-2 text-muted-foreground">
-          Take a history, examine, investigate and treat — then see how your patient does.
-        </p>
-      </div>
-
-      {weekly && (
-        <div className="clay-card bg-lavender-soft p-6">
-          <div className="flex items-center gap-2 text-sm font-extrabold">
-            <Flame className="h-4 w-4 text-pink" /> Weekly challenge · ends in{" "}
-            {formatCountdown(weekly.challenge_end, now)}
+    <div className="case-cockpit mx-auto max-w-6xl space-y-8 pb-8">
+      <section className="case-panel relative isolate overflow-hidden bg-[#173d42] p-6 text-white md:p-9">
+        <div className="absolute -right-20 -top-24 -z-10 size-72 rounded-full bg-cyan-300/15 blur-2xl" />
+        <div className="absolute -bottom-32 right-24 -z-10 size-64 rounded-full bg-amber-300/10 blur-2xl" />
+        <div className="max-w-3xl">
+          <p className="text-xs font-black uppercase tracking-[0.2em] text-cyan-200">
+            Solve the medical case
+          </p>
+          <h1 className="mt-3 font-display text-3xl font-black leading-tight md:text-5xl">
+            The chart won&apos;t tell you what matters. Your decisions will.
+          </h1>
+          <p className="mt-4 max-w-2xl text-sm font-semibold leading-relaxed text-white/72 md:text-base">
+            Question the patient, uncover evidence, protect them from deterioration and commit when
+            your reasoning is ready.
+          </p>
+          <div className="mt-6 flex flex-wrap gap-3 text-xs font-extrabold text-white/78">
+            <FeaturePill icon={<Clock3 className="size-4" />}>Time-sensitive</FeaturePill>
+            <FeaturePill icon={<Activity className="size-4" />}>Live vitals</FeaturePill>
+            <FeaturePill icon={<ShieldCheck className="size-4" />}>Safety gates</FeaturePill>
           </div>
-          <h2 className="mt-2 text-2xl font-black">{weekly.title}</h2>
-          <p className="mt-1 text-muted-foreground">{weekly.teaser}</p>
+        </div>
+      </section>
+
+      <section className="case-panel grid overflow-hidden bg-[#e4f6f3] md:grid-cols-[1fr_auto]">
+        <div className="p-6 md:p-8">
+          <p className="text-[11px] font-black uppercase tracking-[0.18em] text-[#107b80]">
+            Recommended first case
+          </p>
+          <h2 className="mt-2 text-2xl font-black text-slate-900">{spotlight.title}</h2>
+          <p className="mt-2 max-w-2xl text-sm font-semibold leading-relaxed text-slate-600">
+            {spotlight.intro}
+          </p>
           <Link
             to="/cases/$caseId"
-            params={{ caseId: weekly.id }}
-            className="mt-4 inline-flex rounded-full bg-lavender px-6 py-3 font-extrabold text-primary-foreground shadow-md transition-transform active:scale-95"
+            params={{ caseId: spotlight.id }}
+            className="case-primary-button mt-5 inline-flex px-5 py-3"
           >
-            Start challenge
+            Enter the ER <ArrowRight className="size-4" />
           </Link>
         </div>
-      )}
-
-      <div className="space-y-3">
-        <div className="flex gap-2 overflow-x-auto pb-1">
-          {["all", "easy", "medium", "hard"].map((d) => (
-            <Chip key={d} active={difficulty === d} onClick={() => setDifficulty(d)}>
-              {d === "all" ? "Any level" : d}
-            </Chip>
-          ))}
+        <div className="grid min-w-56 place-items-center bg-[#cceee9] p-6 text-[#107b80]">
+          <span className="grid size-28 place-items-center rounded-[36px] bg-white/65 shadow-[inset_0_2px_2px_white,0_18px_30px_-22px_rgb(17_76_81/70%)]">
+            <Stethoscope className="size-12" />
+          </span>
         </div>
-        <div className="flex gap-2 overflow-x-auto pb-1">
-          {specialties.map((s) => (
-            <Chip key={s} active={specialty === s} onClick={() => setSpecialty(s)}>
-              {s === "all" ? "All specialties" : s}
-            </Chip>
-          ))}
-        </div>
-      </div>
+      </section>
 
-      {loading ? (
-        <p className="text-muted-foreground">Loading cases…</p>
-      ) : (
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {shown.map((c) => (
-            <Link
-              key={c.id}
-              to="/cases/$caseId"
-              params={{ caseId: c.id }}
-              className="clay-card block bg-card p-5 transition-transform hover:-translate-y-1"
-            >
-              <div className="flex flex-wrap gap-2 text-xs font-extrabold">
-                <span
-                  className={`rounded-full px-3 py-1 capitalize ${DIFFICULTY_COLOR[c.difficulty]}`}
-                >
-                  {c.difficulty}
-                </span>
-                <span className="rounded-full bg-muted px-3 py-1">
-                  {SETTING_LABELS[c.clinical_setting] ?? c.clinical_setting}
-                </span>
-              </div>
-              <h3 className="mt-3 text-lg font-black leading-snug">{c.title}</h3>
-              <p className="mt-1 line-clamp-2 text-sm text-muted-foreground">{c.teaser}</p>
-              <div className="mt-4 flex items-center gap-4 text-xs font-bold text-muted-foreground">
-                <span className="flex items-center gap-1">
-                  <Clock className="h-3.5 w-3.5" />
-                  {c.estimated_minutes} min
-                </span>
-                <span className="flex items-center gap-1">
-                  <Stethoscope className="h-3.5 w-3.5" />
-                  {c.specialty}
-                </span>
-                <span>+{c.xp_reward} XP</span>
-              </div>
-            </Link>
-          ))}
-          {!shown.length && <p className="text-muted-foreground">No cases match these filters.</p>}
-        </div>
-      )}
-
-      <div className="clay-card bg-card p-6">
-        <div className="flex items-center justify-between gap-3">
-          <h2 className="flex items-center gap-2 text-xl font-black">
-            <Trophy className="h-5 w-5 text-yellow" /> Leaderboard
-          </h2>
-          <div className="flex gap-1">
-            {(["solo", "team"] as const).map((m) => (
-              <Chip key={m} active={boardMode === m} onClick={() => setBoardMode(m)}>
-                {m === "solo" ? (
-                  "Solo"
-                ) : (
-                  <>
-                    <Users className="h-3.5 w-3.5" /> Teams
-                  </>
-                )}
-              </Chip>
+      <section aria-labelledby="case-bank-title">
+        <div className="flex flex-col justify-between gap-4 md:flex-row md:items-end">
+          <div>
+            <p className="text-xs font-black uppercase tracking-[0.16em] text-[#168d91]">
+              Current case bank
+            </p>
+            <h2 id="case-bank-title" className="mt-1 text-2xl font-black">
+              Choose your shift
+            </h2>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            {(["all", "2", "3"] as const).map((value) => (
+              <FilterChip
+                key={value}
+                active={difficulty === value}
+                onClick={() => setDifficulty(value)}
+              >
+                {value === "all" ? "Any difficulty" : `Level ${value}`}
+              </FilterChip>
             ))}
+            <select
+              value={specialty}
+              onChange={(event) => setSpecialty(event.target.value)}
+              aria-label="Filter cases by specialty"
+              className="rounded-full bg-white px-4 py-2 text-sm font-extrabold text-slate-700 shadow-sm outline-none focus:ring-2 focus:ring-[#168d91]"
+            >
+              {specialties.map((value) => (
+                <option key={value} value={value}>
+                  {value === "all" ? "All specialties" : value}
+                </option>
+              ))}
+            </select>
           </div>
         </div>
-        <ol className="mt-4 space-y-2">
-          {board
-            .filter((e) => e.mode === boardMode)
-            .map((e, i) => (
-              <li
-                key={e.id}
-                className={`flex items-center gap-3 rounded-2xl p-3 ${i < 3 ? "bg-yellow-soft" : "bg-muted"}`}
-              >
-                <span className="w-6 text-center font-black">{i + 1}</span>
-                <div className="flex-1">
-                  <p className="font-extrabold">{e.display_name}</p>
-                  <p className="text-xs text-muted-foreground">{e.group_name}</p>
-                </div>
-                <span className="text-xs text-muted-foreground">
-                  {Math.round(e.time_taken_seconds / 60)} min
+
+        <div className="mt-5 grid gap-4 md:grid-cols-2">
+          {shown.map((item, index) => (
+            <Link
+              key={item.id}
+              to="/cases/$caseId"
+              params={{ caseId: item.id }}
+              className="case-panel group block overflow-hidden p-5 transition-transform hover:-translate-y-1 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#168d91] md:p-6"
+            >
+              <div className="flex items-start justify-between gap-4">
+                <span
+                  className={`grid size-12 shrink-0 place-items-center rounded-2xl ${index === 0 ? "bg-[#dff4f1] text-[#107b80]" : "bg-[#fff0ec] text-[#b64e3a]"}`}
+                >
+                  {index === 0 ? (
+                    <Activity className="size-6" />
+                  ) : (
+                    <Stethoscope className="size-6" />
+                  )}
                 </span>
-                <span className="font-black">{e.score}</span>
-              </li>
-            ))}
-          {!board.some((e) => e.mode === boardMode) && (
-            <p className="text-sm text-muted-foreground">No entries yet — be the first.</p>
-          )}
-        </ol>
-      </div>
+                <span className="rounded-full bg-slate-100 px-3 py-1 text-[10px] font-black uppercase tracking-wider text-slate-600">
+                  Level {item.difficulty}
+                </span>
+              </div>
+              <h3 className="mt-5 text-xl font-black text-slate-900">{item.title}</h3>
+              <p className="mt-2 line-clamp-3 text-sm font-semibold leading-relaxed text-slate-500">
+                {item.intro}
+              </p>
+              <div className="mt-5 flex flex-wrap gap-2">
+                <span className="rounded-full bg-slate-100 px-3 py-1 text-[10px] font-extrabold text-slate-600">
+                  {item.setting}
+                </span>
+                {item.specialty.slice(0, 2).map((specialtyName) => (
+                  <span
+                    key={specialtyName}
+                    className="rounded-full bg-[#eeeafd] px-3 py-1 text-[10px] font-extrabold text-[#5b50a3]"
+                  >
+                    {specialtyName}
+                  </span>
+                ))}
+              </div>
+              <span className="mt-6 inline-flex items-center gap-2 text-sm font-black text-[#107b80]">
+                Start case
+                <ArrowRight className="size-4 transition-transform group-hover:translate-x-1" />
+              </span>
+            </Link>
+          ))}
+        </div>
+
+        {shown.length === 0 && (
+          <div className="case-panel mt-5 p-8 text-center">
+            <SearchX className="mx-auto size-8 text-slate-400" />
+            <p className="mt-3 font-black text-slate-700">No cases match those filters.</p>
+            <button
+              type="button"
+              onClick={() => {
+                setDifficulty("all");
+                setSpecialty("all");
+              }}
+              className="mt-3 text-sm font-black text-[#107b80] underline underline-offset-4"
+            >
+              Clear filters
+            </button>
+          </div>
+        )}
+      </section>
+
+      <p className="text-center text-[11px] font-bold text-slate-500">
+        Educational use only, not medical advice · All content requires clinician review before
+        production use.
+      </p>
     </div>
   );
 }
 
-function Chip({
+function FeaturePill({ icon, children }: { icon: ReactNode; children: ReactNode }) {
+  return (
+    <span className="inline-flex items-center gap-2 rounded-full bg-white/10 px-3 py-2">
+      {icon}
+      {children}
+    </span>
+  );
+}
+
+function FilterChip({
   active,
   onClick,
   children,
 }: {
   active: boolean;
   onClick: () => void;
-  children: React.ReactNode;
+  children: ReactNode;
 }) {
   return (
     <button
+      type="button"
       onClick={onClick}
-      className={`flex shrink-0 items-center gap-1 rounded-full px-4 py-2 text-sm font-extrabold capitalize transition-all active:scale-95 ${active ? "bg-lavender text-primary-foreground shadow-md" : "bg-lavender-soft"}`}
+      className={`rounded-full px-4 py-2 text-sm font-extrabold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#168d91] ${active ? "bg-[#168d91] text-white" : "bg-white text-slate-600 shadow-sm"}`}
     >
       {children}
     </button>
