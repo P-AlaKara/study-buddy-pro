@@ -14,7 +14,7 @@ Every case is educational content and must remain `reviewStatus: "needs_clinicia
 - `differential` must contain exactly one correct diagnosis and exactly one tempting early diagnosis.
 - `hints` has exactly three escalating, non-blocking prompts. Tier 1 is free; later tiers cost points.
 - `solution` powers the debrief. Keep exactly three concise teaching points and explain why the tempting diagnosis fails.
-- `scoring` defines time, testing, harm, and early-clue adjustments.
+- `scoring` defines time, testing, harm, early-clue, incorrect-diagnosis, and missed-treatment adjustments. Penalties are negative numbers; bonuses are positive.
 - `assets` mirrors the case's `public/cases/<slug>/assets.manifest.json` entries.
 
 ## Clue tiers

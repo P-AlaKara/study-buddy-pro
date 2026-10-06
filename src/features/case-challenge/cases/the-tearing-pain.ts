@@ -646,6 +646,8 @@ export const theTearingPain: MedicalCase = {
     perHarmfulAction: -20,
     bonusKeyClueFoundEarly: 10,
     earlyClueCutoffMinute: 7,
+    incorrectDiagnosisPenalty: -40,
+    perMissedKeyTreatment: -5,
   },
   assets: [
     {

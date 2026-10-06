@@ -10,6 +10,8 @@
     "start": "node .output/server/index.mjs",
     "preview": "vite preview",
     "validate:cases": "tsc --outDir /tmp/study-buddy-case-validation --noEmit false --allowImportingTsExtensions false --module CommonJS --moduleResolution Node --target ES2022 --skipLibCheck --strict scripts/validate-cases.ts && node /tmp/study-buddy-case-validation/scripts/validate-cases.js",
+    "test:case-engine": "tsc --outDir /tmp/study-buddy-case-engine-tests --noEmit false --allowImportingTsExtensions false --module CommonJS --moduleResolution Node --target ES2022 --skipLibCheck --strict scripts/test-case-engine.ts && node /tmp/study-buddy-case-engine-tests/scripts/test-case-engine.js",
+    "test": "npm run validate:cases && npm run test:case-engine",
     "lint": "eslint .",
     "format": "prettier --write ."
   },

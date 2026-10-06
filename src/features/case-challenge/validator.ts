@@ -9,9 +9,14 @@ const REQUIRED_CLUE_TIERS = ["obvious", "buried", "contradicting"] as const;
 
 export function validateCase(caseDefinition: MedicalCase): CaseValidationIssue[] {
   const issues: CaseValidationIssue[] = [];
-  const actionIds = new Set(caseDefinition.actions.map((action) => action.id));
+  const allActionIds = caseDefinition.actions.map((action) => action.id);
+  const actionIds = new Set(allActionIds);
   const diagnosisIds = new Set(caseDefinition.differential.map((diagnosis) => diagnosis.id));
   const assetIds = new Set(caseDefinition.assets.map((asset) => asset.id));
+
+  if (actionIds.size !== allActionIds.length) {
+    issues.push({ path: "actions", message: "Action IDs must be unique within a case." });
+  }
 
   if (caseDefinition.intro.trim().split(/\s+/).length > 40) {
     issues.push({ path: "intro", message: "Intro must be 40 words or fewer." });
@@ -45,8 +50,13 @@ export function validateCase(caseDefinition: MedicalCase): CaseValidationIssue[]
     });
   }
 
-  const keyClues = caseDefinition.actions.filter((action) => action.isKeyClue);
-  if (!keyClues.length) {
+  const earliestLoss = Math.min(
+    ...caseDefinition.deteriorationRules.map((rule) => rule.lossAtMinute ?? Infinity),
+  );
+  const reachableKeyClues = caseDefinition.actions.filter(
+    (action) => action.isKeyClue && action.timeCostMin <= earliestLoss,
+  );
+  if (!reachableKeyClues.length) {
     issues.push({
       path: "actions",
       message: "At least one reachable action must expose a key clue.",
@@ -95,6 +105,13 @@ export function validateCase(caseDefinition: MedicalCase): CaseValidationIssue[]
     }
   }
 
+  const deteriorationRuleIds = caseDefinition.deteriorationRules.map((rule) => rule.id);
+  if (new Set(deteriorationRuleIds).size !== deteriorationRuleIds.length) {
+    issues.push({
+      path: "deteriorationRules",
+      message: "Deterioration rule IDs must be unique within a case.",
+    });
+  }
   for (const rule of caseDefinition.deteriorationRules) {
     if (!actionIds.has(rule.action)) {
       issues.push({
@@ -102,6 +119,41 @@ export function validateCase(caseDefinition: MedicalCase): CaseValidationIssue[]
         message: `Deterioration rule references unknown action ${rule.action}.`,
       });
     }
+  }
+
+  for (const treatmentId of caseDefinition.solution.keyTreatment) {
+    const treatment = caseDefinition.actions.find((action) => action.id === treatmentId);
+    if (!treatment || treatment.category !== "treat") {
+      issues.push({
+        path: "solution.keyTreatment",
+        message: `Key treatment ${treatmentId} is not a valid treatment action.`,
+      });
+    }
+  }
+
+  caseDefinition.hints.forEach((hint, index) => {
+    if (hint.tier !== index + 1 || hint.cost < 0) {
+      issues.push({
+        path: `hints.${index}`,
+        message: "Hints must use tiers 1, 2, and 3 in order with non-negative costs.",
+      });
+    }
+  });
+
+  const { scoring } = caseDefinition;
+  if (
+    scoring.base <= 0 ||
+    scoring.perMinutePenalty > 0 ||
+    scoring.perUnnecessaryTest > 0 ||
+    scoring.perHarmfulAction > 0 ||
+    scoring.incorrectDiagnosisPenalty > 0 ||
+    scoring.perMissedKeyTreatment > 0 ||
+    scoring.bonusKeyClueFoundEarly < 0
+  ) {
+    issues.push({
+      path: "scoring",
+      message: "Score bonuses and penalties have invalid signs.",
+    });
   }
 
   const assetFilenames = new Set<string>();

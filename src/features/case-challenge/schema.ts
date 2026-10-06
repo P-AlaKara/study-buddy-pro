@@ -103,6 +103,7 @@ export interface CaseAction {
   isCritical?: boolean;
   isUnnecessary?: boolean;
   harmful?: boolean;
+  penalizeWhenUnsafe?: boolean;
   immediateFailure?: boolean;
   vitalsEffect?: VitalsDelta;
   safeWhen?: ActionSafetyGate;
@@ -138,6 +139,8 @@ export interface CaseScoring {
   perHarmfulAction: number;
   bonusKeyClueFoundEarly: number;
   earlyClueCutoffMinute: number;
+  incorrectDiagnosisPenalty: number;
+  perMissedKeyTreatment: number;
 }
 
 export interface CaseAsset {

@@ -448,6 +448,7 @@ export const theLongFlight: MedicalCase = {
       against: [],
       triggersEvent: "anticoagulation_started",
       vitalsEffect: { hr: -4 },
+      penalizeWhenUnsafe: true,
       safeWhen: {
         anyActionIds: ["order_ctpa", "order_doppler"],
         supportingActionThreshold: {
@@ -592,6 +593,8 @@ export const theLongFlight: MedicalCase = {
     perHarmfulAction: -15,
     bonusKeyClueFoundEarly: 10,
     earlyClueCutoffMinute: 8,
+    incorrectDiagnosisPenalty: -40,
+    perMissedKeyTreatment: -5,
   },
   assets: [
     {
