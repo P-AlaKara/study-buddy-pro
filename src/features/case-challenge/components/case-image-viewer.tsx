@@ -99,7 +99,15 @@ export function CaseImageViewer({
         <button
           type="button"
           aria-pressed={markMode}
-          onClick={() => setMarkMode((value) => !value)}
+          onClick={() =>
+            setMarkMode((value) => {
+              if (!value) {
+                setZoom(1);
+                setPan({ x: 0, y: 0 });
+              }
+              return !value;
+            })
+          }
           className={`inline-flex items-center gap-1.5 rounded-full px-3 py-2 text-xs font-extrabold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white ${markMode ? "bg-cyan-300 text-slate-950" : "bg-white/10"}`}
         >
           <LocateFixed className="size-4" /> Mark finding
@@ -124,33 +132,33 @@ export function CaseImageViewer({
             draggable={false}
             className="h-full w-full select-none object-contain"
           />
+          {mark && (
+            <span
+              className="absolute z-10 size-8 -translate-x-1/2 -translate-y-1/2 rounded-full border-[3px] border-cyan-300 bg-cyan-300/25 shadow-[0_0_0_4px_rgb(0_0_0/30%)]"
+              style={{ left: `${mark.x}%`, top: `${mark.y}%` }}
+              title={mark.label}
+            >
+              <span className="sr-only">Your marked finding: {mark.label}</span>
+            </span>
+          )}
+          {revealAnswer && answer && (
+            <span
+              className="absolute z-10 -translate-x-1/2 -translate-y-1/2 rounded-full border-4 border-amber-300 bg-amber-300/15"
+              style={{
+                left: `${answer.xPercent}%`,
+                top: `${answer.yPercent}%`,
+                width: `${answer.radiusPercent * 2}%`,
+                aspectRatio: "1",
+              }}
+              title={answer.label}
+            >
+              <span className="sr-only">Answer: {answer.label}</span>
+            </span>
+          )}
         </div>
         {zoom > 1 && !markMode && (
           <span className="pointer-events-none absolute left-3 top-3 inline-flex items-center gap-1 rounded-full bg-black/55 px-2 py-1 text-[11px] font-bold">
             <Move className="size-3" /> Drag to pan
-          </span>
-        )}
-        {mark && (
-          <span
-            className="absolute z-10 size-8 -translate-x-1/2 -translate-y-1/2 rounded-full border-[3px] border-cyan-300 bg-cyan-300/25 shadow-[0_0_0_4px_rgb(0_0_0/30%)]"
-            style={{ left: `${mark.x}%`, top: `${mark.y}%` }}
-            title={mark.label}
-          >
-            <span className="sr-only">Your marked finding: {mark.label}</span>
-          </span>
-        )}
-        {revealAnswer && answer && (
-          <span
-            className="absolute z-10 -translate-x-1/2 -translate-y-1/2 rounded-full border-4 border-amber-300 bg-amber-300/15"
-            style={{
-              left: `${answer.xPercent}%`,
-              top: `${answer.yPercent}%`,
-              width: `${answer.radiusPercent * 2}%`,
-              aspectRatio: "1",
-            }}
-            title={answer.label}
-          >
-            <span className="sr-only">Answer: {answer.label}</span>
           </span>
         )}
       </div>

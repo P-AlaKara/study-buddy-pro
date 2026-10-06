@@ -233,6 +233,18 @@
 .case-primary-button.case-commit-ready {
   animation: case-ready-pulse 2.2s ease-in-out infinite;
 }
+.case-stage-transition {
+  animation: case-stage-in 220ms ease-out both;
+}
+.case-timeline-track > li:not(:last-child)::before {
+  content: "";
+  position: absolute;
+  top: 0.9rem;
+  right: -0.75rem;
+  left: 1.7rem;
+  height: 2px;
+  background: #e2e8f0;
+}
 .case-mobile-nav {
   position: fixed;
   z-index: 40;
@@ -268,6 +280,41 @@
 .case-mobile-nav button:focus-visible {
   outline: 2px solid var(--case-accent);
   outline-offset: 1px;
+}
+.case-mobile-mentor {
+  position: fixed;
+  z-index: 44;
+  right: 1rem;
+  bottom: calc(max(0.75rem, env(safe-area-inset-bottom)) + 5.1rem);
+  display: flex;
+  align-items: center;
+  gap: 0.15rem;
+  border: 1px solid rgb(255 255 255 / 0.8);
+  border-radius: 999px;
+  padding: 0.15rem 0.55rem 0.15rem 0.15rem;
+  background: rgb(255 248 223 / 0.96);
+  color: #713f12;
+  box-shadow: 0 12px 30px rgb(23 36 44 / 22%);
+  font-size: 0.625rem;
+  font-weight: 900;
+  backdrop-filter: blur(12px);
+}
+.case-mobile-mentor:focus-visible {
+  outline: 3px solid rgb(22 141 145 / 35%);
+  outline-offset: 2px;
+}
+.case-mobile-coach-panel {
+  position: fixed;
+  z-index: 45;
+  right: 1rem;
+  bottom: calc(max(0.75rem, env(safe-area-inset-bottom)) + 9.75rem);
+  width: min(22rem, calc(100vw - 2rem));
+  overflow: hidden;
+  border: 1px solid rgb(255 255 255 / 0.82);
+  border-radius: 24px;
+  background: #fff8df;
+  box-shadow: 0 18px 46px rgb(23 36 44 / 28%);
+  animation: case-coach-in 180ms ease-out both;
 }
 .case-ecg-trace {
   stroke-dasharray: 310;
@@ -329,6 +376,26 @@
       0 12px 22px -10px rgb(13 104 109 / 78%);
   }
 }
+@keyframes case-stage-in {
+  from {
+    transform: translateY(6px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+@keyframes case-coach-in {
+  from {
+    transform: translateY(8px) scale(0.98);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0) scale(1);
+    opacity: 1;
+  }
+}
 @keyframes patient-breathe {
   0%,
   100% {
@@ -378,6 +445,14 @@
 
 @media (max-width: 1023px) {
   body:has(.case-cockpit) .app-main-nav {
+    display: none;
+  }
+}
+
+@media (min-width: 1024px) {
+  .case-mobile-nav,
+  .case-mobile-mentor,
+  .case-mobile-coach-panel {
     display: none;
   }
 }

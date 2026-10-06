@@ -16,7 +16,6 @@ import {
   HelpCircle,
   MessageCircleMore,
   Plus,
-  RotateCcw,
   Search,
   Stethoscope,
   Syringe,
@@ -30,7 +29,6 @@ import {
   beginCase,
   cancelCommit,
   commitCase,
-  createDebrief,
   createInitialState,
   formatBloodPressure,
   formatCaseClock,
@@ -43,8 +41,8 @@ import {
   tagEvidence,
   type GameState,
 } from "../engine.js";
-import { CASE_BANK } from "../cases/index.js";
 import type { ActionCategory, CaseAction, MedicalCase } from "../schema.js";
+import { CaseDebrief } from "./case-debrief.js";
 import { CaseImageViewer } from "./case-image-viewer.js";
 import { DR_AMBROSE, DrAmbrose, type AmbroseExpression } from "./dr-ambrose.js";
 import { PatientAvatar } from "./patient-avatar.js";
@@ -89,6 +87,7 @@ export function CaseChallengeScreen({ caseDefinition }: { caseDefinition: Medica
   const [typingActionId, setTypingActionId] = useState<string | null>(null);
   const [error, setError] = useState("");
   const [commitOpen, setCommitOpen] = useState(false);
+  const [mobileCoachOpen, setMobileCoachOpen] = useState(false);
   const [commitDiagnosis, setCommitDiagnosis] = useState("");
   const [commitTreatments, setCommitTreatments] = useState<string[]>([]);
   const [draggedDiagnosis, setDraggedDiagnosis] = useState<string | null>(null);
@@ -102,6 +101,7 @@ export function CaseChallengeScreen({ caseDefinition }: { caseDefinition: Medica
     setTypingActionId(null);
     setError("");
     setCommitOpen(false);
+    setMobileCoachOpen(false);
     if (typingTimer.current) clearTimeout(typingTimer.current);
   }, [caseDefinition]);
 
@@ -236,12 +236,23 @@ export function CaseChallengeScreen({ caseDefinition }: { caseDefinition: Medica
     if (zone === "chart" || zone === "differential") setRightTab(zone);
   }
 
+  function askForHint() {
+    safelyUpdate((current) => requestNextHint(current, caseDefinition));
+  }
+
   if (game.phase === "debrief") {
     return (
-      <BasicDebrief
+      <CaseDebrief
         game={game}
         caseDefinition={caseDefinition}
-        onRetry={() => setGame(createInitialState(caseDefinition))}
+        onRetry={() => {
+          setGame(createInitialState(caseDefinition));
+          setActionCategory("ask");
+          setRightTab("chart");
+          setMobileZone("actions");
+          setMobileCoachOpen(false);
+          setError("");
+        }}
       />
     );
   }
@@ -336,13 +347,24 @@ export function CaseChallengeScreen({ caseDefinition }: { caseDefinition: Medica
               </div>
             </div>
             <div className="p-5">
-              <StageResult
-                caseDefinition={caseDefinition}
-                game={game}
-                latestAction={latestAction}
-                typingAction={typingActionId ? actionById.get(typingActionId) : undefined}
-                onStart={startCase}
-              />
+              <div
+                key={
+                  typingActionId
+                    ? `typing:${typingActionId}`
+                    : latestAction
+                      ? `result:${latestAction.id}`
+                      : game.phase
+                }
+                className="case-stage-transition"
+              >
+                <StageResult
+                  caseDefinition={caseDefinition}
+                  game={game}
+                  latestAction={latestAction}
+                  typingAction={typingActionId ? actionById.get(typingActionId) : undefined}
+                  onStart={startCase}
+                />
+              </div>
             </div>
           </section>
 
@@ -430,11 +452,7 @@ export function CaseChallengeScreen({ caseDefinition }: { caseDefinition: Medica
                 />
               )}
             </div>
-            <HintPanel
-              game={game}
-              nextHint={nextHint}
-              onHint={() => safelyUpdate((current) => requestNextHint(current, caseDefinition))}
-            />
+            <HintPanel game={game} nextHint={nextHint} onHint={askForHint} />
           </section>
         </aside>
       </div>
@@ -442,6 +460,42 @@ export function CaseChallengeScreen({ caseDefinition }: { caseDefinition: Medica
       <footer className="mt-4 text-center text-[11px] font-bold text-slate-500">
         Educational use only, not medical advice · Content status: clinician review required
       </footer>
+
+      {mobileCoachOpen && (
+        <div
+          id="mobile-case-coach"
+          role="region"
+          aria-label={`${DR_AMBROSE.name} hint panel`}
+          className="case-mobile-coach-panel lg:hidden"
+        >
+          <button
+            type="button"
+            onClick={() => setMobileCoachOpen(false)}
+            className="absolute right-2 top-2 z-10 rounded-full bg-white/80 p-2 text-slate-600 shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#168d91]"
+            aria-label="Close coach"
+          >
+            <X className="size-4" />
+          </button>
+          <HintPanel game={game} nextHint={nextHint} onHint={askForHint} />
+        </div>
+      )}
+
+      <button
+        type="button"
+        aria-expanded={mobileCoachOpen}
+        aria-controls="mobile-case-coach"
+        onClick={() => setMobileCoachOpen((open) => !open)}
+        className="case-mobile-mentor lg:hidden"
+      >
+        <DrAmbrose
+          expression={
+            game.vitals.spo2 < 90 || game.vitals.systolicBp < 90 ? "concerned" : "thinking"
+          }
+          variant="logo"
+          className="w-14"
+        />
+        <span>Ask coach</span>
+      </button>
 
       <nav className="case-mobile-nav lg:hidden" aria-label="Case workspace">
         {mobileNav.map((item) => {
@@ -520,6 +574,7 @@ function VitalsMonitor({ game }: { game: GameState }) {
   const critical = game.vitals.spo2 < 90 || game.vitals.systolicBp < 90;
   const warning = !critical && (game.vitals.hr > 120 || game.vitals.rr >= 28);
   const tone = critical ? "text-red-400" : warning ? "text-amber-300" : "text-emerald-300";
+  const traceDuration = Math.max(0.65, 120 / Math.max(game.vitals.hr, 1));
   return (
     <div className="bg-[#17242c] p-4 text-white">
       <div className="mb-2 flex items-center justify-between">
@@ -538,6 +593,7 @@ function VitalsMonitor({ game }: { game: GameState }) {
           strokeWidth="2.5"
           strokeLinejoin="round"
           className="case-ecg-trace"
+          style={{ animationDuration: `${traceDuration}s` }}
         />
       </svg>
       <div className="grid grid-cols-2 gap-2 font-mono">
@@ -1164,118 +1220,6 @@ function CommitDialog({
         </div>
       </DialogContent>
     </Dialog>
-  );
-}
-
-function BasicDebrief({
-  game,
-  caseDefinition,
-  onRetry,
-}: {
-  game: GameState;
-  caseDefinition: MedicalCase;
-  onRetry: () => void;
-}) {
-  const debrief = createDebrief(game, caseDefinition);
-  const index = CASE_BANK.findIndex((candidate) => candidate.id === caseDefinition.id);
-  const nextCase = CASE_BANK[(index + 1) % CASE_BANK.length];
-  const tone =
-    debrief.outcome === "diagnosed"
-      ? "bg-emerald-50 text-emerald-900"
-      : debrief.outcome === "missed"
-        ? "bg-amber-50 text-amber-900"
-        : "bg-red-50 text-red-900";
-  const ambroseExpression: AmbroseExpression =
-    debrief.outcome === "diagnosed"
-      ? "proud"
-      : debrief.outcome === "missed"
-        ? "encouraging"
-        : "concerned";
-  return (
-    <div className="case-cockpit mx-auto max-w-5xl space-y-4 pb-8">
-      <Link
-        to="/cases"
-        className="inline-flex items-center gap-2 text-sm font-black text-slate-600"
-      >
-        <ArrowLeft className="size-4" /> All cases
-      </Link>
-      <section
-        className={`case-panel grid items-center gap-4 p-6 md:grid-cols-[1fr_auto] md:p-8 ${tone}`}
-      >
-        <div>
-          <p className="text-xs font-black uppercase tracking-[0.16em]">Case complete</p>
-          <h1 className="mt-2 text-3xl font-black capitalize">
-            {debrief.outcome.replace("_", " ")}
-          </h1>
-          <p className="mt-2 max-w-2xl font-bold leading-relaxed">{debrief.outcomeReason}</p>
-          <div className="mt-5 inline-flex items-end gap-2 rounded-2xl bg-white/70 px-4 py-3">
-            <span className="font-mono text-4xl font-black">{debrief.score.total}</span>
-            <span className="pb-1 text-xs font-bold">/ {debrief.score.maximum}</span>
-          </div>
-        </div>
-        <DrAmbrose expression={ambroseExpression} className="mx-auto w-40 max-w-full md:w-44" />
-      </section>
-      <div className="grid gap-4 md:grid-cols-2">
-        <section className="case-panel p-5">
-          <h2 className="text-lg font-black">Correct diagnosis</h2>
-          <p className="mt-2 font-bold text-[#107b80]">{debrief.correctDiagnosis}</p>
-          <h3 className="mt-5 text-sm font-black">Why not the tempting answer?</h3>
-          <p className="mt-2 text-sm leading-relaxed text-slate-600">{debrief.whyNotTempting}</p>
-        </section>
-        <section className="case-panel p-5">
-          <h2 className="text-lg font-black">Teaching summary</h2>
-          <ul className="mt-3 space-y-3">
-            {debrief.teachingPoints.map((point, pointIndex) => (
-              <li key={point} className="flex gap-3 text-sm leading-relaxed text-slate-600">
-                <span className="grid size-6 shrink-0 place-items-center rounded-full bg-[#dff4f1] text-xs font-black text-[#107b80]">
-                  {pointIndex + 1}
-                </span>
-                {point}
-              </li>
-            ))}
-          </ul>
-        </section>
-      </div>
-      <section className="case-panel p-5">
-        <h2 className="text-lg font-black">Timeline snapshot</h2>
-        <div className="mt-4 flex gap-2 overflow-x-auto pb-2">
-          {debrief.timeline
-            .filter((event) =>
-              ["action", "deterioration", "commit", "outcome"].includes(event.type),
-            )
-            .map((event) => (
-              <div key={event.id} className="w-44 shrink-0 rounded-2xl bg-slate-50 p-3">
-                <p className="font-mono text-[10px] text-slate-400">+{event.timeMinute}m</p>
-                <p className="mt-1 text-xs font-black">{event.title}</p>
-                <p className="mt-1 line-clamp-3 text-[10px] leading-relaxed text-slate-500">
-                  {event.detail}
-                </p>
-              </div>
-            ))}
-        </div>
-      </section>
-      <div className="flex flex-wrap gap-2">
-        <button
-          type="button"
-          onClick={onRetry}
-          className="inline-flex items-center gap-2 rounded-full bg-slate-100 px-5 py-3 text-sm font-black"
-        >
-          <RotateCcw className="size-4" /> Retry
-        </button>
-        {nextCase && (
-          <Link
-            to="/cases/$caseId"
-            params={{ caseId: nextCase.id }}
-            className="case-primary-button px-5 py-3"
-          >
-            Next case <ArrowRight className="size-4" />
-          </Link>
-        )}
-      </div>
-      <p className="text-center text-[11px] font-bold text-slate-500">
-        Educational use only, not medical advice · Comparison statistics are mock data.
-      </p>
-    </div>
   );
 }
 

@@ -23,3 +23,7 @@ Run `npm test` after changing the schema, validator, cases, or engine. Tests cov
 `components/patient-avatar.tsx` renders the authored patient as an accessible inline SVG. Skin tone, hair, outfit, age cues, sex, expression and live respiratory rate all affect the portrait; breathing cadence is derived from the current RR. `components/dr-ambrose.tsx` provides the shared mentor in avatar and logo variants with six expressions. His identity lives in `config.ts` so hints, onboarding, loading states and debriefs use one source of truth.
 
 Character animation is CSS-only and decorative. The global reduced-motion rule collapses it to a single frame while preserving every clinical state in text and SVG labels.
+
+## Debrief and sharing
+
+`components/case-debrief.tsx` turns the immutable end state into the outcome banner, chronological decision replay, found/missed clue audit, harmful-action review, score breakdown, mock comparison and annotated artifact review. It also produces a plain-text result and a downloadable SVG result card entirely in the browser; no attempt or patient data is uploaded by the sharing flow.

@@ -204,6 +204,8 @@ test("completes an efficient pulmonary embolism win end to end", () => {
   assert.equal(debrief.outcome, "diagnosed");
   assert.ok(debrief.foundKeyClues.length >= 3);
   assert.equal(debrief.teachingPoints.length, 3);
+  assert.equal(debrief.differentialHistory.length, 1);
+  assert.equal(debrief.differentialHistory[0]?.snapshot[0]?.diagnosisId, "pulmonary_embolism");
 });
 
 test("solves pulmonary embolism with efficiency and treatment penalties", () => {

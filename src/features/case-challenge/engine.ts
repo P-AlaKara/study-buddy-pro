@@ -159,6 +159,7 @@ export interface DebriefModel {
   teachingPoints: [string, string, string];
   score: ScoreBreakdown;
   timeline: TimelineEvent[];
+  differentialHistory: DifferentialChange[];
   mockComparisonPercent: number;
 }
 
@@ -1034,6 +1035,10 @@ export function createDebrief(state: GameState, caseDefinition: MedicalCase): De
     timeline: [...state.timeline].sort(
       (a, b) => a.timeMinute - b.timeMinute || Number(a.id.slice(6)) - Number(b.id.slice(6)),
     ),
+    differentialHistory: state.differentialHistory.map((change) => ({
+      ...change,
+      snapshot: change.snapshot.map((entry) => ({ ...entry })),
+    })),
     mockComparisonPercent: caseDefinition.mockComparisonPercent,
   };
 }
