@@ -17,3 +17,9 @@ The differential API records add, remove, rank, confidence, and evidence-tag cha
 `commitCase` resolves diagnosis and treatment selections into `diagnosed`, `missed`, or `patient_lost`. `createDebrief` returns found/missed clues, harmful-action explanations, the replay timeline, teaching points, and the score breakdown.
 
 Run `npm test` after changing the schema, validator, cases, or engine. Tests cover action application, deterioration, interrupted actions, safe-treatment gates, differential history, hints, scoring, win/loss/penalised paths for both cases, and validation failures.
+
+## Character components
+
+`components/patient-avatar.tsx` renders the authored patient as an accessible inline SVG. Skin tone, hair, outfit, age cues, sex, expression and live respiratory rate all affect the portrait; breathing cadence is derived from the current RR. `components/dr-ambrose.tsx` provides the shared mentor in avatar and logo variants with six expressions. His identity lives in `config.ts` so hints, onboarding, loading states and debriefs use one source of truth.
+
+Character animation is CSS-only and decorative. The global reduced-motion rule collapses it to a single frame while preserving every clinical state in text and SVG labels.

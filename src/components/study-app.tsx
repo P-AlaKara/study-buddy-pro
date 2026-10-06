@@ -36,6 +36,7 @@ import {
   ProgressDashboard,
   StudentUtilities,
 } from "@/components/gamification";
+import { DR_AMBROSE, DrAmbrose } from "@/features/case-challenge/components/dr-ambrose";
 
 type Student = Pick<
   Database["public"]["Tables"]["students"]["Row"],
@@ -1007,6 +1008,13 @@ function Onboarding({
     "Pick the subjects you're working on right now.",
     "These are optional — you can leave them blank.",
   ];
+  const coachNotes = [
+    "Welcome. I’ll help tailor Medley to the way you learn.",
+    "Your training stage helps me set the right level of challenge.",
+    "Choose what matters now; you can change this list later.",
+    "One last check, then your study space is ready.",
+  ];
+  const coachExpressions = ["encouraging", "thinking", "thinking", "proud"] as const;
   const update = (key: keyof Form, value: Form[keyof Form]) =>
     setForm((prev) => ({ ...prev, [key]: value }));
   const input = (
@@ -1129,6 +1137,21 @@ function Onboarding({
         </div>
         <h2 className="mt-7 font-display text-2xl font-black md:text-3xl">{titles[step]}</h2>
         <p className="mt-1 text-sm text-muted-foreground">{descriptions[step]}</p>
+        <div className="mt-5 grid grid-cols-[72px_1fr] items-center gap-3 rounded-[22px] bg-[#fff8df] p-3">
+          <DrAmbrose
+            expression={coachExpressions[step] ?? "neutral"}
+            variant="logo"
+            className="w-[72px]"
+          />
+          <div>
+            <p className="text-[10px] font-black uppercase tracking-wider text-amber-800">
+              {DR_AMBROSE.name} · {DR_AMBROSE.role}
+            </p>
+            <p className="mt-1 text-xs font-bold leading-relaxed text-slate-700">
+              {coachNotes[step]}
+            </p>
+          </div>
+        </div>
         <div className="mt-7 max-h-[48vh] space-y-4 overflow-y-auto pr-1">
           {step === 0 && (
             <>

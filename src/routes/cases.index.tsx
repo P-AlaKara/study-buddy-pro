@@ -1,7 +1,8 @@
 import { useMemo, useState, type ReactNode } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { Activity, ArrowRight, Clock3, SearchX, ShieldCheck, Stethoscope } from "lucide-react";
+import { Activity, ArrowRight, Clock3, ShieldCheck, Stethoscope } from "lucide-react";
 import { CASE_BANK } from "@/features/case-challenge/cases";
+import { CaseMascotState, DrAmbrose } from "@/features/case-challenge/components/dr-ambrose";
 
 export const Route = createFileRoute("/cases/")({
   head: () => ({
@@ -21,6 +22,7 @@ export const Route = createFileRoute("/cases/")({
       { name: "twitter:card", content: "summary_large_image" },
     ],
   }),
+  pendingComponent: CasesLoading,
   component: CaseLibrary,
 });
 
@@ -81,10 +83,8 @@ function CaseLibrary() {
             Enter the ER <ArrowRight className="size-4" />
           </Link>
         </div>
-        <div className="grid min-w-56 place-items-center bg-[#cceee9] p-6 text-[#107b80]">
-          <span className="grid size-28 place-items-center rounded-[36px] bg-white/65 shadow-[inset_0_2px_2px_white,0_18px_30px_-22px_rgb(17_76_81/70%)]">
-            <Stethoscope className="size-12" />
-          </span>
+        <div className="grid min-w-56 place-items-center bg-[#cceee9] px-6 pt-4">
+          <DrAmbrose expression="encouraging" className="w-44 max-w-full" />
         </div>
       </section>
 
@@ -172,8 +172,9 @@ function CaseLibrary() {
 
         {shown.length === 0 && (
           <div className="case-panel mt-5 p-8 text-center">
-            <SearchX className="mx-auto size-8 text-slate-400" />
-            <p className="mt-3 font-black text-slate-700">No cases match those filters.</p>
+            <CaseMascotState title="No cases match those filters" expression="thinking">
+              Try a broader specialty or difficulty. I&apos;ll keep the handover ready.
+            </CaseMascotState>
             <button
               type="button"
               onClick={() => {
@@ -193,6 +194,16 @@ function CaseLibrary() {
         production use.
       </p>
     </div>
+  );
+}
+
+function CasesLoading() {
+  return (
+    <section className="case-panel mx-auto max-w-xl p-8">
+      <CaseMascotState title="Preparing the case bank" expression="thinking">
+        I&apos;m checking the handover notes and getting the patient bay ready.
+      </CaseMascotState>
+    </section>
   );
 }
 

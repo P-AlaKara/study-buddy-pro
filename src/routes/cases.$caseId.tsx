@@ -1,6 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { ArrowLeft, SearchX } from "lucide-react";
+import { ArrowLeft } from "lucide-react";
 import { CaseChallengeScreen } from "@/features/case-challenge/components/case-challenge-screen";
+import { CaseMascotState } from "@/features/case-challenge/components/dr-ambrose";
 import { getCaseById } from "@/features/case-challenge/cases";
 
 export const Route = createFileRoute("/cases/$caseId")({
@@ -21,6 +22,7 @@ export const Route = createFileRoute("/cases/$caseId")({
       { name: "twitter:card", content: "summary_large_image" },
     ],
   }),
+  pendingComponent: CaseLoading,
   component: CasePlayer,
 });
 
@@ -31,13 +33,9 @@ function CasePlayer() {
   if (!caseDefinition) {
     return (
       <section className="case-panel mx-auto max-w-xl p-8 text-center">
-        <span className="mx-auto grid size-16 place-items-center rounded-[22px] bg-red-50 text-red-700">
-          <SearchX className="size-7" />
-        </span>
-        <h1 className="mt-5 text-2xl font-black">Case not found</h1>
-        <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
+        <CaseMascotState title="Case not found" expression="concerned">
           This case is not in the current two-case challenge bank.
-        </p>
+        </CaseMascotState>
         <Link to="/cases" className="case-primary-button mt-6 inline-flex px-5 py-3">
           <ArrowLeft className="size-4" /> Back to cases
         </Link>
@@ -46,4 +44,14 @@ function CasePlayer() {
   }
 
   return <CaseChallengeScreen caseDefinition={caseDefinition} />;
+}
+
+function CaseLoading() {
+  return (
+    <section className="case-panel mx-auto max-w-xl p-8">
+      <CaseMascotState title="Opening the patient chart" expression="thinking">
+        Review the handover while I prepare the clinical cockpit.
+      </CaseMascotState>
+    </section>
+  );
 }

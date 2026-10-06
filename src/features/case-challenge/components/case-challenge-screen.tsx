@@ -14,7 +14,6 @@ import {
   FlaskConical,
   HeartPulse,
   HelpCircle,
-  Lightbulb,
   MessageCircleMore,
   Plus,
   RotateCcw,
@@ -45,8 +44,10 @@ import {
   type GameState,
 } from "../engine.js";
 import { CASE_BANK } from "../cases/index.js";
-import type { ActionCategory, CaseAction, MedicalCase, PatientExpression } from "../schema.js";
+import type { ActionCategory, CaseAction, MedicalCase } from "../schema.js";
 import { CaseImageViewer } from "./case-image-viewer.js";
+import { DR_AMBROSE, DrAmbrose, type AmbroseExpression } from "./dr-ambrose.js";
+import { PatientAvatar } from "./patient-avatar.js";
 
 type MobileZone = "patient" | "actions" | "chart" | "differential";
 type RightTab = "chart" | "differential";
@@ -491,7 +492,11 @@ function PatientPanel({
   return (
     <section className="case-panel overflow-hidden">
       <div className="bg-gradient-to-b from-[#d9f4f0] to-[#f8fcfb] p-4 text-center">
-        <AvatarPlaceholder name={caseDefinition.patient.name} expression={game.patientExpression} />
+        <PatientAvatar
+          patient={caseDefinition.patient}
+          expression={game.patientExpression}
+          respiratoryRate={game.vitals.rr}
+        />
         <h2 className="mt-2 text-lg font-black text-slate-900">
           {caseDefinition.patient.name}, {caseDefinition.patient.age}
         </h2>
@@ -508,19 +513,6 @@ function PatientPanel({
       </div>
       <VitalsMonitor game={game} />
     </section>
-  );
-}
-
-function AvatarPlaceholder({ name, expression }: { name: string; expression: PatientExpression }) {
-  return (
-    <div className="mx-auto grid aspect-square w-36 place-items-center rounded-[42%] bg-white/75 shadow-[inset_0_2px_2px_white,0_16px_30px_-20px_rgb(17_76_81/60%)]">
-      <div className="grid size-24 place-items-center rounded-full bg-[#efb48f] text-3xl font-black text-[#53372e]">
-        {name.slice(0, 1)}
-      </div>
-      <span className="-mt-4 rounded-full bg-slate-900 px-3 py-1 text-[10px] font-black uppercase tracking-wider text-white">
-        {expression.replaceAll("_", " ")}
-      </span>
-    </div>
   );
 }
 
@@ -1045,15 +1037,19 @@ function HintPanel({
   onHint: () => void;
 }) {
   const latest = game.hintsUsed.at(-1);
+  const critical = game.vitals.spo2 < 90 || game.vitals.systolicBp < 90;
+  const expression: AmbroseExpression = critical
+    ? "concerned"
+    : latest
+      ? "encouraging"
+      : "thinking";
   return (
     <div className="border-t border-slate-100 bg-[#fff8df] p-4">
       <div className="flex gap-3">
-        <span className="grid size-10 shrink-0 place-items-center rounded-2xl bg-amber-200 text-amber-900">
-          <Lightbulb className="size-5" />
-        </span>
+        <DrAmbrose expression={expression} variant="logo" className="-ml-1 -mt-1 w-14 shrink-0" />
         <div className="min-w-0 flex-1">
           <p className="text-[10px] font-black uppercase tracking-wider text-amber-800">
-            Dr. Ambrose
+            {DR_AMBROSE.name}
           </p>
           <p className="mt-1 text-xs font-bold leading-relaxed text-slate-700">
             {latest?.text ?? "I’ll nudge your reasoning, but the decisions remain yours."}
@@ -1068,7 +1064,7 @@ function HintPanel({
       >
         <HelpCircle className="size-4" />{" "}
         {nextHint
-          ? `Ask Dr. Ambrose · Tier ${nextHint.tier} · ${nextHint.cost} pts`
+          ? `Ask ${DR_AMBROSE.name} · Tier ${nextHint.tier} · ${nextHint.cost} pts`
           : "All hints used"}
       </button>
     </div>
@@ -1189,6 +1185,12 @@ function BasicDebrief({
       : debrief.outcome === "missed"
         ? "bg-amber-50 text-amber-900"
         : "bg-red-50 text-red-900";
+  const ambroseExpression: AmbroseExpression =
+    debrief.outcome === "diagnosed"
+      ? "proud"
+      : debrief.outcome === "missed"
+        ? "encouraging"
+        : "concerned";
   return (
     <div className="case-cockpit mx-auto max-w-5xl space-y-4 pb-8">
       <Link
@@ -1197,14 +1199,21 @@ function BasicDebrief({
       >
         <ArrowLeft className="size-4" /> All cases
       </Link>
-      <section className={`case-panel p-6 md:p-8 ${tone}`}>
-        <p className="text-xs font-black uppercase tracking-[0.16em]">Case complete</p>
-        <h1 className="mt-2 text-3xl font-black capitalize">{debrief.outcome.replace("_", " ")}</h1>
-        <p className="mt-2 max-w-2xl font-bold leading-relaxed">{debrief.outcomeReason}</p>
-        <div className="mt-5 inline-flex items-end gap-2 rounded-2xl bg-white/70 px-4 py-3">
-          <span className="font-mono text-4xl font-black">{debrief.score.total}</span>
-          <span className="pb-1 text-xs font-bold">/ {debrief.score.maximum}</span>
+      <section
+        className={`case-panel grid items-center gap-4 p-6 md:grid-cols-[1fr_auto] md:p-8 ${tone}`}
+      >
+        <div>
+          <p className="text-xs font-black uppercase tracking-[0.16em]">Case complete</p>
+          <h1 className="mt-2 text-3xl font-black capitalize">
+            {debrief.outcome.replace("_", " ")}
+          </h1>
+          <p className="mt-2 max-w-2xl font-bold leading-relaxed">{debrief.outcomeReason}</p>
+          <div className="mt-5 inline-flex items-end gap-2 rounded-2xl bg-white/70 px-4 py-3">
+            <span className="font-mono text-4xl font-black">{debrief.score.total}</span>
+            <span className="pb-1 text-xs font-bold">/ {debrief.score.maximum}</span>
+          </div>
         </div>
+        <DrAmbrose expression={ambroseExpression} className="mx-auto w-40 max-w-full md:w-44" />
       </section>
       <div className="grid gap-4 md:grid-cols-2">
         <section className="case-panel p-5">

@@ -277,6 +277,39 @@
 .case-typing-dot {
   animation: case-typing 1s ease-in-out infinite alternate;
 }
+.patient-breathe {
+  transform-box: view-box;
+  transform-origin: 120px 268px;
+  animation: patient-breathe 2.5s ease-in-out infinite;
+}
+.patient-eye {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: patient-blink 6.4s ease-in-out infinite;
+}
+.patient-distress-cues {
+  animation: patient-distress 1.4s ease-in-out infinite alternate;
+}
+.ambrose-float {
+  transform-box: view-box;
+  transform-origin: center bottom;
+  animation: ambrose-float 4.8s ease-in-out infinite;
+}
+.ambrose-eyes {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: patient-blink 7.3s ease-in-out infinite;
+}
+.ambrose-thought {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: ambrose-thought 2.8s ease-in-out infinite;
+}
+.ambrose-spark {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: ambrose-spark 2s ease-in-out infinite;
+}
 
 @keyframes case-ecg {
   to {
@@ -296,6 +329,52 @@
       0 12px 22px -10px rgb(13 104 109 / 78%);
   }
 }
+@keyframes patient-breathe {
+  0%,
+  100% {
+    transform: scaleY(1) translateY(0);
+  }
+  50% {
+    transform: scaleY(1.018) translateY(-1.5px);
+  }
+}
+@keyframes patient-blink {
+  0%,
+  43%,
+  47%,
+  100% {
+    transform: scaleY(1);
+  }
+  45% {
+    transform: scaleY(0.08);
+  }
+}
+@keyframes patient-distress {
+  to {
+    transform: translateX(3px);
+    opacity: 0.58;
+  }
+}
+@keyframes ambrose-float {
+  0%,
+  100% {
+    transform: translateY(0) rotate(-0.3deg);
+  }
+  50% {
+    transform: translateY(-3px) rotate(0.3deg);
+  }
+}
+@keyframes ambrose-thought {
+  50% {
+    transform: translateY(-3px) scale(1.04);
+  }
+}
+@keyframes ambrose-spark {
+  50% {
+    transform: scale(1.13) rotate(5deg);
+    opacity: 0.72;
+  }
+}
 
 @media (max-width: 1023px) {
   body:has(.case-cockpit) .app-main-nav {
@@ -309,6 +388,7 @@
   *::after {
     transition-duration: 0.01ms !important;
     animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
     scroll-behavior: auto !important;
   }
 }

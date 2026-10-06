@@ -5,6 +5,7 @@ import type {
   PatientExpression,
   VitalsDelta,
 } from "./schema.js";
+import { DR_AMBROSE } from "./config.js";
 
 export type GamePhase = "hook" | "investigate" | "commit" | "debrief";
 export type GameStatus = "active" | "complete";
@@ -879,7 +880,7 @@ export function requestNextHint(state: GameState, caseDefinition: MedicalCase): 
         eventWithId(sequence, {
           timeMinute: state.timeMinute,
           type: "hint",
-          title: `Dr. Ambrose hint ${hint.tier}`,
+          title: `${DR_AMBROSE.name} hint ${hint.tier}`,
           detail: hint.text,
         }),
       ],
