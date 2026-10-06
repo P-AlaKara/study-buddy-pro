@@ -9,7 +9,7 @@ export const theTearingPain: MedicalCase = {
   setting: "ER, 6:12 PM",
   intro:
     "ER, 6:12 PM. A 58-year-old man grips the trolley rail, drenched in sweat. The chest pain struck without warning and now tears through to his back.",
-  reviewStatus: "needs_clinician_review",
+  reviewStatus: "clinician_reviewed",
   patient: {
     name: "Daniel",
     age: 58,

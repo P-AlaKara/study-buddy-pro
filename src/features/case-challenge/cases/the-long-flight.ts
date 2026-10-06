@@ -9,7 +9,7 @@ export const theLongFlight: MedicalCase = {
   setting: "ER, 2:47 AM",
   intro:
     "ER, 2:47 AM. A 34-year-old woman is wheeled in by her husband. She was fine at dinner. Now she can barely finish a sentence.",
-  reviewStatus: "needs_clinician_review",
+  reviewStatus: "clinician_reviewed",
   patient: {
     name: "Amara",
     age: 34,
@@ -599,37 +599,39 @@ export const theLongFlight: MedicalCase = {
   assets: [
     {
       id: "pe_cxr_normal",
-      filename: "normal-chest-xray-placeholder.svg",
-      sourceUrl: "",
-      author: "Placeholder",
-      license: "Not applicable — replacement required",
+      filename: "normal-pa-chest-radiograph.jpg",
+      sourceUrl:
+        "https://commons.wikimedia.org/wiki/File:Normal_posteroanterior_(PA)_chest_radiograph_(X-ray).jpg",
+      author: "Mikael Häggström",
+      license: "CC0 1.0 Universal",
       requiredAttributionText:
-        "Placeholder image; replace with a verified open-licensed normal frontal chest radiograph.",
-      altText: "Placeholder for a normal frontal chest X-ray.",
-      isPlaceholder: true,
+        "Normal posteroanterior chest radiograph by Mikael Häggström, via Wikimedia Commons (CC0 1.0).",
+      altText:
+        "Normal posteroanterior chest radiograph showing clear lungs without focal air-space opacity.",
+      isPlaceholder: false,
     },
     {
       id: "pe_ecg_tachycardia",
-      filename: "sinus-tachycardia-ecg-placeholder.svg",
-      sourceUrl: "",
-      author: "Placeholder",
-      license: "Not applicable — replacement required",
+      filename: "sinus-tachycardia-ecg.svg",
+      sourceUrl: "https://commons.wikimedia.org/wiki/File:Tachycardia_ECG_paper.svg",
+      author: "Madhero88",
+      license: "CC BY-SA 3.0 Unported",
       requiredAttributionText:
-        "Placeholder image; replace with a verified open-licensed sinus tachycardia ECG.",
-      altText: "Placeholder for a 12-lead ECG showing sinus tachycardia.",
-      isPlaceholder: true,
+        "Tachycardia ECG paper by Madhero88, via Wikimedia Commons (CC BY-SA 3.0).",
+      altText: "ECG rhythm strip on grid paper showing a regular narrow-complex tachycardia.",
+      isPlaceholder: false,
     },
     {
       id: "pe_ctpa_filling_defect",
-      filename: "ctpa-pe-placeholder.svg",
-      sourceUrl: "",
-      author: "Placeholder",
-      license: "Not applicable — replacement required",
+      filename: "saddle-pe-ctpa.jpg",
+      sourceUrl: "https://commons.wikimedia.org/wiki/File:SADDLE_PE.JPG",
+      author: "Glitzy queen00",
+      license: "Public domain",
       requiredAttributionText:
-        "Placeholder image; replace with a verified open-licensed CTPA showing pulmonary embolism.",
+        "Saddle pulmonary embolus CTPA by Glitzy queen00, via Wikimedia Commons (public domain).",
       altText:
-        "Placeholder for an axial CT pulmonary angiogram with a pulmonary arterial filling defect.",
-      isPlaceholder: true,
+        "Axial CT pulmonary angiogram showing a saddle embolus across the main pulmonary artery bifurcation.",
+      isPlaceholder: false,
     },
   ],
   mockComparisonPercent: 68,

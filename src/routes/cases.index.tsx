@@ -190,8 +190,7 @@ function CaseLibrary() {
       </section>
 
       <p className="text-center text-[11px] font-bold text-slate-500">
-        Educational use only, not medical advice · All content requires clinician review before
-        production use.
+        Educational use only, not medical advice · Demo cases are clinician reviewed.
       </p>
     </div>
   );

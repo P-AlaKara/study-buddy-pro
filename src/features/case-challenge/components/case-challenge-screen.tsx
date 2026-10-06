@@ -458,7 +458,10 @@ export function CaseChallengeScreen({ caseDefinition }: { caseDefinition: Medica
       </div>
 
       <footer className="mt-4 text-center text-[11px] font-bold text-slate-500">
-        Educational use only, not medical advice · Content status: clinician review required
+        Educational use only, not medical advice · Content status:{" "}
+        {caseDefinition.reviewStatus === "clinician_reviewed"
+          ? "clinician reviewed"
+          : "clinician review required"}
       </footer>
 
       {mobileCoachOpen && (
