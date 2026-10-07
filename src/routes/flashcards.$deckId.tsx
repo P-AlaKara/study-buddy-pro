@@ -67,9 +67,9 @@ function DeckPage() {
     setMeta(null); load();
   }
 
-  if (!deck) return <div className="clay-card h-48 max-w-4xl animate-pulse bg-yellow-soft" />;
+  if (!deck) return <div className="clay-card h-48 w-full animate-pulse bg-yellow-soft" />;
   return (
-    <div className="max-w-4xl space-y-5">
+    <div className="space-y-5">
       <Link to="/flashcards" className="inline-flex items-center gap-1 text-sm font-extrabold text-muted-foreground"><ArrowLeft className="h-4 w-4" /> Decks</Link>
       <div className="clay-card bg-yellow-soft p-6">
         {meta ? <div className="space-y-2">
@@ -100,7 +100,7 @@ function DeckPage() {
         <div className="flex gap-2"><Button variant="yellow" onClick={save}>{editing ? "Save card" : "Add card"}</Button>{editing && <Button variant="ghost" onClick={() => { setEditing(null); setForm(empty); }}>Cancel</Button>}</div>
       </div>}
 
-      <div className="grid gap-3 md:grid-cols-2">
+      <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
         {cards.map(c => <div key={c.id} className="clay-card bg-card p-4">
           <div className="flex items-start justify-between gap-2">
             <span className="rounded-full bg-yellow-soft px-3 py-1 text-xs font-extrabold">{CARD_TYPE_LABEL[c.type]}</span>

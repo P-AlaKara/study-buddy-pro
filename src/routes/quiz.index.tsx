@@ -47,7 +47,7 @@ function QuizHome() {
   const start = (mode: QuizMode, subj?: string) => nav({ to: "/quiz/play", search: { mode, subject: subj } });
 
   return (
-    <div className="max-w-5xl space-y-7">
+    <div className="space-y-7">
       <Link to="/practice" className="inline-flex items-center gap-1 text-sm font-extrabold text-muted-foreground"><ArrowLeft className="h-4 w-4" /> Practice</Link>
       <div>
         <p className="text-xs font-extrabold tracking-widest text-blue">QUIZZES</p>

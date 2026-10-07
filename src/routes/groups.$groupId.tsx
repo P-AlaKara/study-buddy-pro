@@ -84,9 +84,9 @@ function GroupPage() {
   const ranked = [...members].sort((a, b) => (b.students?.xp ?? 0) - (a.students?.xp ?? 0));
   const totalXp = members.reduce((a, m) => a + (m.students?.xp ?? 0), 0);
 
-  if (!group) return <div className="clay-card h-48 max-w-4xl animate-pulse bg-mint-soft" />;
+  if (!group) return <div className="clay-card h-48 w-full animate-pulse bg-mint-soft" />;
   return (
-    <div className="max-w-4xl space-y-5">
+    <div className="space-y-5">
       <Link to="/groups" className="inline-flex items-center gap-1 text-sm font-extrabold text-muted-foreground"><ArrowLeft className="h-4 w-4" /> Groups</Link>
       <div className="clay-card bg-mint-soft p-6">
         <div className="flex items-start gap-4">
@@ -110,7 +110,7 @@ function GroupPage() {
       {tab === "chat" && <div className="clay-card bg-card p-4">
         <div className="max-h-[50vh] space-y-3 overflow-y-auto p-1">
           {msgs.map(m => { const me = m.student_id === student?.id; return <div key={m.id} className={`flex ${me ? "justify-end" : "justify-start"}`}>
-            <div className={`max-w-[80%] rounded-3xl px-4 py-2 ${me ? "bg-mint" : "bg-muted"}`}>
+            <div className={`max-w-[80%] rounded-3xl px-4 py-2 xl:max-w-3xl ${me ? "bg-mint" : "bg-muted"}`}>
               {!me && <p className="text-xs font-black text-ink-soft">{name(m.student_id)}</p>}
               <p className="text-sm leading-relaxed">{m.message}</p>
               <p className="mt-0.5 text-[10px] text-ink-soft">{new Date(m.created_at).toLocaleString([], { weekday: "short", hour: "2-digit", minute: "2-digit" })}</p>

@@ -64,7 +64,7 @@ function CaseLibrary() {
   );
 
   return (
-    <div className="case-cockpit mx-auto max-w-6xl space-y-6 pb-8">
+    <div className="case-cockpit space-y-6 pb-8">
       <section
         className="case-panel overflow-hidden bg-yellow-soft"
         aria-labelledby="case-instructions-title"

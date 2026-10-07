@@ -54,7 +54,7 @@ function GroupsHome() {
   }
 
   return (
-    <div className="max-w-4xl space-y-6">
+    <div className="space-y-6">
       <div>
         <p className="text-xs font-extrabold tracking-widest text-mint">LEARN TOGETHER</p>
         <h1 className="mt-1 font-display text-3xl font-black md:text-5xl">Study groups</h1>
@@ -83,7 +83,7 @@ function GroupsHome() {
 
       <section>
         <h2 className="font-display text-xl font-black">Your groups</h2>
-        <div className="mt-3 grid gap-4 sm:grid-cols-2">
+        <div className="mt-3 grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
           {mine.map(g => <Link key={g.id} to="/groups/$groupId" params={{ groupId: g.id }} className="clay-card block bg-card p-5">
             <span className="flex size-11 items-center justify-center rounded-2xl bg-mint"><Users className="h-5 w-5" /></span>
             <p className="mt-3 font-display text-lg font-black">{g.name}</p>

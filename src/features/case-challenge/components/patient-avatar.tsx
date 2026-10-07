@@ -21,11 +21,13 @@ export function PatientAvatar({
   patient,
   expression,
   respiratoryRate,
+  decorative = false,
   className = "",
 }: {
   patient: CasePatient;
   expression: PatientExpression;
   respiratoryRate: number;
+  decorative?: boolean;
   className?: string;
 }) {
   const rawId = useId();
@@ -45,14 +47,15 @@ export function PatientAvatar({
     <div
       className={`patient-avatar relative mx-auto aspect-[6/7] w-full max-w-48 ${className}`}
       data-expression={expression}
+      aria-hidden={decorative || undefined}
     >
       <svg
         viewBox="0 0 240 280"
-        role="img"
-        aria-labelledby={`${id}-title`}
+        role={decorative ? "presentation" : "img"}
+        aria-labelledby={decorative ? undefined : `${id}-title`}
         className="h-full w-full overflow-visible drop-shadow-[0_18px_18px_rgb(17_76_81/18%)]"
       >
-        <title id={`${id}-title`}>{title}</title>
+        {!decorative && <title id={`${id}-title`}>{title}</title>}
         <defs>
           <linearGradient id={`${id}-backdrop`} x1="0" y1="0" x2="1" y2="1">
             <stop stopColor="#ffffff" stopOpacity=".92" />
@@ -189,9 +192,11 @@ export function PatientAvatar({
           </g>
         )}
       </svg>
-      <span className="absolute bottom-2 left-1/2 -translate-x-1/2 whitespace-nowrap rounded-full bg-slate-900 px-3 py-1 text-[10px] font-black uppercase tracking-wider text-white shadow-sm">
-        {expressionLabels[expression]}
-      </span>
+      {!decorative && (
+        <span className="absolute bottom-2 left-1/2 -translate-x-1/2 whitespace-nowrap rounded-full bg-slate-900 px-3 py-1 text-[10px] font-black uppercase tracking-wider text-white shadow-sm">
+          {expressionLabels[expression]}
+        </span>
+      )}
     </div>
   );
 }

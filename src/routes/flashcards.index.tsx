@@ -62,7 +62,7 @@ function DeckBrowser() {
   const shown = decks.filter(d => tab === "official" ? d.is_official : tab === "mine" ? d.owner_student_id === student?.id : saved.has(d.id));
 
   return (
-    <div className="max-w-5xl space-y-6">
+    <div className="space-y-6">
       <Link to="/practice" className="inline-flex items-center gap-1 text-sm font-extrabold text-muted-foreground"><ArrowLeft className="h-4 w-4" /> Practice</Link>
       <div>
         <p className="text-xs font-extrabold tracking-widest text-yellow">FLASHCARDS</p>
@@ -92,7 +92,7 @@ function DeckBrowser() {
         <Button variant="yellow" onClick={create} disabled={form.title.trim().length < 2}>Create deck</Button>
       </div>}
 
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
         {shown.map(d => <div key={d.id} className="clay-card flex flex-col bg-yellow-soft p-5">
           <div className="flex items-start justify-between gap-2">
             <span className="rounded-full bg-card px-3 py-1 text-xs font-extrabold">{d.subject}</span>

@@ -44,7 +44,7 @@ function StationBank() {
   const toggle = (id: string) => type === "single" ? setPicked([id]) : setPicked(picked.includes(id) && type === "custom" ? picked.filter(x => x !== id) : [...picked, id]);
 
   return (
-    <div className="max-w-5xl space-y-6">
+    <div className="space-y-6">
       <Link to="/practice" className="inline-flex items-center gap-1 text-sm font-extrabold text-muted-foreground"><ArrowLeft className="h-4 w-4" /> Practice</Link>
       <div>
         <p className="text-xs font-extrabold tracking-widest text-pink">OSCE PREP</p>
@@ -78,7 +78,7 @@ function StationBank() {
 
       {Object.entries(grouped).map(([cat, list]) => <div key={cat}>
         <h2 className="mb-3 text-sm font-extrabold tracking-widest text-muted-foreground">{(CATEGORY_LABELS[cat] ?? cat).toUpperCase()}</h2>
-        <div className="grid gap-4 sm:grid-cols-2">{list.map(s => (
+        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">{list.map(s => (
           <div key={s.id} className={`clay-card p-5 transition-transform hover:-translate-y-1 ${builder && picked.includes(s.id) ? "bg-pink-soft" : "bg-card"}`}>
             <div className="flex flex-wrap gap-2 text-xs font-extrabold">
               <span className={`rounded-full px-3 py-1 capitalize ${DIFF[s.difficulty]}`}>{s.difficulty}</span>

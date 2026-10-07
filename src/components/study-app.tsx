@@ -71,7 +71,7 @@ const nav = [
   { label: "Groups", to: "/groups", icon: Users },
   { label: "Profile", to: "/profile", icon: Activity },
 ] as const;
-const FEATURED_CASE_AVATAR_SIZE = "w-14 sm:w-20";
+const FEATURED_CASE_AVATAR_SIZE = "!w-14 sm:!w-20";
 const subjects = [
   "Anatomy",
   "Biochemistry",
@@ -239,9 +239,9 @@ export function StudyApp({ view, children }: { view: View; children?: ReactNode 
   ];
 
   return (
-    <div className="min-h-screen pb-28 md:pb-10">
+    <div className="min-h-screen pb-28 lg:pb-10">
       <header className="sticky top-0 z-30 bg-background/95 backdrop-blur-sm">
-        <div className="mx-auto flex max-w-7xl items-center justify-between gap-3 px-5 py-4 md:px-8 md:py-5">
+        <div className="app-container flex items-center justify-between gap-3 py-4 md:py-5">
           <Link
             to="/"
             className="flex items-center gap-2.5 font-display text-[26px] font-black text-foreground"
@@ -250,9 +250,11 @@ export function StudyApp({ view, children }: { view: View; children?: ReactNode 
             <span className="flex size-10 items-center justify-center rounded-2xl bg-pink text-foreground shadow-sm">
               <HeartPulse size={23} strokeWidth={2.5} />
             </span>
-            medley<span className="text-pink">.</span>
+            <span className="hidden sm:inline">
+              medley<span className="text-pink">.</span>
+            </span>
           </Link>
-          <div className="hidden items-center gap-1 md:flex">
+          <div className="hidden items-center gap-1 lg:flex">
             {nav.map((item) => (
               <Link
                 key={item.label}
@@ -328,7 +330,7 @@ export function StudyApp({ view, children }: { view: View; children?: ReactNode 
           </div>
         </div>
       </header>
-      <main className="mx-auto max-w-7xl px-5 pt-6 md:px-8 md:pt-8">
+      <main className="app-container pt-6 md:pt-8">
         {loadError && (
           <div className="mb-5 rounded-2xl bg-pink-soft p-4 text-sm font-bold">{loadError}</div>
         )}
@@ -351,7 +353,7 @@ export function StudyApp({ view, children }: { view: View; children?: ReactNode 
                 {student?.streak_days ?? 0} day streak
               </div>
             </div>
-            <div className="grid gap-5 lg:grid-cols-[minmax(0,1.7fr)_minmax(300px,1fr)]">
+            <div className="grid gap-5 lg:grid-cols-[minmax(0,2fr)_minmax(320px,1fr)]">
               <div className="space-y-6">
                 <section className="clay-card overflow-hidden bg-lavender-soft p-5 md:p-6">
                   <span className="inline-flex rounded-full bg-card/75 px-3 py-1 text-[11px] font-black uppercase tracking-wider text-ink-soft">
@@ -362,6 +364,7 @@ export function StudyApp({ view, children }: { view: View; children?: ReactNode 
                       patient={FEATURED_CASE.patient}
                       expression={FEATURED_CASE.patient.initialExpression}
                       respiratoryRate={FEATURED_CASE.vitalsTimeline[0]?.rr ?? 16}
+                      decorative
                       className={`${FEATURED_CASE_AVATAR_SIZE} mx-0 shrink-0`}
                     />
                     <div className="min-w-0">
@@ -442,7 +445,7 @@ export function StudyApp({ view, children }: { view: View; children?: ReactNode 
                     action="Explore practice"
                     to="/practice"
                   />
-                  <div className="grid gap-3 sm:grid-cols-2">
+                  <div className="grid gap-3 sm:grid-cols-2 2xl:grid-cols-4">
                     {recommendations.map((item) => (
                       <button
                         key={item.type}
@@ -602,7 +605,7 @@ export function StudyApp({ view, children }: { view: View; children?: ReactNode 
           <StudentContext.Provider value={student}>{children}</StudentContext.Provider>
         )}
         {view === "practice" && !children && (
-          <div className="max-w-5xl">
+          <div>
             <PageIntro
               eyebrow="YOUR PRACTICE SPACE"
               title="Practice your way"
@@ -720,7 +723,7 @@ export function StudyApp({ view, children }: { view: View; children?: ReactNode 
           <StudentContext.Provider value={student}>{children}</StudentContext.Provider>
         )}
         {view === "groups" && !children && (
-          <div className="max-w-4xl">
+          <div>
             <PageIntro
               eyebrow="LEARN TOGETHER"
               title="Study groups"
@@ -766,7 +769,7 @@ export function StudyApp({ view, children }: { view: View; children?: ReactNode 
           <StudentContext.Provider value={student}>{children}</StudentContext.Provider>
         )}
         {view === "profile" && (
-          <div className="max-w-4xl">
+          <div>
             <PageIntro
               eyebrow="YOUR STUDY JOURNEY"
               title="Student profile"
@@ -862,14 +865,14 @@ export function StudyApp({ view, children }: { view: View; children?: ReactNode 
           </div>
         )}
         {view === "profile" && (
-          <div className="max-w-6xl">
+          <div>
             <ProgressDashboard student={student} />
           </div>
         )}
       </main>
       <nav
         aria-label="Main navigation"
-        className="app-main-nav fixed bottom-0 left-0 right-0 z-20 rounded-t-[24px] bg-card px-2 pb-[max(10px,env(safe-area-inset-bottom))] pt-2 shadow-[0_-8px_30px_-14px_var(--border)] md:hidden"
+        className="app-main-nav fixed bottom-0 left-0 right-0 z-20 rounded-t-[24px] bg-card px-2 pb-[max(10px,env(safe-area-inset-bottom))] pt-2 shadow-[0_-8px_30px_-14px_var(--border)] lg:hidden"
       >
         <div className="mx-auto flex max-w-lg items-center justify-around">
           {nav.map((item) => {

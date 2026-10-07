@@ -61,7 +61,7 @@ export function CaseDebrief({
   }
 
   return (
-    <div className="case-cockpit mx-auto max-w-6xl space-y-5 pb-8">
+    <div className="case-cockpit space-y-5 pb-8">
       <Link
         to="/cases"
         className="inline-flex items-center gap-2 text-sm font-black text-slate-600 hover:text-[#107b80] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#168d91]"
