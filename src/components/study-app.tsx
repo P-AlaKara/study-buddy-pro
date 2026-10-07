@@ -31,7 +31,6 @@ import type { Database } from "@/integrations/supabase/types";
 import {
   CelebrationLayer,
   HomeGamification,
-  HomeMasteryPreview,
   ProgressDashboard,
   StudentUtilities,
 } from "@/components/gamification";
@@ -72,6 +71,7 @@ const nav = [
   { label: "Groups", to: "/groups", icon: Users },
   { label: "Profile", to: "/profile", icon: Activity },
 ] as const;
+const FEATURED_CASE_AVATAR_SIZE = "w-14 sm:w-20";
 const subjects = [
   "Anatomy",
   "Biochemistry",
@@ -353,47 +353,49 @@ export function StudyApp({ view, children }: { view: View; children?: ReactNode 
             </div>
             <div className="grid gap-5 lg:grid-cols-[minmax(0,1.7fr)_minmax(300px,1fr)]">
               <div className="space-y-6">
-                <section className="clay-card relative min-h-[295px] overflow-hidden bg-lavender-soft p-6 md:min-h-[320px] md:p-8">
-                  <div className="relative z-10 max-w-[65%] md:max-w-[60%]">
-                    <span className="inline-flex rounded-full bg-card/75 px-3 py-1 text-[11px] font-black uppercase tracking-wider text-ink-soft">
-                      ✦ Weekly case
-                    </span>
-                    <h2 className="mt-5 font-display text-2xl font-black leading-tight md:text-4xl">
-                      {FEATURED_CASE.title}
-                    </h2>
-                    <p className="mt-3 line-clamp-2 text-sm leading-relaxed text-ink-soft md:text-base">
-                      {FEATURED_CASE.intro}
-                    </p>
-                    <div className="mt-4 flex flex-wrap gap-2 text-xs font-bold text-ink-soft">
-                      <span className="rounded-full bg-card/70 px-3 py-1">
-                        Level {FEATURED_CASE.difficulty}
-                      </span>
-                      {FEATURED_CASE.specialty.map((specialty) => (
-                        <span key={specialty} className="rounded-full bg-card/70 px-3 py-1">
-                          {specialty}
+                <section className="clay-card overflow-hidden bg-lavender-soft p-5 md:p-6">
+                  <span className="inline-flex rounded-full bg-card/75 px-3 py-1 text-[11px] font-black uppercase tracking-wider text-ink-soft">
+                    ✦ Weekly case
+                  </span>
+                  <div className="mt-4 grid grid-cols-[auto_minmax(0,1fr)] items-start gap-3 sm:gap-5">
+                    <PatientAvatar
+                      patient={FEATURED_CASE.patient}
+                      expression={FEATURED_CASE.patient.initialExpression}
+                      respiratoryRate={FEATURED_CASE.vitalsTimeline[0]?.rr ?? 16}
+                      className={`${FEATURED_CASE_AVATAR_SIZE} mx-0 shrink-0`}
+                    />
+                    <div className="min-w-0">
+                      <h2 className="font-display text-2xl font-black leading-tight md:text-3xl">
+                        {FEATURED_CASE.title}
+                      </h2>
+                      <p className="mt-2 line-clamp-2 text-sm leading-relaxed text-ink-soft md:text-base">
+                        {FEATURED_CASE.intro}
+                      </p>
+                      <div className="mt-3 flex flex-wrap gap-1.5 text-[11px] font-bold text-ink-soft sm:text-xs">
+                        <span className="rounded-full bg-card/70 px-2.5 py-1">
+                          Level {FEATURED_CASE.difficulty}
                         </span>
-                      ))}
+                        {FEATURED_CASE.specialty.map((specialty) => (
+                          <span key={specialty} className="rounded-full bg-card/70 px-2.5 py-1">
+                            {specialty}
+                          </span>
+                        ))}
+                      </div>
+                      <Button
+                        variant="lavender"
+                        className="mt-4"
+                        aria-label={`Start case: ${FEATURED_CASE.title}`}
+                        onClick={() =>
+                          navigate({
+                            to: "/cases/$caseId",
+                            params: { caseId: FEATURED_CASE.id },
+                          })
+                        }
+                      >
+                        Start case <ArrowRight size={17} />
+                      </Button>
                     </div>
-                    <Button
-                      variant="lavender"
-                      className="mt-5"
-                      aria-label={`Start case: ${FEATURED_CASE.title}`}
-                      onClick={() =>
-                        navigate({
-                          to: "/cases/$caseId",
-                          params: { caseId: FEATURED_CASE.id },
-                        })
-                      }
-                    >
-                      Start case <ArrowRight size={17} />
-                    </Button>
                   </div>
-                  <PatientAvatar
-                    patient={FEATURED_CASE.patient}
-                    expression={FEATURED_CASE.patient.initialExpression}
-                    respiratoryRate={FEATURED_CASE.vitalsTimeline[0]?.rr ?? 16}
-                    className="absolute -right-12 bottom-0 w-[220px] max-w-none md:-right-1 md:-bottom-3 md:w-[290px]"
-                  />
                 </section>
                 <section>
                   <SectionHeading title="Pick up where you left off" />
@@ -462,10 +464,6 @@ export function StudyApp({ view, children }: { view: View; children?: ReactNode 
                       </button>
                     ))}
                   </div>
-                </section>
-                <section>
-                  <SectionHeading title="Your learning indicators" />
-                  <HomeMasteryPreview student={student} />
                 </section>
               </div>
               <div className="space-y-6">
