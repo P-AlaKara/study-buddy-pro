@@ -1,8 +1,9 @@
-import { useMemo, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { Activity, ArrowRight, Clock3, ShieldCheck, Stethoscope } from "lucide-react";
+import { Activity, ArrowRight, ChevronDown, Stethoscope } from "lucide-react";
 import { CASE_BANK } from "@/features/case-challenge/cases";
 import { CaseMascotState, DrAmbrose } from "@/features/case-challenge/components/dr-ambrose";
+import { CASE_LIBRARY_INSTRUCTIONS } from "@/features/case-challenge/config";
 
 export const Route = createFileRoute("/cases/")({
   head: () => ({
@@ -27,10 +28,31 @@ export const Route = createFileRoute("/cases/")({
 });
 
 type DifficultyFilter = "all" | "2" | "3";
+const INSTRUCTIONS_STORAGE_KEY = "medley-case-instructions";
 
 function CaseLibrary() {
   const [difficulty, setDifficulty] = useState<DifficultyFilter>("all");
   const [specialty, setSpecialty] = useState("all");
+  const [instructionsExpanded, setInstructionsExpanded] = useState(true);
+
+  useEffect(() => {
+    const savedPreference = window.localStorage.getItem(INSTRUCTIONS_STORAGE_KEY);
+    if (savedPreference === null) {
+      // First visit starts open; future visits default to the compact strip.
+      window.localStorage.setItem(INSTRUCTIONS_STORAGE_KEY, "collapsed");
+      return;
+    }
+    setInstructionsExpanded(savedPreference === "expanded");
+  }, []);
+
+  function toggleInstructions() {
+    setInstructionsExpanded((expanded) => {
+      const next = !expanded;
+      window.localStorage.setItem(INSTRUCTIONS_STORAGE_KEY, next ? "expanded" : "collapsed");
+      return next;
+    });
+  }
+
   const specialties = useMemo(
     () => ["all", ...new Set(CASE_BANK.flatMap((item) => item.specialty))],
     [],
@@ -40,51 +62,73 @@ function CaseLibrary() {
       (difficulty === "all" || item.difficulty === Number(difficulty)) &&
       (specialty === "all" || item.specialty.includes(specialty)),
   );
-  const spotlight = CASE_BANK[0];
 
   return (
-    <div className="case-cockpit mx-auto max-w-6xl space-y-8 pb-8">
-      <section className="case-panel relative isolate overflow-hidden bg-[#173d42] p-6 text-white md:p-9">
-        <div className="absolute -right-20 -top-24 -z-10 size-72 rounded-full bg-cyan-300/15 blur-2xl" />
-        <div className="absolute -bottom-32 right-24 -z-10 size-64 rounded-full bg-amber-300/10 blur-2xl" />
-        <div className="max-w-3xl">
-          <p className="text-xs font-black uppercase tracking-[0.2em] text-cyan-200">
-            Solve the medical case
-          </p>
-          <h1 className="mt-3 font-display text-3xl font-black leading-tight md:text-5xl">
-            The chart won&apos;t tell you what matters. Your decisions will.
-          </h1>
-          <p className="mt-4 max-w-2xl text-sm font-semibold leading-relaxed text-white/72 md:text-base">
-            Question the patient, uncover evidence, protect them from deterioration and commit when
-            your reasoning is ready.
-          </p>
-          <div className="mt-6 flex flex-wrap gap-3 text-xs font-extrabold text-white/78">
-            <FeaturePill icon={<Clock3 className="size-4" />}>Time-sensitive</FeaturePill>
-            <FeaturePill icon={<Activity className="size-4" />}>Live vitals</FeaturePill>
-            <FeaturePill icon={<ShieldCheck className="size-4" />}>Safety gates</FeaturePill>
+    <div className="case-cockpit mx-auto max-w-6xl space-y-6 pb-8">
+      <section
+        className="case-panel overflow-hidden bg-yellow-soft"
+        aria-labelledby="case-instructions-title"
+      >
+        <div
+          className={`grid grid-cols-[auto_minmax(0,1fr)] items-center transition-[padding,gap] duration-200 ${instructionsExpanded ? "gap-3 p-3 sm:gap-4 sm:p-4" : "gap-2 p-2 sm:gap-3 sm:p-3"}`}
+        >
+          <DrAmbrose
+            expression={instructionsExpanded ? "encouraging" : "neutral"}
+            variant="logo"
+            className={`${instructionsExpanded ? "w-20 self-start sm:w-24" : "w-10 sm:w-12"} transition-[width] duration-200`}
+          />
+          <div className="min-w-0">
+            <div className="flex min-w-0 items-center justify-between gap-2">
+              <h1
+                id="case-instructions-title"
+                className={`${instructionsExpanded ? "text-xl sm:text-2xl" : "truncate text-sm sm:text-base"} font-display font-black text-slate-900`}
+              >
+                {CASE_LIBRARY_INSTRUCTIONS.title}
+              </h1>
+              <button
+                type="button"
+                aria-expanded={instructionsExpanded}
+                aria-controls="case-instructions-content"
+                onClick={toggleInstructions}
+                className="clay-button inline-flex shrink-0 items-center gap-1 rounded-full bg-white px-2.5 py-2 text-[10px] font-black text-[#0d686d] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#168d91] focus-visible:ring-offset-2 sm:px-3 sm:text-xs"
+              >
+                {instructionsExpanded ? "Hide" : "Show instructions"}
+                <ChevronDown
+                  className={`size-4 transition-transform duration-200 ${instructionsExpanded ? "rotate-180" : ""}`}
+                  aria-hidden="true"
+                />
+              </button>
+            </div>
+            <div
+              id="case-instructions-content"
+              aria-hidden={!instructionsExpanded}
+              className={`grid transition-[grid-template-rows,opacity] duration-200 ease-out ${instructionsExpanded ? "grid-rows-[1fr] opacity-100" : "grid-rows-[0fr] opacity-0"}`}
+            >
+              <div className="min-h-0 overflow-hidden">
+                <div className="case-speech-bubble mt-3 rounded-[20px] bg-white p-3.5 sm:p-4">
+                  <p className="text-sm font-extrabold leading-relaxed text-slate-700">
+                    {CASE_LIBRARY_INSTRUCTIONS.intro}
+                  </p>
+                  <ol className="mt-3 grid gap-2 sm:grid-cols-2">
+                    {CASE_LIBRARY_INSTRUCTIONS.steps.map((step, index) => (
+                      <li
+                        key={step}
+                        className="flex items-start gap-2 rounded-2xl bg-[#f8f6f0] px-3 py-2 text-xs font-bold leading-relaxed text-slate-700"
+                      >
+                        <span
+                          aria-hidden="true"
+                          className="grid size-5 shrink-0 place-items-center rounded-full bg-[#dff4f1] text-[10px] font-black text-[#0d686d]"
+                        >
+                          {index + 1}
+                        </span>
+                        <span>{step}</span>
+                      </li>
+                    ))}
+                  </ol>
+                </div>
+              </div>
+            </div>
           </div>
-        </div>
-      </section>
-
-      <section className="case-panel grid overflow-hidden bg-[#e4f6f3] md:grid-cols-[1fr_auto]">
-        <div className="p-6 md:p-8">
-          <p className="text-[11px] font-black uppercase tracking-[0.18em] text-[#107b80]">
-            Recommended first case
-          </p>
-          <h2 className="mt-2 text-2xl font-black text-slate-900">{spotlight.title}</h2>
-          <p className="mt-2 max-w-2xl text-sm font-semibold leading-relaxed text-slate-600">
-            {spotlight.intro}
-          </p>
-          <Link
-            to="/cases/$caseId"
-            params={{ caseId: spotlight.id }}
-            className="case-primary-button mt-5 inline-flex px-5 py-3"
-          >
-            Enter the ER <ArrowRight className="size-4" />
-          </Link>
-        </div>
-        <div className="grid min-w-56 place-items-center bg-[#cceee9] px-6 pt-4">
-          <DrAmbrose expression="encouraging" className="w-44 max-w-full" />
         </div>
       </section>
 
@@ -203,15 +247,6 @@ function CasesLoading() {
         I&apos;m checking the handover notes and getting the patient bay ready.
       </CaseMascotState>
     </section>
-  );
-}
-
-function FeaturePill({ icon, children }: { icon: ReactNode; children: ReactNode }) {
-  return (
-    <span className="inline-flex items-center gap-2 rounded-full bg-white/10 px-3 py-2">
-      {icon}
-      {children}
-    </span>
   );
 }
 

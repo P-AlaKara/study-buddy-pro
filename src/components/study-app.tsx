@@ -27,7 +27,6 @@ import {
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
-import heartImage from "@/assets/clinical-heart.jpg";
 import type { Database } from "@/integrations/supabase/types";
 import {
   CelebrationLayer,
@@ -37,6 +36,8 @@ import {
   StudentUtilities,
 } from "@/components/gamification";
 import { DR_AMBROSE, DrAmbrose } from "@/features/case-challenge/components/dr-ambrose";
+import { PatientAvatar } from "@/features/case-challenge/components/patient-avatar";
+import { FEATURED_CASE } from "@/features/case-challenge/featured-case";
 
 type Student = Pick<
   Database["public"]["Tables"]["students"]["Row"],
@@ -358,34 +359,41 @@ export function StudyApp({ view, children }: { view: View; children?: ReactNode 
                       ✦ Weekly case
                     </span>
                     <h2 className="mt-5 font-display text-2xl font-black leading-tight md:text-4xl">
-                      A breathless patient in the emergency unit
+                      {FEATURED_CASE.title}
                     </h2>
-                    <p className="mt-3 text-sm leading-relaxed text-ink-soft md:text-base">
-                      A 42-year-old arrives with sudden shortness of breath. What will you do first?
+                    <p className="mt-3 line-clamp-2 text-sm leading-relaxed text-ink-soft md:text-base">
+                      {FEATURED_CASE.intro}
                     </p>
-                    <div className="mt-4 flex flex-wrap gap-x-4 gap-y-1 text-xs font-bold text-ink-soft">
-                      <span>Intermediate</span>
-                      <span>⏱ 20 min</span>
-                      <span>👥 128 taking part</span>
+                    <div className="mt-4 flex flex-wrap gap-2 text-xs font-bold text-ink-soft">
+                      <span className="rounded-full bg-card/70 px-3 py-1">
+                        Level {FEATURED_CASE.difficulty}
+                      </span>
+                      {FEATURED_CASE.specialty.map((specialty) => (
+                        <span key={specialty} className="rounded-full bg-card/70 px-3 py-1">
+                          {specialty}
+                        </span>
+                      ))}
                     </div>
                     <Button
                       variant="lavender"
                       className="mt-5"
-                      onClick={() => navigate({ to: "/cases" })}
+                      aria-label={`Start case: ${FEATURED_CASE.title}`}
+                      onClick={() =>
+                        navigate({
+                          to: "/cases/$caseId",
+                          params: { caseId: FEATURED_CASE.id },
+                        })
+                      }
                     >
                       Start case <ArrowRight size={17} />
                     </Button>
                   </div>
-                  <img
-                    src={heartImage}
-                    width={1024}
-                    height={1024}
-                    alt="Soft clay model of a human heart"
-                    className="absolute -right-16 bottom-0 h-[240px] w-[240px] object-cover mix-blend-multiply md:-right-4 md:-bottom-4 md:h-[320px] md:w-[320px]"
+                  <PatientAvatar
+                    patient={FEATURED_CASE.patient}
+                    expression={FEATURED_CASE.patient.initialExpression}
+                    respiratoryRate={FEATURED_CASE.vitalsTimeline[0]?.rr ?? 16}
+                    className="absolute -right-12 bottom-0 w-[220px] max-w-none md:-right-1 md:-bottom-3 md:w-[290px]"
                   />
-                  <div className="absolute bottom-5 left-6 z-10 hidden text-xs font-bold text-ink-soft md:block">
-                    Ends Sunday · 3 days left
-                  </div>
                 </section>
                 <section>
                   <SectionHeading title="Pick up where you left off" />

@@ -4,6 +4,7 @@ import { ArrowLeft, Brain, Crown, HeartPulse, Layers3, Link2, Send, StickyNote, 
 import { Button } from "@/components/ui/button";
 import { useActingStudent } from "@/components/study-app";
 import { supabase } from "@/integrations/supabase/client";
+import { FEATURED_CASE } from "@/features/case-challenge/featured-case";
 
 export const Route = createFileRoute("/groups/$groupId")({
   head: () => ({ meta: [
@@ -74,9 +75,9 @@ function GroupPage() {
   }
   async function teamCase() {
     if (!student) return;
-    const caseId = "11111111-1111-4111-8111-111111111111";
+    const caseId = FEATURED_CASE.id;
     await supabase.from("case_rooms").insert({ case_id: caseId, group_id: groupId, name: `${group?.name ?? "Group"} team`, created_by: student.id });
-    await supabase.from("group_messages").insert({ group_id: groupId, student_id: student.id, message: "Started a team case: A breathless patient in the emergency unit" });
+    await supabase.from("group_messages").insert({ group_id: groupId, student_id: student.id, message: `Started a team case: ${FEATURED_CASE.title}` });
     nav({ to: "/cases/$caseId", params: { caseId } });
   }
 
