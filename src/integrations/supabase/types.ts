@@ -8,6 +8,53 @@ export type Database = {
   };
   public: {
     Tables: {
+      feedback: {
+        Row: {
+          created_at: string;
+          id: string;
+          improve: string | null;
+          liked: string | null;
+          page: string | null;
+          sentiment: string | null;
+          source: string;
+          student_id: string | null;
+          user_agent: string | null;
+          wanted: string | null;
+        };
+        Insert: {
+          created_at?: string;
+          id?: string;
+          improve?: string | null;
+          liked?: string | null;
+          page?: string | null;
+          sentiment?: string | null;
+          source?: string;
+          student_id?: string | null;
+          user_agent?: string | null;
+          wanted?: string | null;
+        };
+        Update: {
+          created_at?: string;
+          id?: string;
+          improve?: string | null;
+          liked?: string | null;
+          page?: string | null;
+          sentiment?: string | null;
+          source?: string;
+          student_id?: string | null;
+          user_agent?: string | null;
+          wanted?: string | null;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "feedback_student_id_fkey";
+            columns: ["student_id"];
+            isOneToOne: false;
+            referencedRelation: "students";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
       achievements: {
         Row: {
           created_at: string;

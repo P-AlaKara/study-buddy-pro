@@ -77,11 +77,33 @@
   * {
     box-sizing: border-box;
   }
+  html {
+    /* Stop iOS from auto-inflating text in landscape and keep widths predictable */
+    -webkit-text-size-adjust: 100%;
+    text-size-adjust: 100%;
+  }
+  /* Safety net against horizontal overflow. `clip` (unlike `hidden`/`auto`)
+     does not create a scroll container, so sticky headers keep working.
+     Structural fixes are applied at the component level too. */
+  html,
+  body {
+    max-width: 100%;
+    overflow-x: clip;
+  }
   body {
     margin: 0;
     background: var(--background);
     color: var(--foreground);
     font-family: "Nunito Sans", sans-serif;
+    -webkit-tap-highlight-color: transparent;
+  }
+  /* Prevent long unbreakable strings (URLs, codes) from forcing overflow */
+  p,
+  h1,
+  h2,
+  h3,
+  h4 {
+    overflow-wrap: break-word;
   }
   h1,
   h2,
@@ -203,6 +225,72 @@
 @media (min-width: 1024px) {
   .app-container {
     width: min(calc(100% - 4rem), var(--app-max-width));
+  }
+}
+
+/* ---------------------------------------------------------------------------
+   Mobile-native polish (phones up to 768px). Desktop is untouched.
+   --------------------------------------------------------------------------- */
+
+/* Full-height app shell uses the dynamic viewport so the iOS/Android browser
+   chrome doesn't cause jumpy 100vh gaps. On desktop dvh === vh. */
+.app-shell {
+  min-height: 100vh;
+  min-height: 100dvh;
+}
+
+/* Native-feeling bottom tab bar */
+.app-tabbar {
+  padding-bottom: max(0.5rem, env(safe-area-inset-bottom));
+}
+.app-tabitem {
+  min-height: 52px;
+}
+
+/* Bottom-sheet animation for mobile dropdowns/modals */
+@keyframes sheet-up {
+  from {
+    transform: translateY(100%);
+  }
+  to {
+    transform: translateY(0);
+  }
+}
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+.mobile-sheet {
+  padding-bottom: max(1rem, env(safe-area-inset-bottom));
+}
+.sheet-scrim {
+  animation: fade-in 0.2s ease-out both;
+}
+@media (max-width: 767px) {
+  .mobile-sheet {
+    animation: sheet-up 0.24s cubic-bezier(0.32, 0.72, 0, 1) both;
+  }
+}
+
+/* On touch devices, hover transforms feel laggy/stuck — swap them for a
+   crisp pressed state instead. Pointer (desktop) devices keep the hover feel. */
+@media (hover: none) {
+  .clay-card:hover {
+    transform: none;
+    box-shadow:
+      0 10px 22px -12px oklch(0.43 0.035 280 / 18%),
+      inset 0 2px 1px oklch(1 0 0 / 85%);
+  }
+  .clay-card:active {
+    transform: scale(0.99);
+  }
+  .clay-button:hover {
+    transform: none;
+    filter: none;
   }
 }
 
@@ -479,7 +567,8 @@
 }
 
 @media (max-width: 1023px) {
-  body:has(.case-cockpit) .app-main-nav {
+  body:has(.case-cockpit) .app-main-nav,
+  body:has(.case-cockpit) .feedback-fab {
     display: none;
   }
 }

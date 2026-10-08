@@ -136,24 +136,24 @@ export function StudentUtilities({ student }: { student?: ActingStudent }) {
   }, [student?.id, notificationsOpen]);
   return (
     <>
-      <div className="flex items-center gap-1.5">
+      <div className="flex shrink-0 items-center gap-1.5">
         <button
           onClick={() => setSearchOpen(true)}
-          className="clay-button flex size-10 items-center justify-center bg-card"
+          className="clay-button flex size-11 shrink-0 items-center justify-center bg-card sm:size-10"
           aria-label="Search everything"
         >
           <Search size={18} />
         </button>
         <Link
           to="/leaderboards"
-          className="clay-button hidden size-10 items-center justify-center bg-yellow-soft sm:flex"
+          className="clay-button hidden size-11 shrink-0 items-center justify-center bg-yellow-soft sm:flex sm:size-10"
           aria-label="Leaderboards"
         >
           <Medal size={18} />
         </Link>
         <button
           onClick={() => setNotificationsOpen(true)}
-          className="clay-button relative flex size-10 items-center justify-center bg-card"
+          className="clay-button relative flex size-11 shrink-0 items-center justify-center bg-card sm:size-10"
           aria-label={`${unread} unread notifications`}
         >
           <Bell size={18} />

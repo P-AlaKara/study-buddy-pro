@@ -26,6 +26,7 @@ import {
   X,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import { useIsMobile } from "@/hooks/use-mobile";
 import { Button } from "@/components/ui/button";
 import type { Database } from "@/integrations/supabase/types";
 import {
@@ -138,6 +139,7 @@ export const useActingStudent = () => useContext(StudentContext);
 
 export function StudyApp({ view, children }: { view: View; children?: ReactNode }) {
   const navigate = useNavigate();
+  const isMobile = useIsMobile();
   const [students, setStudents] = useState<Student[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [switcherOpen, setSwitcherOpen] = useState(false);
@@ -239,12 +241,12 @@ export function StudyApp({ view, children }: { view: View; children?: ReactNode 
   ];
 
   return (
-    <div className="min-h-screen pb-28 lg:pb-10">
-      <header className="sticky top-0 z-30 bg-background/95 backdrop-blur-sm">
-        <div className="app-container flex items-center justify-between gap-3 py-4 md:py-5">
+    <div className="app-shell pb-28 lg:pb-10">
+      <header className="sticky top-0 z-30 border-b border-border/70 bg-background/85 backdrop-blur-md lg:border-b-0 lg:bg-background/95 lg:backdrop-blur-sm">
+        <div className="app-container flex items-center justify-between gap-2 pb-3 pt-[max(0.75rem,env(safe-area-inset-top))] sm:gap-3 md:py-5">
           <Link
             to="/"
-            className="flex items-center gap-2.5 font-display text-[26px] font-black text-foreground"
+            className="flex shrink-0 items-center gap-2.5 font-display text-[26px] font-black text-foreground"
             aria-label="Medley home"
           >
             <span className="flex size-10 items-center justify-center rounded-2xl bg-pink text-foreground shadow-sm">
@@ -265,9 +267,9 @@ export function StudyApp({ view, children }: { view: View; children?: ReactNode 
               </Link>
             ))}
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex min-w-0 items-center gap-1.5 sm:gap-2">
             <StudentUtilities student={student} />
-            <div className="relative">
+            <div className="relative min-w-0">
               <Button
                 variant="secondary"
                 onClick={() => setSwitcherOpen(!switcherOpen)}
@@ -286,46 +288,72 @@ export function StudyApp({ view, children }: { view: View; children?: ReactNode 
                 </span>
                 <ChevronDown size={15} className="shrink-0" />
               </Button>
-              {switcherOpen && (
-                <>
-                  <div className="fixed inset-0 z-30" onClick={() => setSwitcherOpen(false)} />
-                  <div className="absolute right-0 top-14 z-40 w-[min(85vw,290px)] rounded-[22px] bg-card p-2 shadow-xl">
-                    <p className="px-3 pb-2 pt-2 text-xs font-extrabold uppercase text-muted-foreground">
-                      Switch student
-                    </p>
-                    {students.map((item) => (
-                      <Button
-                        key={item.id}
-                        variant="ghost"
-                        onClick={() => selectStudent(item.id)}
-                        className={`h-auto w-full justify-start gap-3 whitespace-normal rounded-2xl px-3 py-2 text-left ${item.id === student?.id ? "bg-mint-soft" : ""}`}
-                      >
-                        <span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-lavender-soft text-xs">
-                          {initials(item.name)}
-                        </span>
-                        <span className="min-w-0">
-                          <span className="block truncate text-sm font-extrabold">{item.name}</span>
-                          <span className="block truncate text-xs font-medium text-muted-foreground">
-                            Year {item.year_of_study} · {item.university}
+              {switcherOpen &&
+                (() => {
+                  const switcherContent = (
+                    <>
+                      <p className="px-3 pb-2 pt-2 text-xs font-extrabold uppercase text-muted-foreground">
+                        Switch student
+                      </p>
+                      {students.map((item) => (
+                        <Button
+                          key={item.id}
+                          variant="ghost"
+                          onClick={() => selectStudent(item.id)}
+                          className={`h-auto w-full justify-start gap-3 whitespace-normal rounded-2xl px-3 py-3 text-left md:py-2 ${item.id === student?.id ? "bg-mint-soft" : ""}`}
+                        >
+                          <span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-lavender-soft text-xs">
+                            {initials(item.name)}
                           </span>
-                        </span>
+                          <span className="min-w-0">
+                            <span className="block truncate text-sm font-extrabold">
+                              {item.name}
+                            </span>
+                            <span className="block truncate text-xs font-medium text-muted-foreground">
+                              Year {item.year_of_study} · {item.university}
+                            </span>
+                          </span>
+                        </Button>
+                      ))}
+                      <div className="my-1 h-px bg-border" />
+                      <Button
+                        variant="ghost"
+                        onClick={() => {
+                          setSwitcherOpen(false);
+                          setOnboarding(true);
+                        }}
+                        className="w-full justify-start gap-3 rounded-2xl px-3 py-3 text-sm md:py-2"
+                      >
+                        <Plus size={18} />
+                        Create demo profile
                       </Button>
-                    ))}
-                    <div className="my-1 h-px bg-border" />
-                    <Button
-                      variant="ghost"
-                      onClick={() => {
-                        setSwitcherOpen(false);
-                        setOnboarding(true);
-                      }}
-                      className="w-full justify-start gap-3 rounded-2xl px-3 text-sm"
+                    </>
+                  );
+                  return isMobile ? (
+                    <div
+                      className="sheet-scrim fixed inset-0 z-50 flex items-end bg-foreground/30 backdrop-blur-sm"
+                      onClick={() => setSwitcherOpen(false)}
                     >
-                      <Plus size={18} />
-                      Create demo profile
-                    </Button>
-                  </div>
-                </>
-              )}
+                      <div
+                        role="dialog"
+                        aria-modal="true"
+                        aria-label="Switch student"
+                        className="mobile-sheet max-h-[75dvh] w-full overflow-y-auto rounded-t-[28px] bg-card p-3 pt-2 shadow-2xl"
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        <div className="mx-auto mb-2 mt-1 h-1.5 w-10 rounded-full bg-border" />
+                        {switcherContent}
+                      </div>
+                    </div>
+                  ) : (
+                    <>
+                      <div className="fixed inset-0 z-30" onClick={() => setSwitcherOpen(false)} />
+                      <div className="absolute right-0 top-14 z-40 w-[min(85vw,290px)] rounded-[22px] bg-card p-2 shadow-xl">
+                        {switcherContent}
+                      </div>
+                    </>
+                  );
+                })()}
             </div>
           </div>
         </div>
@@ -872,9 +900,9 @@ export function StudyApp({ view, children }: { view: View; children?: ReactNode 
       </main>
       <nav
         aria-label="Main navigation"
-        className="app-main-nav fixed bottom-0 left-0 right-0 z-20 rounded-t-[24px] bg-card px-2 pb-[max(10px,env(safe-area-inset-bottom))] pt-2 shadow-[0_-8px_30px_-14px_var(--border)] lg:hidden"
+        className="app-main-nav app-tabbar fixed bottom-0 left-0 right-0 z-20 rounded-t-[24px] border-t border-border/70 bg-card/90 px-2 pt-1.5 shadow-[0_-8px_30px_-14px_var(--border)] backdrop-blur-md lg:hidden"
       >
-        <div className="mx-auto flex max-w-lg items-center justify-around">
+        <div className="mx-auto flex max-w-lg items-stretch justify-around">
           {nav.map((item) => {
             const Icon = item.icon;
             const active = view === item.label.toLowerCase();
@@ -882,9 +910,14 @@ export function StudyApp({ view, children }: { view: View; children?: ReactNode 
               <Link
                 key={item.label}
                 to={item.to}
-                className={`flex min-w-[58px] flex-col items-center gap-1 rounded-2xl px-2 py-2 text-[10px] font-extrabold transition-colors ${active ? "bg-lavender-soft text-foreground" : "text-muted-foreground"}`}
+                aria-current={active ? "page" : undefined}
+                className={`app-tabitem flex min-w-[56px] flex-1 flex-col items-center justify-center gap-1 rounded-2xl px-1 py-1.5 text-[10px] font-extrabold transition-colors active:scale-95 ${active ? "text-foreground" : "text-muted-foreground"}`}
               >
-                <Icon size={21} strokeWidth={active ? 2.5 : 2} />
+                <span
+                  className={`flex h-8 w-14 items-center justify-center rounded-full transition-colors ${active ? "bg-lavender-soft" : "bg-transparent"}`}
+                >
+                  <Icon size={22} strokeWidth={active ? 2.6 : 2} />
+                </span>
                 {item.label}
               </Link>
             );
@@ -893,14 +926,14 @@ export function StudyApp({ view, children }: { view: View; children?: ReactNode 
       </nav>
       {activity && (
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-foreground/25 p-5"
+          className="sheet-scrim fixed inset-0 z-50 flex items-end justify-center bg-foreground/25 backdrop-blur-sm sm:items-center sm:p-5"
           onClick={() => setActivity(null)}
         >
           <div
             role="dialog"
             aria-modal="true"
             aria-label="Coming soon"
-            className="clay-card w-full max-w-sm bg-card p-7 text-center"
+            className="clay-card mobile-sheet w-full rounded-t-[28px] bg-card p-6 text-center sm:max-w-sm sm:rounded-[24px] sm:p-7"
             onClick={(e) => e.stopPropagation()}
           >
             <span className="mx-auto flex size-14 items-center justify-center rounded-2xl bg-lavender-soft">
