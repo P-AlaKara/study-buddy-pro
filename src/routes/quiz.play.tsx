@@ -559,7 +559,7 @@ function Explanation({
 }: {
   q: Question;
   correct: boolean;
-  studentId?: string;
+  studentId?: string | undefined;
 }) {
   const labels: Record<string, string> = {};
   const o = q.options as Opt[] | { left: Opt[] } | { regions: Region[] };

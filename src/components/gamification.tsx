@@ -83,7 +83,7 @@ export function XpLevelCard({
   student,
   compact = false,
 }: {
-  student?: ActingStudent;
+  student?: ActingStudent | undefined;
   compact?: boolean;
 }) {
   const xp = student?.xp ?? 0;
@@ -121,7 +121,7 @@ export function XpLevelCard({
   );
 }
 
-export function StudentUtilities({ student }: { student?: ActingStudent }) {
+export function StudentUtilities({ student }: { student?: ActingStudent | undefined }) {
   const [searchOpen, setSearchOpen] = useState(false);
   const [notificationsOpen, setNotificationsOpen] = useState(false);
   const [unread, setUnread] = useState(0);
@@ -503,7 +503,7 @@ function NotificationsCenter({
   );
 }
 
-export function CelebrationLayer({ student }: { student?: ActingStudent }) {
+export function CelebrationLayer({ student }: { student?: ActingStudent | undefined }) {
   const [levelUp, setLevelUp] = useState<number | null>(null);
   const [badge, setBadge] = useState<Achievement | null>(null);
   useEffect(() => {
@@ -521,7 +521,7 @@ export function CelebrationLayer({ student }: { student?: ActingStudent }) {
         supabase.from("student_achievements").select("achievement_id").eq("student_id", student.id),
         supabase.from("achievements").select("*"),
       ]);
-      const ids = (earned ?? []).map((x) => x.achievement_id);
+      const ids = (earned ?? []).map((x) => x.achievement_id).filter((x): x is string => Boolean(x));
       const key = `medley-earned-${student.id}`;
       const known = JSON.parse(localStorage.getItem(key) ?? "[]") as string[];
       if (!first) {
@@ -585,7 +585,7 @@ function Confetti() {
   );
 }
 
-export function HomeGamification({ student }: { student?: ActingStudent }) {
+export function HomeGamification({ student }: { student?: ActingStudent | undefined }) {
   const [due, setDue] = useState(0);
   const [todayXp, setTodayXp] = useState(0);
   const [achievement, setAchievement] = useState<Achievement | null>(null);
@@ -684,7 +684,7 @@ export function HomeGamification({ student }: { student?: ActingStudent }) {
   );
 }
 
-export function HomeMasteryPreview({ student }: { student?: ActingStudent }) {
+export function HomeMasteryPreview({ student }: { student?: ActingStudent | undefined }) {
   const [rows, setRows] = useState<Mastery[]>([]);
   useEffect(() => {
     if (!student) return;
@@ -731,7 +731,7 @@ export function NoteButton({
   contentType,
   contentId,
 }: {
-  studentId?: string;
+  studentId?: string | undefined;
   contentType: "case" | "quiz_question" | "flashcard" | "osce_station";
   contentId: string;
 }) {
@@ -802,7 +802,7 @@ export function SaveItemButton({
   title,
   href,
 }: {
-  studentId?: string;
+  studentId?: string | undefined;
   contentType: "case" | "osce_station" | "resource";
   contentId: string;
   title: string;
@@ -885,7 +885,7 @@ type DashboardData = {
   decks: Array<{ id: string; flashcard_decks: { title: string } | null }>;
 };
 
-export function ProgressDashboard({ student }: { student?: ActingStudent }) {
+export function ProgressDashboard({ student }: { student?: ActingStudent | undefined }) {
   const [range, setRange] = useState<"week" | "month" | "all">("month");
   const [tab, setTab] = useState<"overview" | "achievements" | "saved" | "notes">("overview");
   const [data, setData] = useState<DashboardData | null>(null);
@@ -976,10 +976,10 @@ export function ProgressDashboard({ student }: { student?: ActingStudent }) {
         reviews: reviews.data ?? [],
         mastery: mastery.data ?? [],
         achievements: achievements.data ?? [],
-        earned: earned.data ?? [],
+        earned: (earned.data ?? []).map((e) => ({ achievement_id: e.achievement_id ?? "", earned_at: e.earned_at })),
         challenges: challenges.data ?? [],
         notes: notes.data ?? [],
-        saved: saved.data ?? [],
+        saved: (saved.data ?? []).map((s) => ({ ...s, related_link: s.related_link ?? "" })),
         questions: (questions.data ?? []) as DashboardData["questions"],
         decks: (decks.data ?? []) as DashboardData["decks"],
       });
@@ -1103,13 +1103,16 @@ export function ProgressDashboard({ student }: { student?: ActingStudent }) {
                 Trophy,
                 "bg-yellow-soft",
               ],
-            ].map(([label, value, Icon, color]) => (
-              <div key={String(label)} className={`clay-card ${color} p-4`}>
-                <Icon className="size-5" />
-                <p className="mt-3 font-display text-2xl font-black">{String(value)}</p>
-                <p className="text-xs font-bold text-ink-soft">{String(label)}</p>
-              </div>
-            ))}
+            ].map(([label, value, Icon, color]) => {
+              const Ico = Icon as ComponentType<{ className?: string }>;
+              return (
+                <div key={String(label)} className={`clay-card ${color} p-4`}>
+                  <Ico className="size-5" />
+                  <p className="mt-3 font-display text-2xl font-black">{String(value)}</p>
+                  <p className="text-xs font-bold text-ink-soft">{String(label)}</p>
+                </div>
+              );
+            })}
           </div>
           <MasteryMap rows={data.mastery} />
           <div className="grid gap-4 md:grid-cols-2">
@@ -1362,7 +1365,7 @@ const boardTabs = [
   "University",
   "Year",
 ] as const;
-export function Leaderboards({ student }: { student?: ActingStudent }) {
+export function Leaderboards({ student }: { student?: ActingStudent | undefined }) {
   const [tab, setTab] = useState<(typeof boardTabs)[number]>("Weekly");
   const [entries, setEntries] = useState<
     Array<{ id: string; name: string; detail: string; score: number; self?: boolean }>
