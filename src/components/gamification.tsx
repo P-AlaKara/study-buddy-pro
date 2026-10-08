@@ -976,10 +976,10 @@ export function ProgressDashboard({ student }: { student?: ActingStudent | undef
         reviews: reviews.data ?? [],
         mastery: mastery.data ?? [],
         achievements: achievements.data ?? [],
-        earned: earned.data ?? [],
+        earned: (earned.data ?? []).map((e) => ({ achievement_id: e.achievement_id ?? "", earned_at: e.earned_at })),
         challenges: challenges.data ?? [],
         notes: notes.data ?? [],
-        saved: saved.data ?? [],
+        saved: (saved.data ?? []).map((s) => ({ ...s, related_link: s.related_link ?? "" })),
         questions: (questions.data ?? []) as DashboardData["questions"],
         decks: (decks.data ?? []) as DashboardData["decks"],
       });
