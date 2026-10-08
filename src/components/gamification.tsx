@@ -1103,13 +1103,16 @@ export function ProgressDashboard({ student }: { student?: ActingStudent | undef
                 Trophy,
                 "bg-yellow-soft",
               ],
-            ].map(([label, value, Icon, color]) => (
-              <div key={String(label)} className={`clay-card ${color} p-4`}>
-                <Icon className="size-5" />
-                <p className="mt-3 font-display text-2xl font-black">{String(value)}</p>
-                <p className="text-xs font-bold text-ink-soft">{String(label)}</p>
-              </div>
-            ))}
+            ].map(([label, value, Icon, color]) => {
+              const Ico = Icon as ComponentType<{ className?: string }>;
+              return (
+                <div key={String(label)} className={`clay-card ${color} p-4`}>
+                  <Ico className="size-5" />
+                  <p className="mt-3 font-display text-2xl font-black">{String(value)}</p>
+                  <p className="text-xs font-bold text-ink-soft">{String(label)}</p>
+                </div>
+              );
+            })}
           </div>
           <MasteryMap rows={data.mastery} />
           <div className="grid gap-4 md:grid-cols-2">
