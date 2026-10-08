@@ -17,15 +17,27 @@ export type Database = {
       achievements: {
         Row: {
           created_at: string
+          criteria: Json
+          description: string
+          icon: string
           id: string
+          name: string
         }
         Insert: {
           created_at?: string
+          criteria?: Json
+          description?: string
+          icon?: string
           id?: string
+          name?: string
         }
         Update: {
           created_at?: string
+          criteria?: Json
+          description?: string
+          icon?: string
           id?: string
+          name?: string
         }
         Relationships: []
       }
@@ -477,6 +489,53 @@ export type Database = {
           },
         ]
       }
+      feedback: {
+        Row: {
+          created_at: string
+          id: string
+          improve: string | null
+          liked: string | null
+          page: string | null
+          sentiment: string | null
+          source: string | null
+          student_id: string | null
+          user_agent: string | null
+          wanted: string | null
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          improve?: string | null
+          liked?: string | null
+          page?: string | null
+          sentiment?: string | null
+          source?: string | null
+          student_id?: string | null
+          user_agent?: string | null
+          wanted?: string | null
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          improve?: string | null
+          liked?: string | null
+          page?: string | null
+          sentiment?: string | null
+          source?: string | null
+          student_id?: string | null
+          user_agent?: string | null
+          wanted?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "feedback_student_id_fkey"
+            columns: ["student_id"]
+            isOneToOne: false
+            referencedRelation: "students"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       flashcard_decks: {
         Row: {
           created_at: string
@@ -792,35 +851,145 @@ export type Database = {
           },
         ]
       }
-      mastery_scores: {
+      leaderboard_opt_outs: {
         Row: {
           created_at: string
           id: string
+          student_id: string | null
         }
         Insert: {
           created_at?: string
           id?: string
+          student_id?: string | null
         }
         Update: {
           created_at?: string
           id?: string
+          student_id?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "leaderboard_opt_outs_student_id_fkey"
+            columns: ["student_id"]
+            isOneToOne: true
+            referencedRelation: "students"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      mastery_scores: {
+        Row: {
+          competency: string
+          created_at: string
+          id: string
+          level_label: string
+          numeric_score: number
+          student_id: string | null
+          subject_or_system: string
+        }
+        Insert: {
+          competency?: string
+          created_at?: string
+          id?: string
+          level_label?: string
+          numeric_score?: number
+          student_id?: string | null
+          subject_or_system?: string
+        }
+        Update: {
+          competency?: string
+          created_at?: string
+          id?: string
+          level_label?: string
+          numeric_score?: number
+          student_id?: string | null
+          subject_or_system?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "mastery_scores_student_id_fkey"
+            columns: ["student_id"]
+            isOneToOne: false
+            referencedRelation: "students"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      notes: {
+        Row: {
+          content_id: string
+          content_type: string
+          created_at: string
+          id: string
+          is_shared: boolean
+          note_text: string
+          student_id: string | null
+        }
+        Insert: {
+          content_id: string
+          content_type: string
+          created_at?: string
+          id?: string
+          is_shared?: boolean
+          note_text: string
+          student_id?: string | null
+        }
+        Update: {
+          content_id?: string
+          content_type?: string
+          created_at?: string
+          id?: string
+          is_shared?: boolean
+          note_text?: string
+          student_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "notes_student_id_fkey"
+            columns: ["student_id"]
+            isOneToOne: false
+            referencedRelation: "students"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       notifications: {
         Row: {
           created_at: string
           id: string
+          is_read: boolean
+          message: string
+          related_link: string | null
+          student_id: string | null
+          type: string
         }
         Insert: {
           created_at?: string
           id?: string
+          is_read?: boolean
+          message?: string
+          related_link?: string | null
+          student_id?: string | null
+          type?: string
         }
         Update: {
           created_at?: string
           id?: string
+          is_read?: boolean
+          message?: string
+          related_link?: string | null
+          student_id?: string | null
+          type?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "notifications_student_id_fkey"
+            columns: ["student_id"]
+            isOneToOne: false
+            referencedRelation: "students"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       osce_attempts: {
         Row: {
@@ -1249,20 +1418,82 @@ export type Database = {
           },
         ]
       }
-      student_achievements: {
+      saved_items: {
         Row: {
+          content_id: string
+          content_type: string
           created_at: string
           id: string
+          related_link: string | null
+          student_id: string | null
+          title: string
         }
         Insert: {
+          content_id: string
+          content_type: string
           created_at?: string
           id?: string
+          related_link?: string | null
+          student_id?: string | null
+          title?: string
         }
         Update: {
+          content_id?: string
+          content_type?: string
           created_at?: string
           id?: string
+          related_link?: string | null
+          student_id?: string | null
+          title?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "saved_items_student_id_fkey"
+            columns: ["student_id"]
+            isOneToOne: false
+            referencedRelation: "students"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      student_achievements: {
+        Row: {
+          achievement_id: string | null
+          created_at: string
+          earned_at: string
+          id: string
+          student_id: string | null
+        }
+        Insert: {
+          achievement_id?: string | null
+          created_at?: string
+          earned_at?: string
+          id?: string
+          student_id?: string | null
+        }
+        Update: {
+          achievement_id?: string | null
+          created_at?: string
+          earned_at?: string
+          id?: string
+          student_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "student_achievements_achievement_id_fkey"
+            columns: ["achievement_id"]
+            isOneToOne: false
+            referencedRelation: "achievements"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "student_achievements_student_id_fkey"
+            columns: ["student_id"]
+            isOneToOne: false
+            referencedRelation: "students"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       students: {
         Row: {
@@ -1426,16 +1657,36 @@ export type Database = {
         Row: {
           created_at: string
           id: string
+          source_id: string | null
+          source_type: string
+          student_id: string | null
+          xp_amount: number
         }
         Insert: {
           created_at?: string
           id?: string
+          source_id?: string | null
+          source_type?: string
+          student_id?: string | null
+          xp_amount?: number
         }
         Update: {
           created_at?: string
           id?: string
+          source_id?: string | null
+          source_type?: string
+          student_id?: string | null
+          xp_amount?: number
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "xp_events_student_id_fkey"
+            columns: ["student_id"]
+            isOneToOne: false
+            referencedRelation: "students"
+            referencedColumns: ["id"]
+          },
+        ]
       }
     }
     Views: {
