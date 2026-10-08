@@ -1,6 +1,4 @@
-# Study Buddy Pro
-
-> **Clinical content:** The two interactive demo cases are marked `clinician_reviewed`. New or revised case content must be reviewed by a qualified clinician before release. Educational use only, not medical advice.
+# Medley Study Tool
 
 A medical education platform for medical students. The flagship feature is an interactive clinical case simulator; other tools (OSCE prep, quizzes, flashcards, groups, gamification) orbit around it. 
 
