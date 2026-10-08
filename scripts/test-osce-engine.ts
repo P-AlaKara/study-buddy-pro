@@ -1,4 +1,5 @@
 import * as assert from "node:assert/strict";
+import { createOsceDebrief } from "../src/features/osce/debrief.js";
 import {
   advanceIdleTime,
   advanceReadingCountdown,
@@ -17,6 +18,12 @@ import {
   type OsceState,
 } from "../src/features/osce/engine.js";
 import { resolveExaminerReaction } from "../src/features/osce/reaction-config.js";
+import {
+  loadOsceProgress,
+  OSCE_PROGRESS_STORAGE_KEY,
+  recommendedOsceMode,
+  saveOsceResult,
+} from "../src/features/osce/progress.js";
 import { CHEST_TIGHTNESS_STATION as station } from "../src/features/osce/stations/chest-tightness-on-the-stairs.js";
 import type { OsceMode } from "../src/features/osce/schema.js";
 
@@ -444,6 +451,61 @@ test("completes the authored efficient path within the clock with an Excellent r
   assert.equal(state.finalResult?.score.examinerQuestions, 100);
   assert.equal(state.finalResult?.rating, "excellent");
   assert.ok((state.finalResult?.score.checklist ?? 0) >= 90);
+});
+
+test("builds a complete debrief with domain, cue, question, timeline and model-run reviews", () => {
+  const state = runEfficientSession();
+  const debrief = createOsceDebrief(state, station);
+  assert.equal(debrief.checklistDomains.length, 6);
+  assert.equal(
+    debrief.checklistDomains.flatMap((domain) => domain.items).length,
+    station.checklist.length,
+  );
+  assert.equal(debrief.cues.length, station.cues.length);
+  assert.equal(debrief.examinerQuestions.length, station.examinerQuestions.length);
+  assert.equal(debrief.modelRun.length, station.modelRun.length);
+  assert.equal(debrief.coachingLines.length, 3);
+  assert.ok(debrief.timeline.some((event) => event.type === "result"));
+  assert.ok(debrief.rapportHistory.length > 1);
+
+  let poor = selectOsceCard(room(), station, "social_smoking_judgmental");
+  poor = answerAllCorrect(endConsultation(poor, station));
+  const poorDebrief = createOsceDebrief(poor, station);
+  assert.ok(poorDebrief.timeline.some((event) => event.wastedSeconds === 18));
+  assert.equal(
+    poorDebrief.checklistDomains
+      .flatMap((domain) => domain.items)
+      .find((entry) => entry.item.id === "comm_empathy")?.status,
+    "penalised",
+  );
+});
+
+test("persists the best OSCE rating per mode while counting every attempt", () => {
+  const values = new Map<string, string>();
+  const storage = {
+    getItem: (key: string) => values.get(key) ?? null,
+    setItem: (key: string, value: string) => {
+      values.set(key, value);
+    },
+  };
+  const excellent = runEfficientSession().finalResult;
+  assert.ok(excellent);
+  let progress = saveOsceResult(station.id, "learn", excellent, storage, "2026-01-01T00:00:00Z");
+  assert.equal(progress.stations[station.id]?.learn?.bestRating, "excellent");
+  assert.equal(progress.stations[station.id]?.learn?.attempts, 1);
+
+  const worse = structuredClone(excellent);
+  worse.rating = "clear_fail";
+  worse.score.composite = 100;
+  progress = saveOsceResult(station.id, "learn", worse, storage, "2026-01-02T00:00:00Z");
+  assert.equal(progress.stations[station.id]?.learn?.bestRating, "excellent");
+  assert.equal(progress.stations[station.id]?.learn?.attempts, 2);
+  assert.equal(progress.stations[station.id]?.learn?.completedAt, "2026-01-01T00:00:00Z");
+  assert.deepEqual(loadOsceProgress(storage), progress);
+  assert.equal(recommendedOsceMode(progress.stations[station.id]), "practice");
+
+  storage.setItem(OSCE_PROGRESS_STORAGE_KEY, "not-json");
+  assert.deepEqual(loadOsceProgress(storage), { version: 1, stations: {} });
 });
 
 test("caps strong checklist performance at Borderline when rapport is poor", () => {

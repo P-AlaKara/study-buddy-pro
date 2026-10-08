@@ -565,6 +565,24 @@
   background: var(--yellow-soft);
   transform: rotate(45deg);
 }
+.osce-debrief-timeline {
+  position: relative;
+}
+.osce-debrief-timeline::before {
+  content: "";
+  position: absolute;
+  top: 1rem;
+  right: 1.5rem;
+  left: 1.5rem;
+  height: 0.25rem;
+  border-radius: 999px;
+  background: linear-gradient(90deg, var(--mint-soft), var(--lavender-soft), var(--pink-soft));
+}
+.osce-debrief :where([tabindex="0"]):focus-visible {
+  border-radius: 1rem;
+  outline: 2px solid var(--mint);
+  outline-offset: 3px;
+}
 
 @keyframes osce-door-breathe {
   0%,

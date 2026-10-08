@@ -15,6 +15,10 @@ and Exam card shuffling can be replayed exactly in the debrief.
 
 All transitions return a new state. The input state is not mutated.
 
+The debrief builder turns the final engine state into checklist-domain, cue, timeline, rapport,
+examiner-question and model-run reviews. The UI also replays every seeded examiner reaction and
+labels deliberate noise honestly.
+
 ## Timing policy
 
 Authored card costs always consume simulated station time. Learn mode pauses while idle. Practice
@@ -32,3 +36,9 @@ and Practice nudge costs are deducted after weighted components are combined.
 Authored critical fails cap the result at `clear_fail`. Station-level communication gates can cap an
 otherwise high result at `borderline`, ensuring checklist coverage cannot compensate for seriously
 poor rapport or communication.
+
+## Progress and authoring
+
+The browser UI stores the best rating and composite score per mode and station in local storage,
+while keeping storage out of the deterministic engine. See `OSCE_AUTHORING_GUIDE.md` for the station
+schema, distractor and cue rules, validation requirements, and difficulty-tuning controls.

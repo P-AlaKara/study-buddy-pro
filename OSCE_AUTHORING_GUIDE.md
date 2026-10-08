@@ -1,62 +1,124 @@
 # OSCE v2 authoring guide
 
-OSCE v2 stations are typed data. A new history-taking station should require a station file and an
-export from `src/features/osce/stations/index.ts`; clinical behavior must not be hard-coded in UI
-components.
+OSCE v2 stations are typed data. The deterministic engine, consultation UI, scoring and debrief do
+not contain station-specific branching, so adding a station should require one station file plus an
+entry in `src/features/osce/stations/index.ts`.
 
-Every station remains `needs_clinician_review` until a qualified reviewer has checked the content,
-answer keys, urgency, safety advice, and local clinical/licensing assumptions.
+Clinical content must be reviewed by a qualified clinician before `reviewStatus` is changed from
+`needs_clinician_review` to `clinician_reviewed`.
 
-## Schema at a glance
+## Authoring workflow
 
-- `facts` contains stable fact IDs referenced by card reveals. Keep wording patient-specific.
-- `cards` define what the student can say or do, simulated time, rapport effects, replies for low,
-  mid, and high rapport, unlocks, cue windows, checklist effects, and examiner signals.
-- `cues` define the patient's line, prerequisites, three-action response window, ideal response, and
-  penalty for missing it.
-- `curveball` references exactly four response cards. Exactly one must use
-  `curveballResponseKind: "honest_empathic"`.
-- `checklist` contains weighted, domain-grouped outcomes and a concrete one-line coaching prompt.
-- `criticalFails` can be triggered by taking an unsafe action or by missing one or all referenced
-  checklist items.
-- `examinerQuestions` use keyed single- or multiple-selection options; there is never free text.
-- `modelRun` is an efficient, defensible order with a short reason for every included action.
-- `ratingThresholds`, nudge costs, and idle-drift settings are station-level difficulty controls.
+1. Copy an existing station in `src/features/osce/stations/` and give every entity a station-unique
+   ID.
+2. Fill the patient, facts, cards, cues, curveball, checklist, critical fails, examiner questions,
+   model run, nudges and rating thresholds.
+3. Export the station from the station index.
+4. Run `npm run validate:osce`, `npm run test:osce-validator` and `npm run test:osce-engine`.
+5. Play all three modes on mobile and desktop, including deliberately poor and incomplete runs.
 
-## Card design
+The source of truth for field types is `src/features/osce/schema.ts`. Logic belongs in the engine or
+shared reaction configuration, never inside a station data file.
 
-Write labels as natural student speech, not checklist labels. Closed and open versions of a topic
-may coexist. An open question should earn its extra time by producing a richer answer or satisfying
-several related checklist items. Use `unlockedBy` for follow-ups that make no sense before a fact or
-cue has emerged. Use `conditionalFactReveal` for hidden facts that require mid/high rapport.
+## Station shape
 
-Each category needs 6-12 cards. Across the full station, 30-40% must use one of the deliberately poor
-styles: `leading`, `judgmental`, `jargon`, `multi_barrelled`, `irrelevant`, or `dismissive`. Poor cards
-must have believable replies and explicit consequences; they should never be cartoonishly easy to
-spot. A distractor should compete for time or test phrasing judgment, not merely add random comedy.
+Top-level timing is expressed in seconds. `candidateInstructions` should state the role, setting,
+task and limits. `examinerNote` should clarify anything the candidate must not do. The patient
+contains only presentation data and avatar configuration; all discoverable clinical information
+lives in facts and card replies.
 
-Sensitive cards should set `sensitive: true` and an `earlyRapportPenalty`. Avoid encoding a preferred
-linear script: multiple good paths should work, and Practice/Exam will shuffle available cards.
+Each card defines:
 
-## Cue design
+- `category` and natural student-facing `label`;
+- communication `style`, time cost and whether it may repeat;
+- prerequisites in `unlockedBy` and an optional three-action cue window;
+- low, mid and high rapport replies;
+- fact reveals and checklist items satisfied or penalised;
+- rapport change, examiner signal, and optional cue or curveball trigger.
 
-A cue is an unfinished thought, emotional shift, or practical detail worth acknowledging. It must
-have at least one pickup card, an ideal pickup card, and a short action window. Add prerequisites when
-the line only makes sense after a particular part of the history. The pickup card belongs in
-`communicate` and should not be visually highlighted during play.
+Use low-rapport replies that are clipped or guarded, mid replies that answer exactly what was asked,
+and high replies that volunteer a useful extra detail. Do not put answers or relevance hints in card
+labels.
 
-Do not reveal a hidden agenda simply because the cue appeared. Put the protected fact behind an ICE
-card or a cue pickup with `conditionalFactReveal` at mid/high rapport.
+## Useful cards and distractors
 
-## Tuning difficulty
+At least 30% of authored cards must be distractors or poor technique. Use a realistic mixture of:
 
-- Increase `timeCostSec` on broad replies or lower `clockSeconds` to increase prioritization pressure.
-- Tune cue `windowActions` and `missedRapportPenalty` to make active listening more or less demanding.
-- Adjust rapport deltas and `earlyRapportPenalty` to change how quickly the patient becomes open.
-- Adjust nudge costs and rating component weights without changing the conversation itself.
-- Keep the model run at or below 95% of the station clock.
-- Keep the sum of all useful, non-poor cards above the clock so exhaustive clicking cannot succeed.
+- leading or judgmental versions of otherwise useful questions;
+- jargon and multi-barrelled wording;
+- dismissive responses;
+- plausible but low-value or irrelevant review-of-systems questions.
 
-Run `npm run validate:osce` after every authoring change. The validator checks ID integrity,
-checklist coverage, cue pickup wiring, critical-fail triggers, poor-card ratio, time pressure, fact
-references, examiner keys, thresholds, and the unique honest-empathic curveball response.
+Every poor card needs an authored consequence: time cost, rapport loss, examiner reaction and, when
+appropriate, a checklist penalty. Avoid cartoonishly bad wording—the learner should need to judge
+between plausible alternatives.
+
+Aim for roughly 50–60 cards overall and 6–12 cards in each populated category. Set `sensitive: true`
+and an `earlyRapportPenalty` on social, family or emotional questions that should land badly when
+asked before rapport is established. Use `unlockedBy` for contextual follow-ups and
+`conditionalFactReveal` when a fact also requires mid or high rapport.
+
+Open questions should be efficient and may satisfy several tightly related checklist items. Closed
+questions should answer one focused point. The combined duration of all useful cards must exceed the
+station clock, so prioritisation remains necessary.
+
+## Cues and hidden information
+
+A cue should sound like something a real patient might volunteer, not like a prompt from the app.
+Give every cue:
+
+- a trigger card and any clinical or rapport prerequisites;
+- one or more pickup cards in the Communicate category;
+- exactly one ideal response;
+- a three-action window and a proportionate missed-rapport penalty.
+
+Newly unlocked and cue-window cards are intentionally not highlighted. Important hidden information
+may require both a specific question and sufficient rapport. ICE concerns should not leak through
+unrelated cards.
+
+The curveball should test uncertainty, empathy or safety. Provide four response styles and exactly
+one `honest_empathic` response. False reassurance may trigger a critical fail when clinically
+appropriate.
+
+## Checklist and critical fails
+
+Group checklist items into the six supported domains:
+
+- `opening_and_consent`
+- `history_content`
+- `risk_and_red_flags`
+- `ice`
+- `communication`
+- `closing_and_safety`
+
+Every item must be satisfiable by at least one card and must have a specific, one-line coaching
+message. Weights should reflect clinical importance rather than the number of words needed to ask a
+question. Reserve `criticalFailIfMissing` and critical-fail rules for genuine identity, consent or
+safety failures.
+
+## Model run and difficulty tuning
+
+`modelRun` is one defensible, efficient order—not the only correct consultation. It should finish in
+roughly 80–95% of the clock, respond to cue windows, uncover the key red flag and close safely. Give
+each step a reason suitable for debrief comparison.
+
+Tune difficulty with data rather than UI hints:
+
+- increase or decrease card time costs;
+- adjust distractor similarity and proportion;
+- change cue prerequisites, rapport threshold or window length;
+- adjust rapport deltas and early-sensitive-question penalties;
+- move the curveball trigger percentage;
+- tune checklist weights, rating thresholds and communication caps;
+- adjust idle drift and nudge costs.
+
+Keep the reaction ambiguity in `src/features/osce/reaction-config.ts`. Practice and Exam true signals
+are intentionally reliable about 80% of the time, neutral noise appears about 10% of the time, and
+routine writing is not evidence of quality.
+
+## Required checks
+
+The validator rejects unsatisfiable checklist items, invalid references, cues without pickup cards,
+untriggerable critical fails, insufficient distractors, an overlong model run, insufficient time
+pressure, and curveballs without exactly one honest-empathic response. A passing validator confirms
+structural integrity, not clinical accuracy; clinician review remains mandatory.

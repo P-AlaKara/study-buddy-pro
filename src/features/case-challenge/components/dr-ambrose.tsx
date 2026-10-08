@@ -50,9 +50,7 @@ export function DrAmbrose({
         aria-labelledby={`${id}-title`}
         className="h-full w-full overflow-visible drop-shadow-[0_12px_14px_rgb(34_51_65/18%)]"
       >
-        <title id={`${id}-title`}>
-          {DR_AMBROSE.name}, {expression}
-        </title>
+        <title id={`${id}-title`}>{`${DR_AMBROSE.name}, ${expression}`}</title>
         <defs>
           <linearGradient id={`${id}-coat`} x1="0" y1="0" x2="0" y2="1">
             <stop stopColor="#ffffff" />

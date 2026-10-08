@@ -14,6 +14,7 @@ import {
   skipReading,
   type OsceState,
 } from "../engine.js";
+import { saveOsceResult } from "../progress.js";
 import type { OsceCard, OsceCategory, OsceMode, OsceStation } from "../schema.js";
 import { ConsultationRoom } from "./consultation-room.js";
 import { DoorScreen } from "./door-screen.js";
@@ -46,6 +47,7 @@ export function OsceScreen({ station, mode }: { station: OsceStation; mode: Osce
   const reactionResetTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const nudgeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const displayedReactionIdRef = useRef<string | null>(null);
+  const savedCompletionKeyRef = useRef<string | null>(null);
 
   useEffect(
     () => () => {
@@ -92,6 +94,14 @@ export function OsceScreen({ station, mode }: { station: OsceStation; mode: Osce
       );
     }, reaction.delayMs);
   }, [game.examinerReactions, game.phase]);
+
+  useEffect(() => {
+    if (game.status !== "complete" || !game.finalResult) return;
+    const completionKey = `${game.stationId}:${game.mode}:${game.sessionSeed}`;
+    if (savedCompletionKeyRef.current === completionKey) return;
+    saveOsceResult(game.stationId, game.mode, game.finalResult);
+    savedCompletionKeyRef.current = completionKey;
+  }, [game.finalResult, game.mode, game.sessionSeed, game.stationId, game.status]);
 
   useEffect(() => {
     if (game.phase !== "door" || game.readingSecondsRemaining <= 0) return;
