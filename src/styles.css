@@ -481,6 +481,83 @@
   animation: ambrose-spark 2s ease-in-out infinite;
 }
 
+.osce-door-card,
+.osce-room-header {
+  border: 1px solid rgb(255 255 255 / 0.78);
+}
+.osce-door {
+  transform-origin: left center;
+  animation: osce-door-breathe 4s ease-in-out infinite;
+}
+.osce-enter-ready {
+  animation: osce-ready-pulse 2s ease-in-out infinite;
+}
+.osce-bell {
+  transform-origin: top center;
+}
+.osce-enter-ready .osce-bell {
+  animation: osce-bell-ring 1.6s ease-in-out infinite;
+}
+.osce-question-card {
+  box-shadow:
+    0 8px 16px -14px oklch(0.43 0.035 280 / 28%),
+    inset 0 2px 1px oklch(1 0 0 / 80%);
+}
+.osce-card-used {
+  box-shadow: inset 0 3px 8px oklch(0.43 0.035 280 / 11%);
+}
+.osce-patient-bubble {
+  border: 1px solid rgb(255 255 255 / 0.85);
+}
+.osce-examiner-bubble {
+  position: relative;
+}
+.osce-examiner-bubble::after {
+  content: "";
+  position: absolute;
+  right: 1.5rem;
+  bottom: -0.4rem;
+  width: 0.85rem;
+  height: 0.85rem;
+  border-radius: 0 0 0.2rem;
+  background: var(--yellow-soft);
+  transform: rotate(45deg);
+}
+
+@keyframes osce-door-breathe {
+  0%,
+  100% {
+    transform: perspective(600px) rotateY(0deg);
+  }
+  50% {
+    transform: perspective(600px) rotateY(-2deg);
+  }
+}
+@keyframes osce-ready-pulse {
+  50% {
+    box-shadow:
+      0 0 0 8px oklch(0.78 0.12 5 / 12%),
+      0 10px 20px -10px oklch(0.5 0.09 5 / 55%),
+      inset 0 2px 1px oklch(1 0 0 / 42%);
+  }
+}
+@keyframes osce-bell-ring {
+  0%,
+  75%,
+  100% {
+    transform: rotate(0deg);
+  }
+  82% {
+    transform: rotate(12deg);
+  }
+  89% {
+    transform: rotate(-10deg);
+  }
+  95% {
+    transform: rotate(5deg);
+  }
+}
+
 @keyframes case-ecg {
   to {
     stroke-dashoffset: -310;
@@ -568,7 +645,13 @@
 
 @media (max-width: 1023px) {
   body:has(.case-cockpit) .app-main-nav,
-  body:has(.case-cockpit) .feedback-fab {
+  body:has(.case-cockpit) .feedback-fab,
+  body:has(.osce-room) .app-main-nav,
+  body:has(.osce-room) .feedback-fab {
+    display: none;
+  }
+
+  .osce-patient-bubble.case-speech-bubble::before {
     display: none;
   }
 }
