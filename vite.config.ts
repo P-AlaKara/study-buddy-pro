@@ -7,8 +7,8 @@
 import { defineConfig } from "@lovable.dev/vite-tanstack-config";
 
 export default defineConfig({
-  // Emit a self-hosted Node server that reads Render's HOST and PORT values.
-  nitro: { preset: "render-com" },
+  // Emit Vercel Build Output for the app's SSR function and static assets.
+  nitro: { preset: "vercel" },
   tanstackStart: {
     // Redirect TanStack Start's bundled server entry to src/server.ts (our SSR error wrapper).
     // nitro/vite builds from this
