@@ -4,21 +4,39 @@ import { DR_AMBROSE } from "../config.js";
 export { DR_AMBROSE } from "../config.js";
 
 export type AmbroseExpression =
-  "neutral" | "thinking" | "encouraging" | "concerned" | "proud" | "surprised";
+  | "neutral"
+  | "thinking"
+  | "encouraging"
+  | "concerned"
+  | "proud"
+  | "surprised"
+  | "writing"
+  | "nod"
+  | "eyebrow_raised"
+  | "slight_frown"
+  | "checks_watch"
+  | "impressed"
+  | "serious_pause";
 
 export function DrAmbrose({
   expression = "neutral",
   variant = "avatar",
+  accessory,
   className = "",
 }: {
   expression?: AmbroseExpression;
   variant?: "avatar" | "logo";
+  accessory?: "clipboard";
   className?: string;
 }) {
   const rawId = useId();
   const id = rawId.replaceAll(":", "");
   const compact = variant === "logo";
-  const eyesClosed = expression === "encouraging" || expression === "proud";
+  const eyesClosed =
+    expression === "encouraging" ||
+    expression === "proud" ||
+    expression === "nod" ||
+    expression === "impressed";
 
   return (
     <div
@@ -120,6 +138,11 @@ export function DrAmbrose({
               <path d="M86 109q8 6 17 0" />
               <path d="M139 109q8 6 17 0" />
             </g>
+          ) : expression === "writing" ? (
+            <g fill="none" stroke="#303138" strokeWidth="3" strokeLinecap="round">
+              <path d="M87 112q8 3 16 0" />
+              <path d="M139 112q8 3 16 0" />
+            </g>
           ) : expression === "surprised" ? (
             <g fill="#303138">
               <circle cx="95" cy="110" r="5" />
@@ -154,6 +177,64 @@ export function DrAmbrose({
             strokeLinecap="round"
           />
           <AmbroseMouth expression={expression} />
+
+          {accessory === "clipboard" && (
+            <g className="ambrose-clipboard">
+              <rect
+                x="131"
+                y="194"
+                width="53"
+                height="70"
+                rx="7"
+                fill="#9e6d4a"
+                stroke="#70482f"
+                strokeWidth="3"
+                transform="rotate(-5 157 229)"
+              />
+              <rect
+                x="137"
+                y="200"
+                width="41"
+                height="57"
+                rx="4"
+                fill="#fffdf5"
+                transform="rotate(-5 157 229)"
+              />
+              <rect x="148" y="190" width="20" height="9" rx="4" fill="#65747c" />
+              <g
+                fill="none"
+                stroke="#8fa1a9"
+                strokeWidth="2"
+                strokeLinecap="round"
+                transform="rotate(-5 157 229)"
+              >
+                <path d="M144 214h25M144 224h25M144 234h20M144 244h22" />
+              </g>
+              <path
+                className="ambrose-pen"
+                d="M124 211l35 30"
+                fill="none"
+                stroke="#316f92"
+                strokeWidth="4"
+                strokeLinecap="round"
+              />
+              <circle cx="126" cy="211" r="7" fill="#c88b67" />
+            </g>
+          )}
+
+          {expression === "checks_watch" && (
+            <g className="ambrose-watch">
+              <circle cx="77" cy="226" r="10" fill="#344c5b" />
+              <circle cx="77" cy="226" r="7" fill="#fff8df" />
+              <path
+                d="M77 226v-4M77 226l4 2"
+                fill="none"
+                stroke="#d66a55"
+                strokeWidth="2"
+                strokeLinecap="round"
+              />
+            </g>
+          )}
         </g>
 
         {expression === "thinking" && (
@@ -167,13 +248,13 @@ export function DrAmbrose({
             />
           </g>
         )}
-        {expression === "proud" && (
+        {(expression === "proud" || expression === "impressed") && (
           <g className="ambrose-spark" fill="#f0b936">
             <path d="M188 76l4 9 9 4-9 4-4 9-4-9-9-4 9-4z" />
             <path d="M55 88l2 6 6 2-6 3-2 6-3-6-6-3 6-2z" />
           </g>
         )}
-        {expression === "concerned" && (
+        {(expression === "concerned" || expression === "serious_pause") && (
           <path d="M190 82c8 10 8 17 1 20-8-3-8-10-1-20z" fill="#51b7c9" />
         )}
       </svg>
@@ -183,15 +264,15 @@ export function DrAmbrose({
 
 function AmbroseBrows({ expression }: { expression: AmbroseExpression }) {
   const paths =
-    expression === "concerned"
+    expression === "concerned" || expression === "slight_frown" || expression === "serious_pause"
       ? ["M82 94q11-10 23 1", "M137 95q12-11 23-1"]
       : expression === "surprised"
         ? ["M83 91q11-7 22 0", "M138 91q11-7 22 0"]
-        : expression === "thinking"
+        : expression === "thinking" || expression === "eyebrow_raised"
           ? ["M83 95q11-6 22 0", "M138 91q11-9 22 0"]
           : ["M83 95q11-5 22 0", "M138 95q11-5 22 0"];
   return (
-    <g fill="none" stroke="#747b7d" strokeWidth="4" strokeLinecap="round">
+    <g className="ambrose-brows" fill="none" stroke="#747b7d" strokeWidth="4" strokeLinecap="round">
       <path d={paths[0]} />
       <path d={paths[1]} />
     </g>
@@ -203,9 +284,13 @@ function AmbroseMouth({ expression }: { expression: AmbroseExpression }) {
     return <ellipse cx="123" cy="153" rx="7" ry="8" fill="#714238" />;
   }
   const path =
-    expression === "concerned"
+    expression === "concerned" || expression === "slight_frown" || expression === "serious_pause"
       ? "M111 158q12-8 24 0"
-      : expression === "neutral" || expression === "thinking"
+      : expression === "neutral" ||
+          expression === "thinking" ||
+          expression === "writing" ||
+          expression === "eyebrow_raised" ||
+          expression === "checks_watch"
         ? "M112 154q11 4 22 0"
         : "M109 151q14 14 29 0";
   return <path d={path} fill="none" stroke="#714238" strokeWidth="3" strokeLinecap="round" />;

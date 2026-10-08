@@ -46,7 +46,11 @@ export function ExaminerQuestions({
 
       <div className="grid gap-5 md:grid-cols-[15rem_minmax(0,1fr)]">
         <aside className="clay-card bg-yellow-soft p-5 text-center">
-          <DrAmbrose expression="thinking" className="mx-auto w-44 max-w-full" />
+          <DrAmbrose
+            expression="thinking"
+            accessory="clipboard"
+            className="mx-auto w-44 max-w-full"
+          />
           <p className="mt-1 text-sm font-black">Dr. Ambrose</p>
           <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
             Examiner

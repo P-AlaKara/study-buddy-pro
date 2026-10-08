@@ -7,45 +7,11 @@ import {
   SheetHeader,
   SheetTitle,
 } from "@/components/ui/sheet";
-import { DrAmbrose } from "@/features/case-challenge/components/dr-ambrose";
+import { DrAmbrose, type AmbroseExpression } from "@/features/case-challenge/components/dr-ambrose";
 import { PatientAvatar } from "@/features/case-challenge/components/patient-avatar";
-import type {
-  CasePatient,
-  PatientExpression as CasePatientExpression,
-} from "@/features/case-challenge/schema";
 import { formatOsceClock, type OsceState } from "../engine.js";
-import type {
-  OsceCard,
-  OsceCategory,
-  OsceMode,
-  OsceStation,
-  PatientExpression,
-} from "../schema.js";
+import type { OsceCard, OsceCategory, OsceMode, OsceStation } from "../schema.js";
 import { QuestionMenu } from "./question-menu.js";
-
-function caseExpression(expression: PatientExpression): CasePatientExpression {
-  if (
-    expression === "neutral" ||
-    expression === "in_pain" ||
-    expression === "anxious" ||
-    expression === "relieved"
-  ) {
-    return expression;
-  }
-  return "anxious";
-}
-
-function patientForAvatar(station: OsceStation): CasePatient {
-  return {
-    name: station.patient.name,
-    age: station.patient.age,
-    sex: station.patient.sex,
-    avatar: station.patient.avatar,
-    personality: station.patient.personality,
-    chiefComplaint: station.title,
-    initialExpression: caseExpression(station.patient.initialExpression),
-  };
-}
 
 export function ConsultationRoom({
   game,
@@ -53,6 +19,8 @@ export function ConsultationRoom({
   mode,
   category,
   pendingCardId,
+  examinerExpression,
+  examinerMessage,
   onCategoryChange,
   onChoose,
   onEnd,
@@ -64,6 +32,8 @@ export function ConsultationRoom({
   mode: OsceMode;
   category: OsceCategory;
   pendingCardId: string | null;
+  examinerExpression: AmbroseExpression;
+  examinerMessage: string | null;
   onCategoryChange: (category: OsceCategory) => void;
   onChoose: (card: OsceCard) => void;
   onEnd: () => void;
@@ -71,8 +41,6 @@ export function ConsultationRoom({
   onActivity: () => void;
 }) {
   const [menuOpen, setMenuOpen] = useState(false);
-  const patient = patientForAvatar(station);
-  const lastNudge = game.nudgesUsed.at(-1);
   const nextNudge = station.nudges[game.nudgesUsed.length];
   const warning =
     game.remainingSeconds <= 30 ? "final" : game.remainingSeconds <= 120 ? "soon" : null;
@@ -149,8 +117,8 @@ export function ConsultationRoom({
             <div className="relative grid grid-cols-2 items-end gap-3 md:grid-cols-[14rem_minmax(0,1fr)_11rem] md:gap-5">
               <div className="col-start-1 row-start-2 md:row-start-1">
                 <PatientAvatar
-                  patient={patient}
-                  expression={caseExpression(game.patientExpression)}
+                  patient={station.patient}
+                  expression={game.patientExpression}
                   respiratoryRate={18}
                   className="max-w-36 md:max-w-52"
                 />
@@ -194,12 +162,19 @@ export function ConsultationRoom({
               </div>
 
               <aside className="col-start-2 row-start-2 self-end md:col-start-3 md:row-start-1">
-                {lastNudge && (
-                  <div className="osce-examiner-bubble mb-2 rounded-2xl bg-yellow-soft p-3 text-xs font-bold leading-relaxed shadow-sm">
-                    {lastNudge.text}
+                {examinerMessage && (
+                  <div
+                    className="osce-examiner-bubble mb-2 rounded-2xl bg-yellow-soft p-3 text-xs font-bold leading-relaxed shadow-sm"
+                    aria-live="polite"
+                  >
+                    {examinerMessage}
                   </div>
                 )}
-                <DrAmbrose expression="neutral" className="mx-auto w-24 md:w-40" />
+                <DrAmbrose
+                  expression={examinerExpression}
+                  accessory="clipboard"
+                  className="mx-auto w-24 md:w-40"
+                />
                 <div className="-mt-1 text-center">
                   <p className="text-xs font-black">Dr. Ambrose</p>
                   <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">

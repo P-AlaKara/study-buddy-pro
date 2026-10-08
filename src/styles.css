@@ -460,6 +460,11 @@
 .patient-distress-cues {
   animation: patient-distress 1.4s ease-in-out infinite alternate;
 }
+.patient-tears {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: patient-tears 1.8s ease-in-out infinite;
+}
 .ambrose-float {
   transform-box: view-box;
   transform-origin: center bottom;
@@ -479,6 +484,43 @@
   transform-box: fill-box;
   transform-origin: center;
   animation: ambrose-spark 2s ease-in-out infinite;
+}
+.ambrose-clipboard {
+  transform-box: view-box;
+  transform-origin: 157px 229px;
+}
+.ambrose-pen {
+  transform-box: fill-box;
+  transform-origin: left center;
+}
+.ambrose-brows,
+.ambrose-watch {
+  transform-box: fill-box;
+  transform-origin: center;
+}
+.ambrose-character[data-expression="writing"] .ambrose-float {
+  animation: ambrose-writing-posture 0.8s ease-in-out infinite alternate;
+}
+.ambrose-character[data-expression="writing"] .ambrose-pen {
+  animation: ambrose-pen-writing 0.42s ease-in-out infinite alternate;
+}
+.ambrose-character[data-expression="nod"] .ambrose-float {
+  animation: ambrose-nod 0.8s ease-in-out 2;
+}
+.ambrose-character[data-expression="eyebrow_raised"] .ambrose-brows {
+  animation: ambrose-raised-brow 0.65s ease-out both;
+}
+.ambrose-character[data-expression="checks_watch"] .ambrose-float {
+  animation: ambrose-check-watch 1.1s ease-in-out both;
+}
+.ambrose-character[data-expression="checks_watch"] .ambrose-watch {
+  animation: ambrose-watch-glance 0.9s ease-in-out infinite alternate;
+}
+.ambrose-character[data-expression="impressed"] .ambrose-spark {
+  animation-duration: 1.2s;
+}
+.ambrose-character[data-expression="serious_pause"] .ambrose-float {
+  animation: ambrose-serious-pause 1.5s ease-out both;
 }
 
 .osce-door-card,
@@ -622,6 +664,17 @@
     opacity: 0.58;
   }
 }
+@keyframes patient-tears {
+  0%,
+  100% {
+    transform: translateY(0);
+    opacity: 0.82;
+  }
+  50% {
+    transform: translateY(4px);
+    opacity: 0.48;
+  }
+}
 @keyframes ambrose-float {
   0%,
   100% {
@@ -629,6 +682,62 @@
   }
   50% {
     transform: translateY(-3px) rotate(0.3deg);
+  }
+}
+@keyframes ambrose-writing-posture {
+  from {
+    transform: translateY(1px) rotate(0deg);
+  }
+  to {
+    transform: translateY(4px) rotate(0.8deg);
+  }
+}
+@keyframes ambrose-pen-writing {
+  from {
+    transform: translate(-1px, -1px) rotate(-2deg);
+  }
+  to {
+    transform: translate(4px, 2px) rotate(3deg);
+  }
+}
+@keyframes ambrose-nod {
+  0%,
+  100% {
+    transform: translateY(0) rotate(0deg);
+  }
+  50% {
+    transform: translateY(5px) rotate(0.8deg);
+  }
+}
+@keyframes ambrose-raised-brow {
+  from {
+    transform: translateY(1px);
+  }
+  to {
+    transform: translateY(-2px);
+  }
+}
+@keyframes ambrose-check-watch {
+  0% {
+    transform: rotate(0deg);
+  }
+  45%,
+  100% {
+    transform: translateX(-2px) rotate(-2deg);
+  }
+}
+@keyframes ambrose-watch-glance {
+  to {
+    transform: scale(1.1);
+    filter: drop-shadow(0 0 3px rgb(214 106 85 / 52%));
+  }
+}
+@keyframes ambrose-serious-pause {
+  from {
+    transform: translateY(-2px);
+  }
+  to {
+    transform: translateY(2px) rotate(-0.6deg);
   }
 }
 @keyframes ambrose-thought {

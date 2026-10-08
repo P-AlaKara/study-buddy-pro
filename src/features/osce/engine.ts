@@ -10,6 +10,11 @@ import {
   type PatientExpression,
   type RapportBand,
 } from "./schema.js";
+import {
+  resolveExaminerReaction,
+  type ExaminerReactionCause,
+  type ExaminerReactionExpression,
+} from "./reaction-config.js";
 
 export type OscePhase = "door" | "room" | "examiner_questions" | "debrief";
 export type OsceStatus = "active" | "complete";
@@ -62,6 +67,20 @@ export interface CompletedOsceAction {
   rapportAfter: number;
   examinerSignal: OsceCard["examinerReaction"];
   wasPoorTechnique: boolean;
+}
+
+export interface ExaminerReactionLog {
+  id: string;
+  actionId: string;
+  actionNumber: number;
+  cardId: string;
+  expression: ExaminerReactionExpression;
+  cause: ExaminerReactionCause;
+  causeLabel: string;
+  isNoise: boolean;
+  delayMs: number;
+  triggeredAtSecond: number;
+  coachLine: string | null;
 }
 
 export interface CueRuntimeState {
@@ -148,6 +167,7 @@ export interface OsceState {
   patientExpression: PatientExpression;
   latestPatientLine: string;
   completedActions: CompletedOsceAction[];
+  examinerReactions: ExaminerReactionLog[];
   revealedFactIds: string[];
   checklistAchievements: Record<string, ChecklistAchievement>;
   checklistPenalties: ChecklistPenalty[];
@@ -309,6 +329,7 @@ export function createInitialOsceState(
     patientExpression: station.patient.initialExpression,
     latestPatientLine: "",
     completedActions: [],
+    examinerReactions: [],
     revealedFactIds: [],
     checklistAchievements: {},
     checklistPenalties: [],
@@ -639,6 +660,7 @@ function triggerAuthoredCue(state: OsceState, station: OsceStation, card: OsceCa
 function determineExpression(state: OsceState, card: OsceCard): PatientExpression {
   if (card.rapportDelta <= -9 || card.style === "judgmental") return "irritated";
   if (state.curveball.status === "pending") return "worried";
+  if (card.id === "cue_father_pickup") return "tearful";
   if (state.rapport < 35) return "guarded";
   if (card.id === "symptom_pain_at_rest") return "anxious";
   if (card.style === "empathic" && state.rapport > 65) return "relieved";
@@ -657,6 +679,8 @@ export function selectOsceCard(state: OsceState, station: OsceStation, cardId: s
 
   const next = cloneState(state);
   const actionNumber = next.completedActions.length + 1;
+  const missedCueCountBefore = next.cueStates.filter((cue) => cue.status === "missed").length;
+  const criticalFailCountBefore = next.criticalFailIds.length;
   const startedAtSecond = elapsedSecond(next, station);
   const previousRemaining = next.remainingSeconds;
   next.remainingSeconds = Math.max(0, next.remainingSeconds - card.timeCostSec);
@@ -742,6 +766,45 @@ export function selectOsceCard(state: OsceState, station: OsceStation, cardId: s
       addCriticalFail(next, station, failure.id);
     }
   }
+
+  const missedCue =
+    next.cueStates.filter((cue) => cue.status === "missed").length > missedCueCountBefore;
+  const triggeredCriticalFail = next.criticalFailIds.length > criticalFailCountBefore;
+  const recentActionFloor = Math.max(1, actionNumber - 2);
+  const recentProgress = Object.values(next.checklistAchievements).some(
+    (achievement) => achievement.actionNumber >= recentActionFloor,
+  );
+  const coachingChecklistId = card.penalises[0] ?? card.satisfies[0];
+  const coachingLine = coachingChecklistId
+    ? (station.checklist.find((item) => item.id === coachingChecklistId)?.coachingLine ?? null)
+    : null;
+  const reaction = resolveExaminerReaction({
+    sessionSeed: next.sessionSeed,
+    actionNumber,
+    mode: next.mode,
+    cardStyle: card.style,
+    authoredSignal: card.examinerReaction,
+    satisfiedCount: card.satisfies.length,
+    penalisedCount: card.penalises.length,
+    remainingPercent: (next.remainingSeconds / station.clockSeconds) * 100,
+    recentProgress,
+    missedCue,
+    triggeredCriticalFail,
+    coachingLine,
+  });
+  next.examinerReactions.push({
+    id: `osce_reaction_${actionNumber}`,
+    actionId: `${card.id}:${actionNumber}`,
+    actionNumber,
+    cardId: card.id,
+    expression: reaction.expression,
+    cause: reaction.cause,
+    causeLabel: reaction.causeLabel,
+    isNoise: reaction.isNoise,
+    delayMs: reaction.delayMs,
+    triggeredAtSecond: completedAtSecond,
+    coachLine: reaction.coachLine,
+  });
 
   completedAction.rapportAfter = next.rapport;
   addRapportPoint(

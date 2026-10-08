@@ -1,5 +1,10 @@
 import { useId, type CSSProperties } from "react";
-import type { CasePatient, PatientExpression } from "../schema.js";
+import type { CasePatient, PatientExpression as CasePatientExpression } from "../schema.js";
+
+export type PatientAvatarExpression =
+  CasePatientExpression | "guarded" | "tearful" | "worried" | "irritated";
+
+type PatientAvatarPatient = Pick<CasePatient, "name" | "sex" | "avatar">;
 
 const skinTones: Record<string, { base: string; shade: string; blush: string }> = {
   deep_brown: { base: "#70422f", shade: "#512d24", blush: "#a96052" },
@@ -8,13 +13,17 @@ const skinTones: Record<string, { base: string; shade: string; blush: string }> 
   fair: { base: "#efbd9f", shade: "#c9896e", blush: "#ef9b91" },
 };
 
-const expressionLabels: Record<PatientExpression, string> = {
+const expressionLabels: Record<PatientAvatarExpression, string> = {
   neutral: "neutral",
+  guarded: "guarded",
   in_pain: "in pain",
   anxious: "anxious",
   struggling_to_breathe: "struggling to breathe",
   drowsy: "drowsy",
   relieved: "relieved",
+  tearful: "tearful",
+  worried: "worried",
+  irritated: "irritated",
 };
 
 export function PatientAvatar({
@@ -24,8 +33,8 @@ export function PatientAvatar({
   decorative = false,
   className = "",
 }: {
-  patient: CasePatient;
-  expression: PatientExpression;
+  patient: PatientAvatarPatient;
+  expression: PatientAvatarExpression;
   respiratoryRate: number;
   decorative?: boolean;
   className?: string;
@@ -175,7 +184,9 @@ export function PatientAvatar({
           </g>
         )}
 
-        {(expression === "anxious" || expression === "struggling_to_breathe") && (
+        {(expression === "anxious" ||
+          expression === "worried" ||
+          expression === "struggling_to_breathe") && (
           <g className="patient-distress-cues" fill="none" stroke="#2b9eb3" strokeLinecap="round">
             <path
               d="M177 95c8 10 8 17 1 20-8-3-8-10-1-20z"
@@ -189,6 +200,12 @@ export function PatientAvatar({
                 <path d="M188 143q11 6 15 15" strokeWidth="2" opacity=".65" />
               </>
             )}
+          </g>
+        )}
+        {expression === "tearful" && (
+          <g className="patient-tears" fill="#63c6d5" opacity=".9">
+            <path d="M93 123c6 8 5 14 0 16-5-2-6-8 0-16z" />
+            <path d="M149 123c6 8 5 14 0 16-5-2-6-8 0-16z" />
           </g>
         )}
       </svg>
@@ -252,15 +269,22 @@ function Hair({
   );
 }
 
-function Eyebrows({ expression, color }: { expression: PatientExpression; color: string }) {
+function Eyebrows({ expression, color }: { expression: PatientAvatarExpression; color: string }) {
   const paths =
     expression === "in_pain"
       ? ["M80 103q10-9 22-4", "M138 99q12-5 22 4"]
-      : expression === "anxious" || expression === "struggling_to_breathe"
+      : expression === "anxious" ||
+          expression === "worried" ||
+          expression === "tearful" ||
+          expression === "struggling_to_breathe"
         ? ["M80 100q11-9 22 1", "M138 101q11-10 22-1"]
-        : expression === "drowsy"
-          ? ["M80 105q11-2 22 1", "M138 106q11-3 22-1"]
-          : ["M80 102q11-5 22 0", "M138 102q11-5 22 0"];
+        : expression === "irritated"
+          ? ["M80 98q12 1 22 7", "M138 105q11-7 22-7"]
+          : expression === "guarded"
+            ? ["M80 104q11-2 22 0", "M138 104q11-2 22 0"]
+            : expression === "drowsy"
+              ? ["M80 105q11-2 22 1", "M138 106q11-3 22-1"]
+              : ["M80 102q11-5 22 0", "M138 102q11-5 22 0"];
   return (
     <g fill="none" stroke={color} strokeWidth="4" strokeLinecap="round">
       <path d={paths[0]} />
@@ -269,20 +293,22 @@ function Eyebrows({ expression, color }: { expression: PatientExpression; color:
   );
 }
 
-function Mouth({ expression, shade }: { expression: PatientExpression; shade: string }) {
+function Mouth({ expression, shade }: { expression: PatientAvatarExpression; shade: string }) {
   if (expression === "struggling_to_breathe") {
     return <ellipse cx="121" cy="160" rx="10" ry="13" fill="#4e2830" opacity=".9" />;
   }
-  if (expression === "anxious") {
+  if (expression === "anxious" || expression === "worried") {
     return <ellipse cx="121" cy="159" rx="9" ry="7" fill="#4e2830" opacity=".86" />;
   }
   const path =
     expression === "relieved"
       ? "M106 156q15 17 31 0"
-      : expression === "in_pain"
+      : expression === "in_pain" || expression === "tearful" || expression === "irritated"
         ? "M106 164q15-13 31 0"
         : expression === "drowsy"
           ? "M110 160q11 3 23 0"
-          : "M109 159q12 5 24 0";
+          : expression === "guarded"
+            ? "M109 159q12 1 24 0"
+            : "M109 159q12 5 24 0";
   return <path d={path} fill="none" stroke={shade} strokeWidth="3.5" strokeLinecap="round" />;
 }

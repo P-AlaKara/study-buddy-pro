@@ -16,6 +16,7 @@ import {
   skipReading,
   type OsceState,
 } from "../src/features/osce/engine.js";
+import { resolveExaminerReaction } from "../src/features/osce/reaction-config.js";
 import { CHEST_TIGHTNESS_STATION as station } from "../src/features/osce/stations/chest-tightness-on-the-stairs.js";
 import type { OsceMode } from "../src/features/osce/schema.js";
 
@@ -72,6 +73,7 @@ test("initialises a deterministic door state with mode-specific card order", () 
   assert.equal(learn.readingSecondsRemaining, 60);
   assert.equal(learn.remainingSeconds, 480);
   assert.equal(learn.rapport, 50);
+  assert.deepEqual(learn.examinerReactions, []);
   assert.deepEqual(practiceA.cardOrder, practiceB.cardOrder);
   assert.deepEqual(
     learn.cardOrder.opening,
@@ -248,6 +250,118 @@ test("records false reassurance as an immediate critical fail", () => {
   assert.equal(state.curveball.status, "responded");
   assert.ok(state.criticalFailIds.includes("critical_false_reassurance"));
   assert.equal(state.patientExpression, "irritated");
+  assert.equal(state.examinerReactions.at(-1)?.expression, "serious_pause");
+  assert.equal(state.examinerReactions.at(-1)?.cause, "safety");
+});
+
+test("logs one deterministic, delayed examiner reaction for every action", () => {
+  const first = selectOsceCard(room("practice", 7788), station, "opening_introduce");
+  const replay = selectOsceCard(room("practice", 7788), station, "opening_introduce");
+  const reaction = first.examinerReactions[0];
+  assert.equal(first.examinerReactions.length, first.completedActions.length);
+  assert.deepEqual(first.examinerReactions, replay.examinerReactions);
+  assert.equal(reaction?.actionId, "opening_introduce:1");
+  assert.equal(reaction?.cardId, "opening_introduce");
+  assert.ok((reaction?.delayMs ?? 0) >= 500);
+  assert.ok((reaction?.delayMs ?? 0) <= 1500);
+});
+
+test("makes Learn reactions clear and spoken while keeping them deterministic", () => {
+  const state = selectOsceCard(room("learn", 42), station, "opening_introduce");
+  const reaction = state.examinerReactions[0];
+  assert.equal(reaction?.expression, "nod");
+  assert.equal(reaction?.cause, "strong_technique");
+  assert.equal(reaction?.isNoise, false);
+  assert.match(reaction?.coachLine ?? "", /Good choice/);
+  assert.match(reaction?.coachLine ?? "", /name and role/);
+});
+
+test("uses watch checks under time pressure and poor-technique signals for missed cues", () => {
+  const watch = resolveExaminerReaction({
+    sessionSeed: 9,
+    actionNumber: 4,
+    mode: "exam",
+    cardStyle: "closed",
+    authoredSignal: "none",
+    satisfiedCount: 0,
+    penalisedCount: 0,
+    remainingPercent: 19,
+    recentProgress: false,
+    missedCue: false,
+    triggeredCriticalFail: false,
+    coachingLine: null,
+  });
+  assert.equal(watch.expression, "checks_watch");
+  assert.equal(watch.cause, "time_pressure");
+
+  const missedCueSignals = Array.from({ length: 200 }, (_, sessionSeed) =>
+    resolveExaminerReaction({
+      sessionSeed,
+      actionNumber: 4,
+      mode: "practice",
+      cardStyle: "closed",
+      authoredSignal: "none",
+      satisfiedCount: 0,
+      penalisedCount: 0,
+      remainingPercent: 70,
+      recentProgress: true,
+      missedCue: true,
+      triggeredCriticalFail: false,
+      coachingLine: null,
+    }),
+  );
+  assert.ok(missedCueSignals.some((reaction) => reaction.cause === "poor_technique"));
+  assert.ok(missedCueSignals.every((reaction) => !reaction.isNoise));
+});
+
+test("keeps examiner true signals near 80% and neutral noise near 10%", () => {
+  const sampleSize = 2_000;
+  let trueSignals = 0;
+  let neutralNoise = 0;
+  for (let sessionSeed = 0; sessionSeed < sampleSize; sessionSeed += 1) {
+    const genuine = resolveExaminerReaction({
+      sessionSeed,
+      actionNumber: 2,
+      mode: "practice",
+      cardStyle: "open",
+      authoredSignal: "nod",
+      satisfiedCount: 1,
+      penalisedCount: 0,
+      remainingPercent: 80,
+      recentProgress: true,
+      missedCue: false,
+      triggeredCriticalFail: false,
+      coachingLine: null,
+    });
+    if (genuine.cause === "strong_technique") trueSignals += 1;
+
+    const neutral = resolveExaminerReaction({
+      sessionSeed,
+      actionNumber: 2,
+      mode: "practice",
+      cardStyle: "closed",
+      authoredSignal: "none",
+      satisfiedCount: 0,
+      penalisedCount: 0,
+      remainingPercent: 80,
+      recentProgress: true,
+      missedCue: false,
+      triggeredCriticalFail: false,
+      coachingLine: null,
+    });
+    if (neutral.cause === "noise") neutralNoise += 1;
+  }
+  assert.ok(trueSignals / sampleSize > 0.76 && trueSignals / sampleSize < 0.84);
+  assert.ok(neutralNoise / sampleSize > 0.07 && neutralNoise / sampleSize < 0.13);
+});
+
+test("uses the tearful patient expression when an emotional family cue is picked up", () => {
+  let state = selectOsceCard(room(), station, "pc_open_story");
+  state = selectOsceCard(state, station, "symptom_open_detail");
+  state = selectOsceCard(state, station, "social_family_history");
+  assert.equal(available(state, "cue_father_pickup"), true);
+  state = selectOsceCard(state, station, "cue_father_pickup");
+  assert.equal(state.patientExpression, "tearful");
 });
 
 test("rings the final bell and moves automatically to examiner questions", () => {

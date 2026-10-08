@@ -1,4 +1,5 @@
 import { useEffect, useId, useRef, useState } from "react";
+import type { AmbroseExpression } from "@/features/case-challenge/components/dr-ambrose";
 import {
   advanceIdleTime,
   advanceReadingCountdown,
@@ -37,14 +38,60 @@ export function OsceScreen({ station, mode }: { station: OsceStation; mode: Osce
   );
   const [category, setCategory] = useState<OsceCategory>("opening");
   const [pendingCardId, setPendingCardId] = useState<string | null>(null);
+  const [examinerExpression, setExaminerExpression] = useState<AmbroseExpression>("neutral");
+  const [examinerCoachLine, setExaminerCoachLine] = useState<string | null>(null);
+  const [nudgeMessage, setNudgeMessage] = useState<string | null>(null);
   const replyTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const reactionTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const reactionResetTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const nudgeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const displayedReactionIdRef = useRef<string | null>(null);
 
   useEffect(
     () => () => {
       if (replyTimerRef.current) clearTimeout(replyTimerRef.current);
+      if (reactionTimerRef.current) clearTimeout(reactionTimerRef.current);
+      if (reactionResetTimerRef.current) clearTimeout(reactionResetTimerRef.current);
+      if (nudgeTimerRef.current) clearTimeout(nudgeTimerRef.current);
     },
     [],
   );
+
+  useEffect(() => {
+    if (game.phase !== "room") {
+      if (reactionTimerRef.current) clearTimeout(reactionTimerRef.current);
+      if (reactionResetTimerRef.current) clearTimeout(reactionResetTimerRef.current);
+      setExaminerCoachLine(null);
+      return;
+    }
+
+    const reaction = game.examinerReactions.at(-1);
+    if (!reaction || displayedReactionIdRef.current === reaction.id) return;
+    displayedReactionIdRef.current = reaction.id;
+    if (reactionTimerRef.current) clearTimeout(reactionTimerRef.current);
+    if (reactionResetTimerRef.current) clearTimeout(reactionResetTimerRef.current);
+    setExaminerExpression("neutral");
+    setExaminerCoachLine(null);
+
+    reactionTimerRef.current = setTimeout(() => {
+      setExaminerExpression(reaction.expression);
+      setExaminerCoachLine(reaction.coachLine);
+      reactionResetTimerRef.current = setTimeout(
+        () => {
+          setExaminerCoachLine(null);
+          if (reaction.expression === "serious_pause") {
+            setExaminerExpression("writing");
+            reactionResetTimerRef.current = setTimeout(() => {
+              setExaminerExpression("neutral");
+            }, 1100);
+          } else {
+            setExaminerExpression("neutral");
+          }
+        },
+        reaction.coachLine ? 4200 : 1800,
+      );
+    }, reaction.delayMs);
+  }, [game.examinerReactions, game.phase]);
 
   useEffect(() => {
     if (game.phase !== "door" || game.readingSecondsRemaining <= 0) return;
@@ -90,6 +137,15 @@ export function OsceScreen({ station, mode }: { station: OsceStation; mode: Osce
     );
   }
 
+  function useNudge() {
+    const nudge = station.nudges[game.nudgesUsed.length];
+    if (!nudge) return;
+    setGame((current) => requestNudge(current, station));
+    setNudgeMessage(nudge.text);
+    if (nudgeTimerRef.current) clearTimeout(nudgeTimerRef.current);
+    nudgeTimerRef.current = setTimeout(() => setNudgeMessage(null), 4500);
+  }
+
   function retry() {
     if (replyTimerRef.current) clearTimeout(replyTimerRef.current);
     const nextSeed = (seed + 1) >>> 0;
@@ -97,6 +153,10 @@ export function OsceScreen({ station, mode }: { station: OsceStation; mode: Osce
     setGame(createInitialOsceState(station, mode, nextSeed));
     setCategory("opening");
     setPendingCardId(null);
+    setExaminerExpression("neutral");
+    setExaminerCoachLine(null);
+    setNudgeMessage(null);
+    displayedReactionIdRef.current = null;
     window.scrollTo({ top: 0, behavior: "smooth" });
   }
 
@@ -120,10 +180,12 @@ export function OsceScreen({ station, mode }: { station: OsceStation; mode: Osce
         mode={mode}
         category={category}
         pendingCardId={pendingCardId}
+        examinerExpression={nudgeMessage ? "thinking" : examinerExpression}
+        examinerMessage={nudgeMessage ?? examinerCoachLine}
         onCategoryChange={setCategory}
         onChoose={chooseCard}
         onEnd={() => setGame((current) => endConsultation(current, station))}
-        onNudge={() => setGame((current) => requestNudge(current, station))}
+        onNudge={useNudge}
         onActivity={noteActivity}
       />
     );
