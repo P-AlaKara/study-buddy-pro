@@ -81,4 +81,16 @@ assert(
   expectIssue(station, "Exactly one honest-empathic response");
 }
 
+{
+  const station = cloneStation();
+  station.idleDrift.realSecondsPerSimulatedSecond = 0;
+  expectIssue(station, "Idle drift needs");
+}
+
+{
+  const station = cloneStation();
+  station.ratingThresholds.communicationCaps.borderlineIfRapportBelow = 101;
+  expectIssue(station, "Communication rating caps");
+}
+
 console.log("OSCE validator tests passed.");

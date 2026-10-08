@@ -154,6 +154,10 @@ export interface RatingThresholds {
     timeManagement: number;
     examinerQuestions: number;
   };
+  communicationCaps: {
+    borderlineIfRapportBelow: number;
+    borderlineIfCommunicationBelow: number;
+  };
 }
 
 export interface OsceNudge {

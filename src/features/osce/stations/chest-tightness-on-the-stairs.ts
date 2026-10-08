@@ -1645,6 +1645,10 @@ export const CHEST_TIGHTNESS_STATION: OsceStation = {
       timeManagement: 0.1,
       examinerQuestions: 0.15,
     },
+    communicationCaps: {
+      borderlineIfRapportBelow: 35,
+      borderlineIfCommunicationBelow: 40,
+    },
   },
   idleDrift: {
     startsAfterRealSeconds: 20,

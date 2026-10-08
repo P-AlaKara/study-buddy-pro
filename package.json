@@ -13,7 +13,8 @@
     "validate:osce": "tsc --outDir /tmp/study-buddy-osce-validation --noEmit false --allowImportingTsExtensions false --module CommonJS --moduleResolution Node --target ES2022 --skipLibCheck --strict scripts/validate-osce.ts && node /tmp/study-buddy-osce-validation/scripts/validate-osce.js",
     "test:case-engine": "tsc --outDir /tmp/study-buddy-case-engine-tests --noEmit false --allowImportingTsExtensions false --module CommonJS --moduleResolution Node --target ES2022 --skipLibCheck --strict scripts/test-case-engine.ts && node /tmp/study-buddy-case-engine-tests/scripts/test-case-engine.js",
     "test:osce-validator": "tsc --outDir /tmp/study-buddy-osce-validator-tests --noEmit false --allowImportingTsExtensions false --module CommonJS --moduleResolution Node --target ES2022 --skipLibCheck --strict scripts/test-osce-validator.ts && node /tmp/study-buddy-osce-validator-tests/scripts/test-osce-validator.js",
-    "test": "npm run validate:cases && npm run test:case-engine && npm run validate:osce && npm run test:osce-validator",
+    "test:osce-engine": "tsc --outDir /tmp/study-buddy-osce-engine-tests --noEmit false --allowImportingTsExtensions false --module CommonJS --moduleResolution Node --target ES2022 --skipLibCheck --strict scripts/test-osce-engine.ts && node /tmp/study-buddy-osce-engine-tests/scripts/test-osce-engine.js",
+    "test": "npm run validate:cases && npm run test:case-engine && npm run validate:osce && npm run test:osce-validator && npm run test:osce-engine",
     "lint": "eslint .",
     "format": "prettier --write ."
   },

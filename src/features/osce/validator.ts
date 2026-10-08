@@ -25,6 +25,37 @@ export function validateOsceStation(station: OsceStation): OsceValidationIssue[]
   const checklistIds = new Set(station.checklist.map((item) => item.id));
   const validUnlockIds = new Set([...cardIds, ...cueIds]);
 
+  if (station.clockSeconds <= 0 || station.readingSeconds < 0) {
+    issues.push({
+      path: "clockSeconds",
+      message: "Station time must be positive and reading time cannot be negative.",
+    });
+  }
+  if (
+    station.idleDrift.startsAfterRealSeconds < 0 ||
+    station.idleDrift.realSecondsPerSimulatedSecond <= 0
+  ) {
+    issues.push({
+      path: "idleDrift",
+      message: "Idle drift needs a non-negative delay and a positive real-to-simulated ratio.",
+    });
+  }
+  if (
+    station.curveball.triggerAtPercentClock <= 0 ||
+    station.curveball.triggerAtPercentClock >= 100
+  ) {
+    issues.push({
+      path: "curveball.triggerAtPercentClock",
+      message: "The timed curveball trigger must be between 0 and 100 percent.",
+    });
+  }
+  if (station.examinerQuestions.length !== 3) {
+    issues.push({
+      path: "examinerQuestions",
+      message: "A station must have exactly three questions.",
+    });
+  }
+
   for (const id of duplicates(station.cards.map((card) => card.id))) {
     issues.push({ path: "cards", message: `Duplicate card ID: ${id}.` });
   }
@@ -55,6 +86,12 @@ export function validateOsceStation(station: OsceStation): OsceValidationIssue[]
   }
 
   for (const cue of station.cues) {
+    if (cue.windowActions < 1) {
+      issues.push({
+        path: `cues.${cue.id}.windowActions`,
+        message: "A cue window must contain at least one student action.",
+      });
+    }
     if (!cue.pickupCardIds.length) {
       issues.push({ path: `cues.${cue.id}`, message: "Cue has no pickup cards." });
     }
@@ -256,6 +293,18 @@ export function validateOsceStation(station: OsceStation): OsceValidationIssue[]
     station.ratingThresholds.good < station.ratingThresholds.excellent
   )) {
     issues.push({ path: "ratingThresholds", message: "Rating thresholds must increase in order." });
+  }
+  const communicationCaps = station.ratingThresholds.communicationCaps;
+  if (
+    communicationCaps.borderlineIfRapportBelow < 0 ||
+    communicationCaps.borderlineIfRapportBelow > 100 ||
+    communicationCaps.borderlineIfCommunicationBelow < 0 ||
+    communicationCaps.borderlineIfCommunicationBelow > 100
+  ) {
+    issues.push({
+      path: "ratingThresholds.communicationCaps",
+      message: "Communication rating caps must be percentages from 0 to 100.",
+    });
   }
 
   station.nudges.forEach((nudge, index) => {
