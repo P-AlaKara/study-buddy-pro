@@ -19,6 +19,7 @@ import {
 } from "../src/features/osce/engine.js";
 import { resolveExaminerReaction } from "../src/features/osce/reaction-config.js";
 import {
+  listOsceProgress,
   loadOsceProgress,
   OSCE_PROGRESS_STORAGE_KEY,
   recommendedOsceMode,
@@ -503,6 +504,16 @@ test("persists the best OSCE rating per mode while counting every attempt", () =
   assert.equal(progress.stations[station.id]?.learn?.completedAt, "2026-01-01T00:00:00Z");
   assert.deepEqual(loadOsceProgress(storage), progress);
   assert.equal(recommendedOsceMode(progress.stations[station.id]), "practice");
+  assert.deepEqual(listOsceProgress(progress), [
+    {
+      id: `${station.id}:learn`,
+      stationId: station.id,
+      mode: "learn",
+      score: excellent.score.composite,
+      attempts: 2,
+      completedAt: "2026-01-01T00:00:00Z",
+    },
+  ]);
 
   storage.setItem(OSCE_PROGRESS_STORAGE_KEY, "not-json");
   assert.deepEqual(loadOsceProgress(storage), { version: 1, stations: {} });

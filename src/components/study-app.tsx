@@ -225,7 +225,7 @@ export function StudyApp({ view, children }: { view: View; children?: ReactNode 
     {
       type: "OSCE",
       title: "Focused history taking",
-      description: "Communication · 12 min",
+      description: "History taking · 8 min",
       icon: Stethoscope,
       color: "pink",
       tab: "OSCE",
@@ -689,7 +689,7 @@ export function StudyApp({ view, children }: { view: View; children?: ReactNode 
                   <p className="mt-2 max-w-xl text-sm leading-relaxed text-ink-soft">
                     {practiceTab === "OSCE" ? (
                       <>
-                        Practice focused histories, examinations, and communication.{" "}
+                        Conduct the available history station, with more station types coming soon.{" "}
                         <Link to="/osce" className="font-extrabold text-pink underline">
                           Open the station bank →
                         </Link>
@@ -722,7 +722,7 @@ export function StudyApp({ view, children }: { view: View; children?: ReactNode 
                 </p>
                 <p className="mt-1 text-xs text-muted-foreground">
                   {practiceTab === "OSCE"
-                    ? "Communication · 12 min"
+                    ? "History taking · 8 min"
                     : practiceTab === "Quizzes"
                       ? "10 questions · 8 min"
                       : "18 cards · 8 min"}

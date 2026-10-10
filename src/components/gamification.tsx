@@ -34,6 +34,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import type { ActingStudent } from "@/components/study-app";
+import { listOsceProgress, loadOsceProgress } from "@/features/osce/progress";
+import { OSCE_STATIONS } from "@/features/osce/stations";
 import type { Json } from "@/integrations/supabase/types";
 
 const LEVELS = [0, 250, 600, 1100, 1800, 2700, 3800, 5100, 6600, 8300, 10200];
@@ -217,8 +219,17 @@ function SearchCenter({ onClose }: { onClose: () => void }) {
     }
     const timer = window.setTimeout(async () => {
       setLoading(true);
-      const term = `%${query.trim()}%`;
-      const [cases, questions, stations, decks, studyGroups, resources] = await Promise.all([
+      const searchText = query.trim().toLowerCase();
+      const term = `%${searchText}%`;
+      const matchingStations = OSCE_STATIONS.filter((station) =>
+        [
+          station.title,
+          station.setting,
+          station.type.replaceAll("_", " "),
+          station.patient.name,
+        ].some((value) => value.toLowerCase().includes(searchText)),
+      ).slice(0, 6);
+      const [cases, questions, decks, studyGroups, resources] = await Promise.all([
         supabase
           .from("cases")
           .select("id,title,specialty,topic")
@@ -228,11 +239,6 @@ function SearchCenter({ onClose }: { onClose: () => void }) {
           .from("quiz_questions")
           .select("id,question_text,subject,topic")
           .or(`question_text.ilike.${term},topic.ilike.${term},subject.ilike.${term}`)
-          .limit(6),
-        supabase
-          .from("osce_stations")
-          .select("id,title,specialty,topic")
-          .or(`title.ilike.${term},topic.ilike.${term},specialty.ilike.${term}`)
           .limit(6),
         supabase
           .from("flashcard_decks")
@@ -278,11 +284,11 @@ function SearchCenter({ onClose }: { onClose: () => void }) {
             label: "OSCE stations",
             icon: Stethoscope,
             color: "bg-pink-soft",
-            items: (stations.data ?? []).map((x) => ({
-              id: x.id,
-              title: x.title,
-              detail: `${x.specialty} · ${x.topic}`,
-              href: `/osce/${x.id}`,
+            items: matchingStations.map((station) => ({
+              id: station.id,
+              title: station.title,
+              detail: `History taking · ${station.setting}`,
+              href: `/osce/${station.id}?mode=learn`,
             })),
           },
           {
@@ -521,7 +527,9 @@ export function CelebrationLayer({ student }: { student?: ActingStudent | undefi
         supabase.from("student_achievements").select("achievement_id").eq("student_id", student.id),
         supabase.from("achievements").select("*"),
       ]);
-      const ids = (earned ?? []).map((x) => x.achievement_id).filter((x): x is string => Boolean(x));
+      const ids = (earned ?? [])
+        .map((x) => x.achievement_id)
+        .filter((x): x is string => Boolean(x));
       const key = `medley-earned-${student.id}`;
       const known = JSON.parse(localStorage.getItem(key) ?? "[]") as string[];
       if (!first) {
@@ -732,7 +740,7 @@ export function NoteButton({
   contentId,
 }: {
   studentId?: string | undefined;
-  contentType: "case" | "quiz_question" | "flashcard" | "osce_station";
+  contentType: "case" | "quiz_question" | "flashcard";
   contentId: string;
 }) {
   const [open, setOpen] = useState(false);
@@ -803,7 +811,7 @@ export function SaveItemButton({
   href,
 }: {
   studentId?: string | undefined;
-  contentType: "case" | "osce_station" | "resource";
+  contentType: "case" | "resource";
   contentId: string;
   title: string;
   href: string;
@@ -861,7 +869,14 @@ type DashboardData = {
     started_at: string;
     completed_at: string | null;
   }>;
-  osces: Array<{ id: string; score: number; time_taken_seconds: number; completed_at: string }>;
+  osces: Array<{
+    id: string;
+    stationId: string;
+    mode: "learn" | "practice" | "exam";
+    score: number;
+    attempts: number;
+    completedAt: string;
+  }>;
   reviews: Array<{ id: string; created_at: string; last_reviewed_at: string | null }>;
   mastery: Mastery[];
   achievements: Achievement[];
@@ -893,11 +908,11 @@ export function ProgressDashboard({ student }: { student?: ActingStudent | undef
   useEffect(() => {
     if (!student) return;
     (async () => {
+      const osces = listOsceProgress(loadOsceProgress());
       const [
         xp,
         cases,
         quizzes,
-        osces,
         reviews,
         mastery,
         achievements,
@@ -923,10 +938,6 @@ export function ProgressDashboard({ student }: { student?: ActingStudent | undef
           .select("id,score,started_at,completed_at")
           .eq("student_id", student.id)
           .not("completed_at", "is", null),
-        supabase
-          .from("osce_attempts")
-          .select("id,score,time_taken_seconds,completed_at")
-          .eq("student_id", student.id),
         supabase
           .from("flashcard_reviews")
           .select("id,created_at,last_reviewed_at")
@@ -972,11 +983,14 @@ export function ProgressDashboard({ student }: { student?: ActingStudent | undef
         xp: xp.data ?? [],
         cases: cases.data ?? [],
         quizzes: quizzes.data ?? [],
-        osces: osces.data ?? [],
+        osces,
         reviews: reviews.data ?? [],
         mastery: mastery.data ?? [],
         achievements: achievements.data ?? [],
-        earned: (earned.data ?? []).map((e) => ({ achievement_id: e.achievement_id ?? "", earned_at: e.earned_at })),
+        earned: (earned.data ?? []).map((e) => ({
+          achievement_id: e.achievement_id ?? "",
+          earned_at: e.earned_at,
+        })),
         challenges: challenges.data ?? [],
         notes: notes.data ?? [],
         saved: (saved.data ?? []).map((s) => ({ ...s, related_link: s.related_link ?? "" })),
@@ -993,7 +1007,7 @@ export function ProgressDashboard({ student }: { student?: ActingStudent | undef
         xp: data.xp.filter((x) => keep(x.created_at)),
         cases: data.cases.filter((x) => keep(x.completed_at)),
         quizzes: data.quizzes.filter((x) => keep(x.completed_at)),
-        osces: data.osces.filter((x) => keep(x.completed_at)),
+        osces: data.osces.filter((x) => keep(x.completedAt)),
         reviews: data.reviews.filter((x) => keep(x.last_reviewed_at ?? x.created_at)),
       }
     : null;
@@ -1009,7 +1023,6 @@ export function ProgressDashboard({ student }: { student?: ActingStudent | undef
               n + (new Date(x.completed_at!).getTime() - new Date(x.started_at).getTime()) / 60000,
             0,
           ) +
-          filtered.osces.reduce((n, x) => n + x.time_taken_seconds / 60, 0) +
           filtered.reviews.length * 0.25,
       )
     : 0;
@@ -1088,7 +1101,12 @@ export function ProgressDashboard({ student }: { student?: ActingStudent | undef
               ],
               ["Cases", filtered!.cases.length, HeartPulse, "bg-lavender-soft"],
               ["Quizzes", filtered!.quizzes.length, Brain, "bg-blue-soft"],
-              ["OSCEs", filtered!.osces.length, Stethoscope, "bg-pink-soft"],
+              [
+                "OSCE attempts",
+                filtered!.osces.reduce((total, entry) => total + entry.attempts, 0),
+                Stethoscope,
+                "bg-pink-soft",
+              ],
               ["Cards reviewed", filtered!.reviews.length, Layers3, "bg-yellow-soft"],
               ["Quiz accuracy", `${accuracy}%`, Target, "bg-mint-soft"],
               [

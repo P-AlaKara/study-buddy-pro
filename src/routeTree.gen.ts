@@ -27,7 +27,6 @@ import { Route as GroupsIndexRouteImport } from './routes/groups.index'
 import { Route as GroupsGroupIdRouteImport } from './routes/groups.$groupId'
 import { Route as OsceIndexRouteImport } from './routes/osce.index'
 import { Route as OsceStationIdRouteImport } from './routes/osce.$stationId'
-import { Route as OsceExamRouteImport } from './routes/osce.exam'
 import { Route as QuizIndexRouteImport } from './routes/quiz.index'
 import { Route as QuizPlayRouteImport } from './routes/quiz.play'
 
@@ -121,11 +120,6 @@ const OsceStationIdRoute = OsceStationIdRouteImport.update({
   path: '/$stationId',
   getParentRoute: () => OsceRoute,
 } as any)
-const OsceExamRoute = OsceExamRouteImport.update({
-  id: '/exam',
-  path: '/exam',
-  getParentRoute: () => OsceRoute,
-} as any)
 const QuizIndexRoute = QuizIndexRouteImport.update({
   id: '/',
   path: '/',
@@ -152,7 +146,6 @@ export interface FileRoutesByFullPath {
   '/flashcards/review': typeof FlashcardsReviewRoute
   '/groups/$groupId': typeof GroupsGroupIdRoute
   '/osce/$stationId': typeof OsceStationIdRoute
-  '/osce/exam': typeof OsceExamRoute
   '/quiz/play': typeof QuizPlayRoute
   '/cases/': typeof CasesIndexRoute
   '/flashcards/': typeof FlashcardsIndexRoute
@@ -170,7 +163,6 @@ export interface FileRoutesByTo {
   '/flashcards/review': typeof FlashcardsReviewRoute
   '/groups/$groupId': typeof GroupsGroupIdRoute
   '/osce/$stationId': typeof OsceStationIdRoute
-  '/osce/exam': typeof OsceExamRoute
   '/quiz/play': typeof QuizPlayRoute
   '/cases': typeof CasesIndexRoute
   '/flashcards': typeof FlashcardsIndexRoute
@@ -194,7 +186,6 @@ export interface FileRoutesById {
   '/flashcards/review': typeof FlashcardsReviewRoute
   '/groups/$groupId': typeof GroupsGroupIdRoute
   '/osce/$stationId': typeof OsceStationIdRoute
-  '/osce/exam': typeof OsceExamRoute
   '/quiz/play': typeof QuizPlayRoute
   '/cases/': typeof CasesIndexRoute
   '/flashcards/': typeof FlashcardsIndexRoute
@@ -219,7 +210,6 @@ export interface FileRouteTypes {
     | '/flashcards/review'
     | '/groups/$groupId'
     | '/osce/$stationId'
-    | '/osce/exam'
     | '/quiz/play'
     | '/cases/'
     | '/flashcards/'
@@ -237,7 +227,6 @@ export interface FileRouteTypes {
     | '/flashcards/review'
     | '/groups/$groupId'
     | '/osce/$stationId'
-    | '/osce/exam'
     | '/quiz/play'
     | '/cases'
     | '/flashcards'
@@ -260,7 +249,6 @@ export interface FileRouteTypes {
     | '/flashcards/review'
     | '/groups/$groupId'
     | '/osce/$stationId'
-    | '/osce/exam'
     | '/quiz/play'
     | '/cases/'
     | '/flashcards/'
@@ -409,13 +397,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof OsceStationIdRouteImport
       parentRoute: typeof OsceRoute
     }
-    '/osce/exam': {
-      id: '/osce/exam'
-      path: '/exam'
-      fullPath: '/osce/exam'
-      preLoaderRoute: typeof OsceExamRouteImport
-      parentRoute: typeof OsceRoute
-    }
     '/quiz/': {
       id: '/quiz/'
       path: '/'
@@ -476,13 +457,11 @@ const GroupsRouteWithChildren =
 
 interface OsceRouteChildren {
   OsceStationIdRoute: typeof OsceStationIdRoute
-  OsceExamRoute: typeof OsceExamRoute
   OsceIndexRoute: typeof OsceIndexRoute
 }
 
 const OsceRouteChildren: OsceRouteChildren = {
   OsceStationIdRoute: OsceStationIdRoute,
-  OsceExamRoute: OsceExamRoute,
   OsceIndexRoute: OsceIndexRoute,
 }
 

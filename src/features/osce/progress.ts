@@ -23,6 +23,15 @@ export interface OsceProgress {
   stations: Record<string, Partial<Record<OsceMode, OsceModeProgress>>>;
 }
 
+export interface OsceProgressSummary {
+  id: string;
+  stationId: string;
+  mode: OsceMode;
+  score: number;
+  attempts: number;
+  completedAt: string;
+}
+
 type ProgressStorage = Pick<Storage, "getItem" | "setItem">;
 
 const ratingRank: Record<GlobalRating, number> = {
@@ -95,4 +104,25 @@ export function recommendedOsceMode(
   if (!stationProgress.practice) return "practice";
   if (!stationProgress.exam) return "exam";
   return "exam";
+}
+
+export function listOsceProgress(progress: OsceProgress): OsceProgressSummary[] {
+  const modes: readonly OsceMode[] = ["learn", "practice", "exam"];
+  return Object.entries(progress.stations).flatMap(([stationId, station]) =>
+    modes.flatMap((mode) => {
+      const entry = station[mode];
+      return entry
+        ? [
+            {
+              id: `${stationId}:${mode}`,
+              stationId,
+              mode,
+              score: entry.bestComposite,
+              attempts: entry.attempts,
+              completedAt: entry.completedAt,
+            },
+          ]
+        : [];
+    }),
+  );
 }

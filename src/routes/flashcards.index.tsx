@@ -76,7 +76,7 @@ function DeckBrowser() {
 
       {sugg.length > 0 && student && <section className="space-y-3">
         <h2 className="flex items-center gap-2 font-display text-xl font-black"><Sparkles className="h-5 w-5 text-yellow" /> Suggested for you</h2>
-        <p className="text-sm text-muted-foreground">From quiz questions and OSCE checklist items you missed.</p>
+        <p className="text-sm text-muted-foreground">Built from your saved review material and quiz practice.</p>
         <div className="grid gap-3 md:grid-cols-2">{sugg.map(s => <SuggestionPrompt key={s.id} studentId={student.id} s={s} />)}</div>
       </section>}
 
