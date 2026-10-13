@@ -39,6 +39,7 @@ import {
 import { DR_AMBROSE, DrAmbrose } from "@/features/case-challenge/components/dr-ambrose";
 import { PatientAvatar } from "@/features/case-challenge/components/patient-avatar";
 import { FEATURED_CASE } from "@/features/case-challenge/featured-case";
+import { STUDY_WITH_ANNIE_ENABLED } from "@/features/study-with-annie/feature-flag";
 
 type Student = Pick<
   Database["public"]["Tables"]["students"]["Row"],
@@ -68,7 +69,9 @@ const columns =
   "id,name,university,country,year_of_study,medical_program,current_level,subjects_studying,current_rotation,specialty_interests,weak_areas,study_goal,daily_study_target_minutes,notification_prefs,xp,level,streak_days,longest_streak,created_at";
 const nav = [
   { label: "Home", to: "/", icon: Home },
-  { label: "Annie", to: "/study-with-annie", icon: BookOpenText },
+  ...(STUDY_WITH_ANNIE_ENABLED
+    ? [{ label: "Annie", to: "/study-with-annie" as const, icon: BookOpenText }]
+    : []),
   { label: "Cases", to: "/cases", icon: HeartPulse },
   { label: "Practice", to: "/practice", icon: Stethoscope },
   { label: "Groups", to: "/groups", icon: Users },

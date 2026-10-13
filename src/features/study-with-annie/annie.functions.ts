@@ -4,6 +4,7 @@ import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { validateQuizCandidates, sentenceCandidates } from "./candidate-validation";
 import { ANNIE_SYSTEM_PROMPTS, DEFAULT_ANNIE_SETTINGS, fallbackLine } from "./config";
+import { requireStudyWithAnnieEnabled } from "./feature-flag";
 import type {
   AnnieAnnotation,
   AnnieDocument,
@@ -78,6 +79,7 @@ const questionAnswerSchema = z.object({
 });
 
 async function adminDb() {
+  requireStudyWithAnnieEnabled();
   const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
   return supabaseAdmin as any;
 }

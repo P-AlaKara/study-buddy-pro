@@ -1,5 +1,6 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
+import { requireStudyWithAnnieEnabled } from "./feature-flag";
 
 const prototypeSignInSchema = z.object({
   email: z.string().trim().email("Enter a valid email address.").max(254),
@@ -15,6 +16,7 @@ const prototypeSignInSchema = z.object({
 export const createPrototypeAnnieSignIn = createServerFn({ method: "POST" })
   .validator((input: unknown) => prototypeSignInSchema.parse(input))
   .handler(async ({ data }) => {
+    requireStudyWithAnnieEnabled();
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { data: link, error } = await supabaseAdmin.auth.admin.generateLink({
       type: "magiclink",
