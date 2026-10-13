@@ -111,6 +111,7 @@ Annie's Version 1 only supports PDFs with extractable text; scanned documents ar
 
 ## Privacy and learning safety
 
+- **Prototype authentication:** Study with Annie currently accepts an email and starts the session immediately without verifying email ownership. Do not use it for sensitive material; verified authentication must be restored before production.
 - Study with Annie documents are stored privately and are accessible only to their owner through authenticated, time-limited access.
 - Database row-level security protects documents, extracted page text, annotations, Annie settings, attempts, and study sessions.
 - Uploaded note content is handled only as needed to extract text and produce document-grounded interactions.

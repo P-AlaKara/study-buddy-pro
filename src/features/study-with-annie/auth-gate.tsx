@@ -2,6 +2,7 @@ import { useEffect, useState, type ReactNode } from "react";
 import type { User } from "@supabase/supabase-js";
 import { LoaderCircle, LockKeyhole, Mail, Sparkles } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import { createPrototypeAnnieSignIn } from "./prototype-auth.functions";
 
 export function AnnieAuthGate({ children }: { children: (user: User) => ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
@@ -32,16 +33,23 @@ export function AnnieAuthGate({ children }: { children: (user: User) => ReactNod
   }
   if (user) return <>{children(user)}</>;
 
-  async function sendMagicLink(event: React.FormEvent) {
+  async function signInForPrototype(event: React.FormEvent) {
     event.preventDefault();
     setSending(true);
     setMessage("");
-    const { error } = await supabase.auth.signInWithOtp({
-      email,
-      options: { emailRedirectTo: window.location.href },
-    });
-    setMessage(error ? error.message : "Check your inbox for a secure sign-in link.");
-    setSending(false);
+    try {
+      const { tokenHash } = await createPrototypeAnnieSignIn({ data: { email } });
+      const { data, error } = await supabase.auth.verifyOtp({
+        token_hash: tokenHash,
+        type: "magiclink",
+      });
+      if (error || !data.user) throw new Error(error?.message ?? "Could not sign you in.");
+      setUser(data.user);
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "Could not sign you in.");
+    } finally {
+      setSending(false);
+    }
   }
 
   return (
@@ -51,13 +59,13 @@ export function AnnieAuthGate({ children }: { children: (user: User) => ReactNod
           <LockKeyhole className="size-7" aria-hidden="true" />
         </span>
         <p className="mt-5 text-xs font-black uppercase tracking-[0.17em] text-[#6d5fb1]">
-          Your notes stay private
+          Study with Annie
         </p>
         <h1 className="mt-2 text-3xl font-black text-slate-900">Sign in to study with Annie</h1>
         <p className="mx-auto mt-3 max-w-sm text-sm font-semibold leading-relaxed text-slate-500">
-          We’ll email a secure link. Your PDFs and annotations are available only to your account.
+          Enter your email to continue to your personal study space.
         </p>
-        <form onSubmit={sendMagicLink} className="mt-7 space-y-3 text-left">
+        <form onSubmit={signInForPrototype} className="mt-7 space-y-3 text-left">
           <label htmlFor="annie-email" className="text-sm font-extrabold text-slate-700">
             Email address
           </label>
@@ -84,7 +92,7 @@ export function AnnieAuthGate({ children }: { children: (user: User) => ReactNod
             ) : (
               <Sparkles className="size-4" />
             )}
-            Email me a sign-in link
+            Continue to Annie
           </button>
         </form>
         {message && (
