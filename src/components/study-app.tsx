@@ -7,6 +7,7 @@ import {
   ArrowRight,
   Bell,
   BookOpen,
+  BookOpenText,
   Brain,
   ChevronDown,
   ChevronRight,
@@ -67,6 +68,7 @@ const columns =
   "id,name,university,country,year_of_study,medical_program,current_level,subjects_studying,current_rotation,specialty_interests,weak_areas,study_goal,daily_study_target_minutes,notification_prefs,xp,level,streak_days,longest_streak,created_at";
 const nav = [
   { label: "Home", to: "/", icon: Home },
+  { label: "Annie", to: "/study-with-annie", icon: BookOpenText },
   { label: "Cases", to: "/cases", icon: HeartPulse },
   { label: "Practice", to: "/practice", icon: Stethoscope },
   { label: "Groups", to: "/groups", icon: Users },

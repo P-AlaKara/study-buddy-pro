@@ -216,6 +216,99 @@
   margin-inline: auto;
 }
 
+/* Study with Annie reader -------------------------------------------------- */
+.annie-avatar {
+  display: block;
+  height: auto;
+  filter: drop-shadow(0 10px 12px rgb(65 48 90 / 12%));
+}
+
+.annie-reader {
+  --reader-bg: #ebe7df;
+  --reader-toolbar: #f8f5ee;
+  --reader-control: #ffffff;
+  --reader-border: #ddd7cd;
+  --reader-muted: #7b7b84;
+  color: #1f2937;
+}
+.annie-theme-sepia {
+  --reader-bg: #ded2bc;
+  --reader-toolbar: #f3ead9;
+  --reader-control: #fff8e9;
+  --reader-border: #d7c6a8;
+  --reader-muted: #756b5c;
+}
+.annie-theme-dark {
+  --reader-bg: #20242b;
+  --reader-toolbar: #303641;
+  --reader-control: #414956;
+  --reader-border: #4d5562;
+  --reader-muted: #bbc2cc;
+  color: #f8fafc;
+}
+.pdf-page-sepia canvas {
+  filter: sepia(0.22) saturate(0.82) brightness(0.98);
+}
+.pdf-page-dark canvas {
+  filter: invert(0.88) hue-rotate(180deg) brightness(0.9) contrast(0.9);
+}
+
+.textLayer {
+  color-scheme: only light;
+  position: absolute;
+  text-align: initial;
+  inset: 0;
+  overflow: clip;
+  opacity: 1;
+  line-height: 1;
+  -webkit-text-size-adjust: none;
+  text-size-adjust: none;
+  forced-color-adjust: none;
+  transform-origin: 0 0;
+  caret-color: CanvasText;
+  z-index: 3;
+  --min-font-size: 1;
+  --text-scale-factor: calc(var(--total-scale-factor) * var(--min-font-size));
+  --min-font-size-inv: calc(1 / var(--min-font-size));
+}
+.textLayer :is(span, br) {
+  color: transparent;
+  position: absolute;
+  white-space: pre;
+  cursor: text;
+  transform-origin: 0% 0%;
+}
+.textLayer > :not(.markedContent),
+.textLayer .markedContent span:not(.markedContent) {
+  z-index: 1;
+  --font-height: 0;
+  font-size: calc(var(--text-scale-factor) * var(--font-height));
+  --scale-x: 1;
+  --rotate: 0deg;
+  transform: rotate(var(--rotate)) scaleX(var(--scale-x)) scale(var(--min-font-size-inv));
+}
+.textLayer .markedContent {
+  display: contents;
+}
+.textLayer span[role="img"] {
+  user-select: none;
+  cursor: default;
+}
+.textLayer ::selection {
+  background: rgb(117 102 183 / 35%);
+}
+.textLayer .endOfContent {
+  display: block;
+  position: absolute;
+  inset: 100% 0 0;
+  z-index: 0;
+  cursor: default;
+  user-select: none;
+}
+.textLayer.selecting .endOfContent {
+  top: 0;
+}
+
 @media (min-width: 768px) {
   .app-container {
     width: min(calc(100% - 3rem), var(--app-max-width));

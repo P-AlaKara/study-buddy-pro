@@ -14,7 +14,8 @@
     "test:case-engine": "tsc --outDir /tmp/study-buddy-case-engine-tests --noEmit false --allowImportingTsExtensions false --module CommonJS --moduleResolution Node --target ES2022 --skipLibCheck --strict scripts/test-case-engine.ts && node /tmp/study-buddy-case-engine-tests/scripts/test-case-engine.js",
     "test:osce-validator": "tsc --outDir /tmp/study-buddy-osce-validator-tests --noEmit false --allowImportingTsExtensions false --module CommonJS --moduleResolution Node --target ES2022 --skipLibCheck --strict scripts/test-osce-validator.ts && node /tmp/study-buddy-osce-validator-tests/scripts/test-osce-validator.js",
     "test:osce-engine": "tsc --outDir /tmp/study-buddy-osce-engine-tests --noEmit false --allowImportingTsExtensions false --module CommonJS --moduleResolution Node --target ES2022 --skipLibCheck --strict scripts/test-osce-engine.ts && node /tmp/study-buddy-osce-engine-tests/scripts/test-osce-engine.js",
-    "test": "npm run validate:cases && npm run test:case-engine && npm run validate:osce && npm run test:osce-validator && npm run test:osce-engine",
+    "test:annie": "tsc --outDir /tmp/study-buddy-annie-tests --noEmit false --allowImportingTsExtensions false --module CommonJS --moduleResolution Node --target ES2022 --skipLibCheck --strict scripts/test-annie.ts && node /tmp/study-buddy-annie-tests/scripts/test-annie.js",
+    "test": "npm run validate:cases && npm run test:case-engine && npm run validate:osce && npm run test:osce-validator && npm run test:osce-engine && npm run test:annie",
     "lint": "eslint .",
     "format": "prettier --write ."
   },
@@ -65,6 +66,7 @@
     "embla-carousel-react": "^8.6.0",
     "input-otp": "^1.4.2",
     "lucide-react": "^0.575.0",
+    "pdfjs-dist": "5.6.205",
     "react": "^19.2.0",
     "react-day-picker": "^9.14.0",
     "react-dom": "^19.2.0",

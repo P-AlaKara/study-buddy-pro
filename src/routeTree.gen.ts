@@ -29,6 +29,8 @@ import { Route as OsceIndexRouteImport } from './routes/osce.index'
 import { Route as OsceStationIdRouteImport } from './routes/osce.$stationId'
 import { Route as QuizIndexRouteImport } from './routes/quiz.index'
 import { Route as QuizPlayRouteImport } from './routes/quiz.play'
+import { Route as StudyWithAnnieIndexRouteImport } from './routes/study-with-annie.index'
+import { Route as StudyWithAnnieDocumentIdRouteImport } from './routes/study-with-annie.$documentId'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -130,6 +132,17 @@ const QuizPlayRoute = QuizPlayRouteImport.update({
   path: '/play',
   getParentRoute: () => QuizRoute,
 } as any)
+const StudyWithAnnieIndexRoute = StudyWithAnnieIndexRouteImport.update({
+  id: '/study-with-annie/',
+  path: '/study-with-annie/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const StudyWithAnnieDocumentIdRoute =
+  StudyWithAnnieDocumentIdRouteImport.update({
+    id: '/study-with-annie/$documentId',
+    path: '/study-with-annie/$documentId',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -147,11 +160,13 @@ export interface FileRoutesByFullPath {
   '/groups/$groupId': typeof GroupsGroupIdRoute
   '/osce/$stationId': typeof OsceStationIdRoute
   '/quiz/play': typeof QuizPlayRoute
+  '/study-with-annie/$documentId': typeof StudyWithAnnieDocumentIdRoute
   '/cases/': typeof CasesIndexRoute
   '/flashcards/': typeof FlashcardsIndexRoute
   '/groups/': typeof GroupsIndexRoute
   '/osce/': typeof OsceIndexRoute
   '/quiz/': typeof QuizIndexRoute
+  '/study-with-annie/': typeof StudyWithAnnieIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -164,11 +179,13 @@ export interface FileRoutesByTo {
   '/groups/$groupId': typeof GroupsGroupIdRoute
   '/osce/$stationId': typeof OsceStationIdRoute
   '/quiz/play': typeof QuizPlayRoute
+  '/study-with-annie/$documentId': typeof StudyWithAnnieDocumentIdRoute
   '/cases': typeof CasesIndexRoute
   '/flashcards': typeof FlashcardsIndexRoute
   '/groups': typeof GroupsIndexRoute
   '/osce': typeof OsceIndexRoute
   '/quiz': typeof QuizIndexRoute
+  '/study-with-annie': typeof StudyWithAnnieIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -187,11 +204,13 @@ export interface FileRoutesById {
   '/groups/$groupId': typeof GroupsGroupIdRoute
   '/osce/$stationId': typeof OsceStationIdRoute
   '/quiz/play': typeof QuizPlayRoute
+  '/study-with-annie/$documentId': typeof StudyWithAnnieDocumentIdRoute
   '/cases/': typeof CasesIndexRoute
   '/flashcards/': typeof FlashcardsIndexRoute
   '/groups/': typeof GroupsIndexRoute
   '/osce/': typeof OsceIndexRoute
   '/quiz/': typeof QuizIndexRoute
+  '/study-with-annie/': typeof StudyWithAnnieIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -211,11 +230,13 @@ export interface FileRouteTypes {
     | '/groups/$groupId'
     | '/osce/$stationId'
     | '/quiz/play'
+    | '/study-with-annie/$documentId'
     | '/cases/'
     | '/flashcards/'
     | '/groups/'
     | '/osce/'
     | '/quiz/'
+    | '/study-with-annie/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -228,11 +249,13 @@ export interface FileRouteTypes {
     | '/groups/$groupId'
     | '/osce/$stationId'
     | '/quiz/play'
+    | '/study-with-annie/$documentId'
     | '/cases'
     | '/flashcards'
     | '/groups'
     | '/osce'
     | '/quiz'
+    | '/study-with-annie'
   id:
     | '__root__'
     | '/'
@@ -250,11 +273,13 @@ export interface FileRouteTypes {
     | '/groups/$groupId'
     | '/osce/$stationId'
     | '/quiz/play'
+    | '/study-with-annie/$documentId'
     | '/cases/'
     | '/flashcards/'
     | '/groups/'
     | '/osce/'
     | '/quiz/'
+    | '/study-with-annie/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -267,6 +292,8 @@ export interface RootRouteChildren {
   PracticeRoute: typeof PracticeRoute
   ProfileRoute: typeof ProfileRoute
   QuizRoute: typeof QuizRouteWithChildren
+  StudyWithAnnieDocumentIdRoute: typeof StudyWithAnnieDocumentIdRoute
+  StudyWithAnnieIndexRoute: typeof StudyWithAnnieIndexRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -411,6 +438,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof QuizPlayRouteImport
       parentRoute: typeof QuizRoute
     }
+    '/study-with-annie/': {
+      id: '/study-with-annie/'
+      path: '/study-with-annie'
+      fullPath: '/study-with-annie/'
+      preLoaderRoute: typeof StudyWithAnnieIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/study-with-annie/$documentId': {
+      id: '/study-with-annie/$documentId'
+      path: '/study-with-annie/$documentId'
+      fullPath: '/study-with-annie/$documentId'
+      preLoaderRoute: typeof StudyWithAnnieDocumentIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -489,6 +530,8 @@ const rootRouteChildren: RootRouteChildren = {
   PracticeRoute: PracticeRoute,
   ProfileRoute: ProfileRoute,
   QuizRoute: QuizRouteWithChildren,
+  StudyWithAnnieDocumentIdRoute: StudyWithAnnieDocumentIdRoute,
+  StudyWithAnnieIndexRoute: StudyWithAnnieIndexRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
