@@ -1,5 +1,9 @@
 import { useId, type CSSProperties } from "react";
-import type { CasePatient, PatientExpression as CasePatientExpression } from "../schema.js";
+import type {
+  ActionCategory,
+  CasePatient,
+  PatientExpression as CasePatientExpression,
+} from "../schema.js";
 
 export type PatientAvatarExpression =
   CasePatientExpression | "guarded" | "tearful" | "worried" | "irritated";
@@ -30,12 +34,14 @@ export function PatientAvatar({
   patient,
   expression,
   respiratoryRate,
+  reaction = null,
   decorative = false,
   className = "",
 }: {
   patient: PatientAvatarPatient;
   expression: PatientAvatarExpression;
   respiratoryRate: number;
+  reaction?: ActionCategory | null;
   decorative?: boolean;
   className?: string;
 }) {
@@ -56,6 +62,7 @@ export function PatientAvatar({
     <div
       className={`patient-avatar relative mx-auto aspect-[6/7] w-full max-w-48 ${className}`}
       data-expression={expression}
+      data-reaction={reaction ?? "idle"}
       aria-hidden={decorative || undefined}
     >
       <svg
@@ -175,7 +182,9 @@ export function PatientAvatar({
           </g>
         )}
 
-        <Mouth expression={expression} shade={skin.shade} />
+        <g className={reaction === "ask" ? "patient-mouth-speaking" : undefined}>
+          <Mouth expression={expression} shade={skin.shade} />
+        </g>
         {patient.avatar.ageCues !== "young_adult" && (
           <g fill="none" stroke={skin.shade} strokeWidth="1.5" strokeLinecap="round" opacity=".34">
             <path d="M78 126q9 4 18 1" />

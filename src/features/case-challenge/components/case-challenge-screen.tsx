@@ -1,4 +1,12 @@
-import { useEffect, useMemo, useRef, useState, type ComponentType, type DragEvent } from "react";
+import {
+  useEffect,
+  useId,
+  useMemo,
+  useRef,
+  useState,
+  type ComponentType,
+  type DragEvent,
+} from "react";
 import { Link } from "@tanstack/react-router";
 import {
   Activity,
@@ -8,18 +16,23 @@ import {
   BadgeDollarSign,
   Check,
   ChevronDown,
+  ChevronRight,
   ChevronUp,
   ClipboardList,
   Clock3,
+  FileText,
   FlaskConical,
   HeartPulse,
   HelpCircle,
   MessageCircleMore,
+  NotebookPen,
+  PanelRightClose,
+  PanelRightOpen,
   Plus,
-  Search,
   Stethoscope,
   Syringe,
   Trash2,
+  UserRound,
   X,
 } from "lucide-react";
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog";
@@ -47,8 +60,8 @@ import { CaseImageViewer } from "./case-image-viewer.js";
 import { DR_AMBROSE, DrAmbrose, type AmbroseExpression } from "./dr-ambrose.js";
 import { PatientAvatar } from "./patient-avatar.js";
 
-type MobileZone = "patient" | "actions" | "chart" | "differential";
-type RightTab = "chart" | "differential";
+type RightTab = "chart" | "notes" | "differential";
+type AvatarReaction = ActionCategory | null;
 
 const categoryMeta: Record<
   ActionCategory,
@@ -59,17 +72,6 @@ const categoryMeta: Record<
   test: { label: "Tests", icon: FlaskConical, tint: "bg-[#e8f3ff]" },
   treat: { label: "Treat", icon: Syringe, tint: "bg-[#fff0ec]" },
 };
-
-const mobileNav: Array<{
-  id: MobileZone;
-  label: string;
-  icon: ComponentType<{ className?: string }>;
-}> = [
-  { id: "patient", label: "Patient", icon: HeartPulse },
-  { id: "actions", label: "Actions", icon: Stethoscope },
-  { id: "chart", label: "Chart", icon: ClipboardList },
-  { id: "differential", label: "Differential", icon: Search },
-];
 
 function engineMessage(error: unknown): string {
   return error instanceof Error ? error.message : "That move could not be completed.";
@@ -83,8 +85,13 @@ export function CaseChallengeScreen({ caseDefinition }: { caseDefinition: Medica
   const [game, setGame] = useState<GameState>(() => createInitialState(caseDefinition));
   const [actionCategory, setActionCategory] = useState<ActionCategory>("ask");
   const [rightTab, setRightTab] = useState<RightTab>("chart");
-  const [mobileZone, setMobileZone] = useState<MobileZone>("actions");
+  const [workspaceOpen, setWorkspaceOpen] = useState(false);
+  const [clinicalNotes, setClinicalNotes] = useState("");
+  const [unreadFindings, setUnreadFindings] = useState(0);
+  const [workspacePulse, setWorkspacePulse] = useState(false);
+  const [findingNotice, setFindingNotice] = useState(false);
   const [typingActionId, setTypingActionId] = useState<string | null>(null);
+  const [avatarReaction, setAvatarReaction] = useState<AvatarReaction>(null);
   const [error, setError] = useState("");
   const [commitOpen, setCommitOpen] = useState(false);
   const [mobileCoachOpen, setMobileCoachOpen] = useState(false);
@@ -92,25 +99,99 @@ export function CaseChallengeScreen({ caseDefinition }: { caseDefinition: Medica
   const [commitTreatments, setCommitTreatments] = useState<string[]>([]);
   const [draggedDiagnosis, setDraggedDiagnosis] = useState<string | null>(null);
   const typingTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const reactionTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const noticeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const pulseTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const previousEvidenceCount = useRef(0);
+  const workspaceTriggerRef = useRef<HTMLButtonElement>(null);
+  const workspaceDialogRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     setGame(createInitialState(caseDefinition));
     setActionCategory("ask");
     setRightTab("chart");
-    setMobileZone("actions");
+    setWorkspaceOpen(false);
+    setClinicalNotes("");
+    setUnreadFindings(0);
+    setWorkspacePulse(false);
+    setFindingNotice(false);
     setTypingActionId(null);
+    setAvatarReaction(null);
     setError("");
     setCommitOpen(false);
     setMobileCoachOpen(false);
+    previousEvidenceCount.current = 0;
     if (typingTimer.current) clearTimeout(typingTimer.current);
+    if (reactionTimer.current) clearTimeout(reactionTimer.current);
+    if (noticeTimer.current) clearTimeout(noticeTimer.current);
+    if (pulseTimer.current) clearTimeout(pulseTimer.current);
   }, [caseDefinition]);
 
   useEffect(
     () => () => {
       if (typingTimer.current) clearTimeout(typingTimer.current);
+      if (reactionTimer.current) clearTimeout(reactionTimer.current);
+      if (noticeTimer.current) clearTimeout(noticeTimer.current);
+      if (pulseTimer.current) clearTimeout(pulseTimer.current);
     },
     [],
   );
+
+  useEffect(() => {
+    if (game.caseId !== caseDefinition.id) return;
+    const currentCount = game.discoveredEvidence.length;
+    const newlyAdded = currentCount - previousEvidenceCount.current;
+    previousEvidenceCount.current = currentCount;
+    if (newlyAdded <= 0) return;
+
+    setFindingNotice(true);
+    if (!(workspaceOpen && rightTab === "chart")) {
+      setUnreadFindings((count) => count + newlyAdded);
+      setWorkspacePulse(true);
+    }
+    if (noticeTimer.current) clearTimeout(noticeTimer.current);
+    if (pulseTimer.current) clearTimeout(pulseTimer.current);
+    noticeTimer.current = setTimeout(() => setFindingNotice(false), 4200);
+    pulseTimer.current = setTimeout(() => setWorkspacePulse(false), 2400);
+  }, [caseDefinition.id, game.caseId, game.discoveredEvidence.length, rightTab, workspaceOpen]);
+
+  useEffect(() => {
+    if (!workspaceOpen) return;
+    const isDrawer = window.matchMedia("(max-width: 1279px)").matches;
+    const focusFrame = isDrawer
+      ? requestAnimationFrame(() => {
+          workspaceDialogRef.current?.querySelector<HTMLElement>("button")?.focus();
+        })
+      : null;
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        setWorkspaceOpen(false);
+        requestAnimationFrame(() => workspaceTriggerRef.current?.focus());
+        return;
+      }
+      if (event.key !== "Tab" || !isDrawer || !workspaceDialogRef.current) return;
+      const focusable = [
+        ...workspaceDialogRef.current.querySelectorAll<HTMLElement>(
+          'button:not(:disabled), textarea:not(:disabled), select:not(:disabled), input:not(:disabled), [href], [tabindex]:not([tabindex="-1"])',
+        ),
+      ].filter((element) => element.offsetParent !== null);
+      const first = focusable[0];
+      const last = focusable.at(-1);
+      if (!first || !last) return;
+      if (event.shiftKey && document.activeElement === first) {
+        event.preventDefault();
+        last.focus();
+      } else if (!event.shiftKey && document.activeElement === last) {
+        event.preventDefault();
+        first.focus();
+      }
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => {
+      if (focusFrame !== null) cancelAnimationFrame(focusFrame);
+      window.removeEventListener("keydown", onKeyDown);
+    };
+  }, [workspaceOpen]);
 
   const actions = useMemo(
     () => caseDefinition.actions.filter((action) => action.category === actionCategory),
@@ -124,11 +205,6 @@ export function CaseChallengeScreen({ caseDefinition }: { caseDefinition: Medica
     () => new Set(game.completedActions.map((action) => action.actionId)),
     [game.completedActions],
   );
-  const latestAction = game.latestActionId ? actionById.get(game.latestActionId) : undefined;
-  const latestReply = [...game.completedActions]
-    .reverse()
-    .map((entry) => actionById.get(entry.actionId))
-    .find((action) => action?.result.type === "patient_reply");
   const nextHint = caseDefinition.hints[game.hintsUsed.length];
   const commitReadiness = getCommitReadiness(game, caseDefinition);
 
@@ -150,15 +226,21 @@ export function CaseChallengeScreen({ caseDefinition }: { caseDefinition: Medica
   }
 
   function finishAction(actionId: string) {
+    const action = actionById.get(actionId);
     safelyUpdate((current) => applyAction(current, caseDefinition, actionId));
     setTypingActionId(null);
-    if (actionById.get(actionId)?.result.type === "patient_reply") setMobileZone("patient");
+    if (action) {
+      setAvatarReaction(action.category);
+      if (reactionTimer.current) clearTimeout(reactionTimer.current);
+      reactionTimer.current = setTimeout(() => setAvatarReaction(null), 1100);
+    }
   }
 
   function chooseAction(action: CaseAction) {
     if (typingActionId || game.phase !== "investigate") return;
     if (action.result.type === "patient_reply") {
       setTypingActionId(action.id);
+      setAvatarReaction("ask");
       typingTimer.current = setTimeout(
         () => finishAction(action.id),
         typingDelay(action.result.content),
@@ -231,13 +313,58 @@ export function CaseChallengeScreen({ caseDefinition }: { caseDefinition: Medica
     setDraggedDiagnosis(null);
   }
 
-  function selectMobileZone(zone: MobileZone) {
-    setMobileZone(zone);
-    if (zone === "chart" || zone === "differential") setRightTab(zone);
+  function openWorkspace(tab: RightTab = rightTab) {
+    setRightTab(tab);
+    setWorkspaceOpen(true);
+    if (tab === "chart") setUnreadFindings(0);
+    setWorkspacePulse(false);
+  }
+
+  function closeWorkspace() {
+    setWorkspaceOpen(false);
+    requestAnimationFrame(() => workspaceTriggerRef.current?.focus());
   }
 
   function askForHint() {
     safelyUpdate((current) => requestNextHint(current, caseDefinition));
+  }
+
+  function workspacePanel(showClose: boolean) {
+    return (
+      <ClinicalWorkspace
+        game={game}
+        caseDefinition={caseDefinition}
+        activeTab={rightTab}
+        notes={clinicalNotes}
+        draggedDiagnosis={draggedDiagnosis}
+        showClose={showClose}
+        onClose={closeWorkspace}
+        onTab={(tab) => {
+          setRightTab(tab);
+          if (tab === "chart") setUnreadFindings(0);
+        }}
+        onNotes={setClinicalNotes}
+        onDragStart={setDraggedDiagnosis}
+        onDrop={dropDiagnosis}
+        onAdd={addDiagnosis}
+        onMove={moveDiagnosis}
+        onRemove={(diagnosisId) =>
+          safelyUpdate((current) => removeFromDifferential(current, caseDefinition, diagnosisId))
+        }
+        onConfidence={(diagnosisId, confidence) =>
+          safelyUpdate((current) =>
+            setDifferentialConfidence(current, caseDefinition, diagnosisId, confidence),
+          )
+        }
+        onTag={(diagnosisId, evidenceId, relationship) =>
+          safelyUpdate((current) =>
+            tagEvidence(current, caseDefinition, diagnosisId, evidenceId, relationship),
+          )
+        }
+        nextHint={nextHint}
+        onHint={askForHint}
+      />
+    );
   }
 
   if (game.phase === "debrief") {
@@ -249,7 +376,12 @@ export function CaseChallengeScreen({ caseDefinition }: { caseDefinition: Medica
           setGame(createInitialState(caseDefinition));
           setActionCategory("ask");
           setRightTab("chart");
-          setMobileZone("actions");
+          setWorkspaceOpen(false);
+          setClinicalNotes("");
+          setUnreadFindings(0);
+          setFindingNotice(false);
+          setAvatarReaction(null);
+          previousEvidenceCount.current = 0;
           setMobileCoachOpen(false);
           setError("");
         }}
@@ -258,8 +390,8 @@ export function CaseChallengeScreen({ caseDefinition }: { caseDefinition: Medica
   }
 
   return (
-    <div className="case-cockpit -mx-1 pb-24 md:-mx-2 lg:pb-0">
-      <header className="sticky top-[72px] z-20 mb-3 rounded-[22px] bg-[#fdfcf8]/95 p-3 shadow-[0_10px_28px_-18px_rgb(20_45_52/45%)] backdrop-blur md:top-[84px] md:p-4">
+    <div className="case-cockpit -mx-1 pb-8 md:-mx-2">
+      <header className="case-command-bar sticky top-0 z-30 mb-4 rounded-[22px] bg-[#fdfcf8]/96 p-3 shadow-[0_12px_32px_-20px_rgb(20_45_52/48%)] backdrop-blur md:top-[84px] md:p-4">
         <div className="flex items-center gap-3">
           <Link
             to="/cases"
@@ -278,24 +410,89 @@ export function CaseChallengeScreen({ caseDefinition }: { caseDefinition: Medica
               {caseDefinition.title}
             </h1>
           </div>
-          <div className="hidden items-center gap-2 sm:flex">
+          <div className="hidden items-center gap-2 lg:flex">
             <ScoreMeter score={game.score.total} maximum={game.score.maximum} />
             <span className="rounded-full bg-white px-3 py-2 text-xs font-extrabold text-slate-700 shadow-sm">
               {game.hintsUsed.length} hints
             </span>
           </div>
           <button
+            ref={workspaceTriggerRef}
             type="button"
             onClick={showCommit}
             disabled={game.phase !== "investigate"}
-            className={`case-primary-button shrink-0 px-4 py-2.5 text-xs sm:text-sm ${commitReadiness.ready ? "case-commit-ready" : ""}`}
+            className={`case-primary-button shrink-0 px-3 py-2.5 text-xs sm:px-4 sm:text-sm ${commitReadiness.ready ? "case-commit-ready" : ""}`}
           >
             Commit <span className="hidden sm:inline">diagnosis</span>
           </button>
         </div>
+
+        <div className="mt-3 flex items-stretch gap-2 border-t border-slate-100 pt-3">
+          <button
+            type="button"
+            aria-expanded={workspaceOpen}
+            onClick={() => (workspaceOpen ? closeWorkspace() : openWorkspace())}
+            className={`case-workspace-trigger min-w-0 flex-1 ${workspacePulse ? "is-discovered" : ""}`}
+          >
+            <span className="grid size-9 shrink-0 place-items-center rounded-xl bg-[#dff4f1] text-[#107b80]">
+              <ClipboardList className="size-4" />
+            </span>
+            <span className="min-w-0 text-left">
+              <span className="block text-xs font-black text-slate-800">Clinical workspace</span>
+              <span className="hidden truncate text-[10px] font-bold text-slate-500 sm:block">
+                Chart · Notes · Differentials
+              </span>
+            </span>
+            {unreadFindings > 0 && (
+              <span className="grid size-6 shrink-0 place-items-center rounded-full bg-[#168d91] text-[10px] font-black text-white">
+                {unreadFindings}
+              </span>
+            )}
+            {workspaceOpen ? (
+              <PanelRightClose className="size-4 shrink-0 text-slate-500" />
+            ) : (
+              <PanelRightOpen className="size-4 shrink-0 text-slate-500" />
+            )}
+          </button>
+
+          <button
+            type="button"
+            aria-expanded={mobileCoachOpen}
+            aria-controls="case-coach-popover"
+            onClick={() => setMobileCoachOpen((open) => !open)}
+            className="flex shrink-0 items-center gap-2 rounded-2xl border border-amber-100 bg-[#fff8df] px-3 text-xs font-black text-amber-900 transition-colors hover:bg-amber-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400"
+          >
+            <HelpCircle className="size-4" />
+            <span className="hidden sm:inline">Ask {DR_AMBROSE.name}</span>
+          </button>
+
+          <div className="flex shrink-0 items-center gap-2 rounded-2xl bg-slate-900 px-3 text-white">
+            <Clock3 className="size-4 text-white/55" />
+            <div>
+              <p className="hidden text-[8px] font-bold uppercase tracking-widest text-white/50 sm:block">
+                Case clock
+              </p>
+              <p className="font-mono text-sm font-black sm:text-base">
+                {formatCaseClock(game.timeMinute)}
+              </p>
+            </div>
+          </div>
+        </div>
       </header>
 
       <CompactVitals game={game} />
+
+      {findingNotice && (
+        <div className="case-finding-notice" role="status" aria-live="polite">
+          <span className="grid size-8 place-items-center rounded-full bg-[#dff4f1] text-[#107b80]">
+            <Check className="size-4" />
+          </span>
+          <span className="text-sm font-black text-slate-800">Finding added to chart</span>
+          <button type="button" onClick={() => openWorkspace("chart")}>
+            View chart <ChevronRight className="size-4" />
+          </button>
+        </div>
+      )}
 
       {error && (
         <div
@@ -314,63 +511,59 @@ export function CaseChallengeScreen({ caseDefinition }: { caseDefinition: Medica
         </div>
       )}
 
-      <div className="grid items-start gap-3 lg:grid-cols-[minmax(220px,25fr)_minmax(390px,45fr)_minmax(280px,30fr)]">
-        <aside className={`${mobileZone === "patient" ? "block" : "hidden"} lg:block`}>
+      <div
+        className={`grid items-start gap-4 lg:grid-cols-[270px_minmax(0,1fr)] ${workspaceOpen ? "xl:grid-cols-[250px_minmax(420px,1fr)_360px]" : "xl:grid-cols-[280px_minmax(0,1fr)]"}`}
+      >
+        <aside className="lg:sticky lg:top-[226px]">
           <PatientPanel
             caseDefinition={caseDefinition}
             game={game}
-            latestReply={latestReply}
             typing={Boolean(typingActionId)}
+            reaction={avatarReaction}
           />
         </aside>
 
-        <main className={`${mobileZone === "actions" ? "block" : "hidden"} min-w-0 lg:block`}>
-          <section className="case-panel min-h-[330px] overflow-hidden">
-            <div className="border-b border-slate-100 px-5 py-4">
-              <div className="flex items-center justify-between gap-3">
-                <div>
-                  <p className="text-[10px] font-black uppercase tracking-[0.16em] text-[#168d91]">
-                    Live encounter
-                  </p>
-                  <h2 className="mt-1 text-xl font-black text-slate-900">
-                    {game.phase === "hook"
-                      ? "The patient arrives"
-                      : (latestAction?.label ?? "What's your first move?")}
-                  </h2>
-                </div>
-                <div className="rounded-2xl bg-slate-900 px-3 py-2 text-right text-white">
-                  <p className="text-[9px] font-bold uppercase tracking-widest text-white/55">
-                    Case clock
-                  </p>
-                  <p className="font-mono text-lg font-black">{formatCaseClock(game.timeMinute)}</p>
-                </div>
+        <main className="min-w-0">
+          <section className="case-panel overflow-hidden">
+            <div className="flex items-center justify-between gap-3 border-b border-slate-100 px-4 py-3 sm:px-5 sm:py-4">
+              <div>
+                <p className="text-[10px] font-black uppercase tracking-[0.16em] text-[#168d91]">
+                  Live encounter
+                </p>
+                <h2 className="mt-1 text-xl font-black text-slate-900">Clinical interaction</h2>
               </div>
+              <span className="rounded-full bg-[#e8f8f5] px-3 py-1.5 text-[10px] font-black uppercase tracking-wider text-[#107b80]">
+                {game.phase === "hook" ? "Handover" : "In progress"}
+              </span>
             </div>
-            <div className="p-5">
-              <div
-                key={
-                  typingActionId
-                    ? `typing:${typingActionId}`
-                    : latestAction
-                      ? `result:${latestAction.id}`
-                      : game.phase
-                }
-                className="case-stage-transition"
-              >
-                <StageResult
-                  caseDefinition={caseDefinition}
-                  game={game}
-                  latestAction={latestAction}
-                  typingAction={typingActionId ? actionById.get(typingActionId) : undefined}
-                  onStart={startCase}
-                />
-              </div>
-            </div>
+            <InteractionFeed
+              caseDefinition={caseDefinition}
+              game={game}
+              actionById={actionById}
+              typingAction={typingActionId ? actionById.get(typingActionId) : undefined}
+              onStart={startCase}
+            />
           </section>
 
-          <section className="case-panel mt-3 overflow-hidden">
+          <section
+            className="case-panel mt-4 overflow-hidden"
+            aria-labelledby="clinical-actions-title"
+          >
+            <div className="flex items-center justify-between px-4 pb-2 pt-4 sm:px-5">
+              <div>
+                <p className="text-[10px] font-black uppercase tracking-[0.15em] text-slate-400">
+                  Your next move
+                </p>
+                <h2 id="clinical-actions-title" className="text-base font-black text-slate-900">
+                  Clinical actions
+                </h2>
+              </div>
+              <span className="text-[10px] font-bold text-slate-400">
+                {completedIds.size}/{caseDefinition.actions.length} completed
+              </span>
+            </div>
             <div
-              className="grid grid-cols-4 gap-1 border-b border-slate-100 bg-slate-50/70 p-2"
+              className="grid grid-cols-4 gap-1 border-y border-slate-100 bg-slate-50/70 p-2"
               role="tablist"
               aria-label="Clinical actions"
             >
@@ -384,14 +577,14 @@ export function CaseChallengeScreen({ caseDefinition }: { caseDefinition: Medica
                     role="tab"
                     aria-selected={actionCategory === category}
                     onClick={() => setActionCategory(category)}
-                    className={`flex min-w-0 flex-col items-center gap-1 rounded-2xl px-1 py-2 text-[11px] font-black transition-colors sm:flex-row sm:justify-center sm:text-xs ${actionCategory === category ? "bg-white text-[#107b80] shadow-sm" : "text-slate-500 hover:bg-white/70"}`}
+                    className={`case-action-tab flex min-w-0 flex-col items-center gap-1 rounded-xl px-1 py-2 text-[11px] font-black sm:flex-row sm:justify-center sm:text-xs ${actionCategory === category ? "is-active" : ""}`}
                   >
                     <Icon className="size-4" /> {meta.label}
                   </button>
                 );
               })}
             </div>
-            <div className="grid max-h-[360px] gap-2 overflow-y-auto p-3 sm:grid-cols-2">
+            <div className="grid max-h-[350px] gap-2 overflow-y-auto p-3 sm:grid-cols-2">
               {actions.map((action) => (
                 <ActionCard
                   key={action.id}
@@ -406,70 +599,46 @@ export function CaseChallengeScreen({ caseDefinition }: { caseDefinition: Medica
           </section>
         </main>
 
-        <aside
-          className={`${mobileZone === "chart" || mobileZone === "differential" ? "block" : "hidden"} lg:sticky lg:top-[174px] lg:block`}
-        >
-          <section className="case-panel flex max-h-[calc(100vh-195px)] min-h-[560px] flex-col overflow-hidden">
-            <div className="grid grid-cols-2 gap-1 border-b border-slate-100 bg-slate-50/70 p-2">
-              {(["chart", "differential"] as const).map((tab) => (
-                <button
-                  key={tab}
-                  type="button"
-                  onClick={() => setRightTab(tab)}
-                  className={`rounded-xl px-3 py-2 text-xs font-black capitalize ${rightTab === tab ? "bg-white text-[#107b80] shadow-sm" : "text-slate-500"}`}
-                >
-                  {tab === "chart" ? "Chart" : "Differential"}
-                </button>
-              ))}
-            </div>
-            <div className="min-h-0 flex-1 overflow-y-auto p-4">
-              {rightTab === "chart" ? (
-                <ChartPanel game={game} caseDefinition={caseDefinition} />
-              ) : (
-                <DifferentialBoard
-                  game={game}
-                  caseDefinition={caseDefinition}
-                  draggedDiagnosis={draggedDiagnosis}
-                  onDragStart={setDraggedDiagnosis}
-                  onDrop={dropDiagnosis}
-                  onAdd={addDiagnosis}
-                  onMove={moveDiagnosis}
-                  onRemove={(diagnosisId) =>
-                    safelyUpdate((current) =>
-                      removeFromDifferential(current, caseDefinition, diagnosisId),
-                    )
-                  }
-                  onConfidence={(diagnosisId, confidence) =>
-                    safelyUpdate((current) =>
-                      setDifferentialConfidence(current, caseDefinition, diagnosisId, confidence),
-                    )
-                  }
-                  onTag={(diagnosisId, evidenceId, relationship) =>
-                    safelyUpdate((current) =>
-                      tagEvidence(current, caseDefinition, diagnosisId, evidenceId, relationship),
-                    )
-                  }
-                />
-              )}
-            </div>
-            <HintPanel game={game} nextHint={nextHint} onHint={askForHint} />
-          </section>
-        </aside>
+        {workspaceOpen && (
+          <aside className="sticky top-[226px] hidden min-w-0 xl:block">
+            {workspacePanel(false)}
+          </aside>
+        )}
       </div>
 
-      <footer className="mt-4 text-center text-[11px] font-bold text-slate-500">
+      <footer className="mt-5 text-center text-[11px] font-bold text-slate-500">
         Educational use only, not medical advice · Content status:{" "}
         {caseDefinition.reviewStatus === "clinician_reviewed"
           ? "clinician reviewed"
           : "clinician review required"}
       </footer>
 
+      {workspaceOpen && (
+        <div className="case-workspace-mobile xl:hidden">
+          <button
+            type="button"
+            className="case-workspace-scrim"
+            onClick={closeWorkspace}
+            aria-label="Close clinical workspace"
+          />
+          <div
+            ref={workspaceDialogRef}
+            className="case-workspace-drawer"
+            role="dialog"
+            aria-modal="true"
+            aria-label="Clinical workspace"
+          >
+            {workspacePanel(true)}
+          </div>
+        </div>
+      )}
+
       {mobileCoachOpen && (
         <div
-          id="mobile-case-coach"
+          id="case-coach-popover"
           role="region"
           aria-label={`${DR_AMBROSE.name} hint panel`}
-          className="case-mobile-coach-panel lg:hidden"
+          className="case-coach-popover"
         >
           <button
             type="button"
@@ -482,40 +651,6 @@ export function CaseChallengeScreen({ caseDefinition }: { caseDefinition: Medica
           <HintPanel game={game} nextHint={nextHint} onHint={askForHint} />
         </div>
       )}
-
-      <button
-        type="button"
-        aria-expanded={mobileCoachOpen}
-        aria-controls="mobile-case-coach"
-        onClick={() => setMobileCoachOpen((open) => !open)}
-        className="case-mobile-mentor lg:hidden"
-      >
-        <DrAmbrose
-          expression={
-            game.vitals.spo2 < 90 || game.vitals.systolicBp < 90 ? "concerned" : "thinking"
-          }
-          variant="logo"
-          className="w-14"
-        />
-        <span>Ask coach</span>
-      </button>
-
-      <nav className="case-mobile-nav lg:hidden" aria-label="Case workspace">
-        {mobileNav.map((item) => {
-          const Icon = item.icon;
-          return (
-            <button
-              key={item.id}
-              type="button"
-              onClick={() => selectMobileZone(item.id)}
-              className={mobileZone === item.id ? "is-active" : ""}
-            >
-              <Icon className="size-5" />
-              <span>{item.label}</span>
-            </button>
-          );
-        })}
-      </nav>
 
       <CommitDialog
         open={commitOpen}
@@ -538,34 +673,60 @@ export function CaseChallengeScreen({ caseDefinition }: { caseDefinition: Medica
 function PatientPanel({
   caseDefinition,
   game,
-  latestReply,
   typing,
+  reaction,
 }: {
   caseDefinition: MedicalCase;
   game: GameState;
-  latestReply: CaseAction | undefined;
   typing: boolean;
+  reaction: AvatarReaction;
 }) {
+  const activeReaction = typing ? "ask" : reaction;
+  const ReactionIcon = activeReaction ? categoryMeta[activeReaction].icon : Activity;
+  const critical = game.vitals.spo2 < 90 || game.vitals.systolicBp < 90;
   return (
     <section className="case-panel overflow-hidden">
-      <div className="bg-gradient-to-b from-[#d9f4f0] to-[#f8fcfb] p-4 text-center">
-        <PatientAvatar
-          patient={caseDefinition.patient}
-          expression={game.patientExpression}
-          respiratoryRate={game.vitals.rr}
-        />
-        <h2 className="mt-2 text-lg font-black text-slate-900">
-          {caseDefinition.patient.name}, {caseDefinition.patient.age}
-        </h2>
-        <p className="text-xs font-bold text-slate-500">{caseDefinition.patient.chiefComplaint}</p>
-        <div className="relative mt-4 rounded-[18px] bg-white p-3 text-left text-sm leading-relaxed text-slate-700 shadow-sm before:absolute before:-top-2 before:left-1/2 before:size-4 before:-translate-x-1/2 before:rotate-45 before:bg-white">
-          {typing ? (
-            <TypingDots />
-          ) : latestReply ? (
-            <>“{latestReply.result.content}”</>
-          ) : (
-            <>“{caseDefinition.intro.split(". ").at(-1)}”</>
-          )}
+      <div className="bg-gradient-to-b from-[#d9f4f0] to-[#f8fcfb] p-4">
+        <div className="grid grid-cols-[112px_minmax(0,1fr)] items-center gap-4 lg:block lg:text-center">
+          <div className="relative mx-auto w-full max-w-32 lg:max-w-48">
+            <PatientAvatar
+              patient={caseDefinition.patient}
+              expression={game.patientExpression}
+              respiratoryRate={game.vitals.rr}
+              reaction={activeReaction}
+            />
+            {activeReaction && activeReaction !== "ask" && (
+              <span className="case-avatar-reaction" aria-hidden="true">
+                <ReactionIcon className="size-4" />
+              </span>
+            )}
+          </div>
+          <div className="min-w-0 lg:mt-2">
+            <div className="mb-2 flex flex-wrap items-center gap-2 lg:justify-center">
+              <span
+                className={`rounded-full px-2.5 py-1 text-[9px] font-black uppercase tracking-wider ${critical ? "bg-red-100 text-red-700" : "bg-white/85 text-[#107b80]"}`}
+              >
+                {game.patientExpression.replaceAll("_", " ")}
+              </span>
+              <span className="text-[10px] font-bold text-slate-500">
+                {caseDefinition.patient.sex}
+              </span>
+            </div>
+            <h2 className="text-xl font-black text-slate-900">
+              {caseDefinition.patient.name}, {caseDefinition.patient.age}
+            </h2>
+            <p className="mt-1 text-xs font-black leading-relaxed text-slate-700">
+              {caseDefinition.patient.chiefComplaint}
+            </p>
+            <p className="mt-2 line-clamp-3 text-[11px] leading-relaxed text-slate-500">
+              {caseDefinition.patient.personality}
+            </p>
+            {typing && (
+              <div className="mt-3 inline-flex items-center gap-2 rounded-full bg-white px-3 py-1.5 text-[10px] font-black text-[#107b80] shadow-sm">
+                Speaking <TypingDots />
+              </div>
+            )}
+          </div>
         </div>
       </div>
       <VitalsMonitor game={game} />
@@ -645,7 +806,7 @@ function Vital({
 
 function CompactVitals({ game }: { game: GameState }) {
   return (
-    <div className="sticky top-[142px] z-10 mb-3 grid grid-cols-5 gap-1 rounded-2xl bg-[#17242c] p-2 font-mono text-white shadow-lg lg:hidden">
+    <div className="mb-3 grid grid-cols-5 gap-1 rounded-2xl bg-[#17242c] p-2 font-mono text-white shadow-lg lg:hidden">
       {[
         ["HR", game.vitals.hr],
         ["BP", formatBloodPressure(game.vitals)],
@@ -662,87 +823,228 @@ function CompactVitals({ game }: { game: GameState }) {
   );
 }
 
-function StageResult({
+function InteractionFeed({
   caseDefinition,
   game,
-  latestAction,
+  actionById,
   typingAction,
   onStart,
 }: {
   caseDefinition: MedicalCase;
   game: GameState;
-  latestAction: CaseAction | undefined;
+  actionById: Map<string, CaseAction>;
   typingAction: CaseAction | undefined;
   onStart: () => void;
 }) {
-  if (game.phase === "hook") {
-    return (
-      <div className="flex min-h-[230px] flex-col justify-center">
-        <p className="max-w-xl text-xl font-bold leading-relaxed text-slate-800 md:text-2xl">
-          {caseDefinition.intro}
-        </p>
-        <p className="mt-4 text-sm font-bold text-[#107b80]">What's your first move?</p>
+  const feedRef = useRef<HTMLDivElement>(null);
+  const [followingLatest, setFollowingLatest] = useState(true);
+  const visibleEvents = game.timeline.filter((event) =>
+    ["hook", "case_started", "action", "deterioration", "warning"].includes(event.type),
+  );
+
+  function scrollToLatest(behavior: ScrollBehavior = "smooth") {
+    const feed = feedRef.current;
+    if (feed) feed.scrollTo({ top: feed.scrollHeight, behavior });
+    setFollowingLatest(true);
+  }
+
+  useEffect(() => {
+    if (!followingLatest) return;
+    const frame = requestAnimationFrame(() => scrollToLatest("smooth"));
+    return () => cancelAnimationFrame(frame);
+  }, [game.timeline.length, typingAction?.id, followingLatest]);
+
+  return (
+    <div className="relative">
+      <div
+        ref={feedRef}
+        className="case-interaction-feed max-h-[520px] min-h-[380px] overflow-y-auto px-4 py-5 sm:px-5"
+        role="log"
+        aria-live="polite"
+        aria-relevant="additions"
+        aria-label="Chronological clinical interaction"
+        onScroll={(event) => {
+          const target = event.currentTarget;
+          const distanceFromBottom = target.scrollHeight - target.scrollTop - target.clientHeight;
+          setFollowingLatest(distanceFromBottom < 56);
+        }}
+      >
+        <ol className="mx-auto max-w-3xl space-y-4">
+          {visibleEvents.map((event) => {
+            if (event.type === "hook") {
+              return (
+                <li key={event.id} className="case-feed-entry">
+                  <article className="rounded-[22px] border border-slate-200 bg-slate-50 p-4 sm:p-5">
+                    <div className="flex items-center justify-between gap-3">
+                      <span className="inline-flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.15em] text-[#107b80]">
+                        <HeartPulse className="size-4" /> Opening presentation
+                      </span>
+                      <time className="font-mono text-[10px] font-bold text-slate-400">
+                        +{event.timeMinute}m
+                      </time>
+                    </div>
+                    <p className="mt-3 text-base font-bold leading-relaxed text-slate-800 sm:text-lg">
+                      {event.detail}
+                    </p>
+                    {game.phase === "hook" && (
+                      <button
+                        type="button"
+                        onClick={onStart}
+                        className="case-primary-button mt-5 px-5 py-3 text-sm"
+                      >
+                        Take over the case <ArrowRight className="size-4" />
+                      </button>
+                    )}
+                  </article>
+                </li>
+              );
+            }
+
+            if (event.type === "case_started") {
+              return (
+                <li key={event.id} className="case-feed-entry flex items-center gap-3 py-1">
+                  <span className="h-px flex-1 bg-slate-200" />
+                  <span className="text-[10px] font-black uppercase tracking-wider text-slate-400">
+                    Encounter started · +{event.timeMinute}m
+                  </span>
+                  <span className="h-px flex-1 bg-slate-200" />
+                </li>
+              );
+            }
+
+            if (event.type === "action" && event.actionId) {
+              const action = actionById.get(event.actionId);
+              if (!action) return null;
+              const MetaIcon = categoryMeta[action.category].icon;
+              return (
+                <li key={event.id} className="case-feed-entry space-y-2.5">
+                  <article className="ml-auto max-w-[92%] rounded-[18px] rounded-br-md bg-slate-900 px-4 py-3 text-white sm:max-w-[78%]">
+                    <div className="flex items-center justify-between gap-3">
+                      <p className="flex items-center gap-2 text-[10px] font-black uppercase tracking-wider text-white/60">
+                        <MetaIcon className="size-3.5" /> You ·{" "}
+                        {actionCategoryLabel(action.category)}
+                      </p>
+                      <time className="font-mono text-[10px] text-white/40">
+                        +{event.timeMinute}m
+                      </time>
+                    </div>
+                    <p className="mt-1.5 text-sm font-bold leading-relaxed">{action.label}</p>
+                  </article>
+                  <ActionResultEntry action={action} caseDefinition={caseDefinition} />
+                </li>
+              );
+            }
+
+            return (
+              <li key={event.id} className="case-feed-entry">
+                <article
+                  className={`flex gap-3 rounded-[18px] border p-3 ${event.type === "deterioration" || event.type === "warning" ? "border-red-200 bg-red-50 text-red-900" : "border-slate-200 bg-slate-50 text-slate-700"}`}
+                >
+                  <AlertTriangle className="mt-0.5 size-4 shrink-0" />
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center justify-between gap-2">
+                      <p className="text-xs font-black">{event.title}</p>
+                      <time className="font-mono text-[10px] opacity-55">+{event.timeMinute}m</time>
+                    </div>
+                    <p className="mt-1 text-xs leading-relaxed opacity-80">{event.detail}</p>
+                  </div>
+                </article>
+              </li>
+            );
+          })}
+
+          {game.phase === "investigate" && game.completedActions.length === 0 && !typingAction && (
+            <li className="case-feed-entry py-3 text-center text-sm font-bold text-slate-500">
+              Choose an action below to begin your assessment.
+            </li>
+          )}
+
+          {typingAction && (
+            <li className="case-feed-entry space-y-2.5">
+              <article className="ml-auto max-w-[92%] rounded-[18px] rounded-br-md bg-slate-900 px-4 py-3 text-white sm:max-w-[78%]">
+                <p className="flex items-center gap-2 text-[10px] font-black uppercase tracking-wider text-white/60">
+                  <MessageCircleMore className="size-3.5" /> You · History taking
+                </p>
+                <p className="mt-1.5 text-sm font-bold">{typingAction.label}</p>
+              </article>
+              <article className="mr-auto flex max-w-[92%] items-center gap-3 rounded-[18px] rounded-bl-md bg-[#e8f8f5] px-4 py-3 sm:max-w-[78%]">
+                <span className="grid size-8 shrink-0 place-items-center rounded-full bg-white text-[#107b80] shadow-sm">
+                  <UserRound className="size-4" />
+                </span>
+                <div>
+                  <p className="text-[10px] font-black uppercase tracking-wider text-[#107b80]">
+                    Patient · {caseDefinition.patient.name}
+                  </p>
+                  <TypingDots className="mt-2" />
+                </div>
+              </article>
+            </li>
+          )}
+        </ol>
+      </div>
+      {!followingLatest && (
         <button
           type="button"
-          onClick={onStart}
-          className="case-primary-button mt-5 w-fit px-6 py-3"
+          onClick={() => scrollToLatest()}
+          className="absolute bottom-3 right-3 rounded-full bg-slate-900 px-3 py-2 text-xs font-black text-white shadow-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#168d91]"
         >
-          Take over the case <ArrowRight className="size-4" />
+          Latest interaction <ChevronDown className="ml-1 inline size-3.5" />
         </button>
-      </div>
-    );
-  }
+      )}
+    </div>
+  );
+}
 
-  if (typingAction) {
-    return (
-      <div className="flex min-h-[220px] items-center justify-center">
-        <div className="rounded-[24px] bg-[#e8f8f5] px-6 py-5 text-center">
-          <p className="text-xs font-black uppercase tracking-widest text-[#107b80]">
-            {caseDefinition.patient.name} is answering
-          </p>
-          <TypingDots className="mt-3 justify-center" />
-        </div>
-      </div>
-    );
-  }
+function actionCategoryLabel(category: ActionCategory): string {
+  if (category === "ask") return "History taking";
+  if (category === "examine") return "Physical examination";
+  if (category === "test") return "Diagnostic investigation";
+  return "Treatment";
+}
 
-  if (!latestAction) {
-    return (
-      <div className="grid min-h-[220px] place-items-center text-center">
-        <div>
-          <span className="mx-auto grid size-14 place-items-center rounded-2xl bg-[#e8f8f5] text-[#107b80]">
-            <Stethoscope className="size-7" />
-          </span>
-          <p className="mt-4 text-lg font-black text-slate-800">What's your first move?</p>
-          <p className="mt-1 text-sm text-slate-500">
-            Ask, examine, order a focused test, or stabilise the patient.
-          </p>
-        </div>
-      </div>
-    );
-  }
-
-  const asset = latestAction.result.assetId
-    ? caseDefinition.assets.find((candidate) => candidate.id === latestAction.result.assetId)
+function ActionResultEntry({
+  action,
+  caseDefinition,
+}: {
+  action: CaseAction;
+  caseDefinition: MedicalCase;
+}) {
+  const asset = action.result.assetId
+    ? caseDefinition.assets.find((candidate) => candidate.id === action.result.assetId)
     : undefined;
+  const isPatientReply = action.result.type === "patient_reply";
+  const title = isPatientReply
+    ? `Patient · ${caseDefinition.patient.name}`
+    : action.category === "examine"
+      ? "Examination findings"
+      : action.category === "test"
+        ? "Investigation result"
+        : action.category === "treat"
+          ? "Treatment response"
+          : "Clinical finding";
 
-  if (asset && (latestAction.result.type === "image" || latestAction.result.type === "ecg")) {
-    return (
-      <CaseImageViewer
-        asset={asset}
-        assetPath={`/cases/${caseDefinition.slug}/${asset.filename}`}
-        result={latestAction.result}
-      />
-    );
-  }
+  return (
+    <article
+      className={`mr-auto max-w-[96%] rounded-[18px] rounded-bl-md border p-4 sm:max-w-[88%] ${isPatientReply ? "border-[#c8e9e4] bg-[#e8f8f5]" : "border-slate-200 bg-white shadow-[0_8px_22px_-20px_rgb(15_23_42/45%)]"}`}
+    >
+      <div className="flex gap-3">
+        <span
+          className={`grid size-8 shrink-0 place-items-center rounded-full ${isPatientReply ? "bg-white text-[#107b80]" : "bg-slate-100 text-slate-600"}`}
+        >
+          {isPatientReply ? <UserRound className="size-4" /> : <Activity className="size-4" />}
+        </span>
+        <div className="min-w-0 flex-1">
+          <p className="text-[10px] font-black uppercase tracking-wider text-slate-500">{title}</p>
+          <p className="mt-1 text-sm font-bold leading-relaxed text-slate-800">
+            {isPatientReply ? `“${action.result.content}”` : action.result.content}
+          </p>
+        </div>
+      </div>
 
-  if (latestAction.result.type === "lab_table" && latestAction.result.labs) {
-    return (
-      <div>
-        <p className="mb-4 text-sm leading-relaxed text-slate-600">{latestAction.result.content}</p>
-        <div className="overflow-x-auto rounded-2xl border border-slate-100">
-          <table className="w-full text-left text-sm">
-            <thead className="bg-slate-50 text-[10px] uppercase tracking-wider text-slate-500">
+      {action.result.type === "lab_table" && action.result.labs && (
+        <div className="mt-3 overflow-x-auto rounded-xl border border-slate-100">
+          <table className="w-full min-w-[420px] text-left text-xs">
+            <thead className="bg-slate-50 text-[9px] uppercase tracking-wider text-slate-500">
               <tr>
                 <th className="px-3 py-2">Test</th>
                 <th className="px-3 py-2">Result</th>
@@ -750,48 +1052,32 @@ function StageResult({
               </tr>
             </thead>
             <tbody>
-              {latestAction.result.labs.map((lab) => (
+              {action.result.labs.map((lab) => (
                 <tr key={lab.test} className="border-t border-slate-100">
                   <td className="px-3 py-2 font-bold">{lab.test}</td>
                   <td
-                    className={`px-3 py-2 font-mono font-black ${lab.flag === "high" || lab.flag === "low" || lab.flag === "critical" ? "text-red-600" : "text-slate-700"}`}
+                    className={`px-3 py-2 font-mono font-black ${lab.flag && lab.flag !== "normal" ? "text-red-600" : "text-slate-700"}`}
                   >
                     {lab.result}
                   </td>
-                  <td className="px-3 py-2 text-xs text-slate-500">{lab.reference ?? "—"}</td>
+                  <td className="px-3 py-2 text-slate-500">{lab.reference ?? "—"}</td>
                 </tr>
               ))}
             </tbody>
           </table>
         </div>
-      </div>
-    );
-  }
+      )}
 
-  return (
-    <div
-      className={`rounded-[24px] p-5 ${latestAction.result.type === "patient_reply" ? "bg-[#e8f8f5]" : "bg-slate-50"}`}
-    >
-      <div className="flex gap-3">
-        <span className="grid size-10 shrink-0 place-items-center rounded-2xl bg-white text-[#107b80] shadow-sm">
-          {latestAction.result.type === "patient_reply" ? (
-            <MessageCircleMore className="size-5" />
-          ) : (
-            <Activity className="size-5" />
-          )}
-        </span>
-        <div>
-          <p className="text-[10px] font-black uppercase tracking-wider text-slate-500">
-            {latestAction.result.type === "patient_reply" ? caseDefinition.patient.name : "Finding"}
-          </p>
-          <p className="mt-1 text-base font-bold leading-relaxed text-slate-800">
-            {latestAction.result.type === "patient_reply"
-              ? `“${latestAction.result.content}”`
-              : latestAction.result.content}
-          </p>
+      {asset && (action.result.type === "image" || action.result.type === "ecg") && (
+        <div className="mt-3 overflow-hidden rounded-xl">
+          <CaseImageViewer
+            asset={asset}
+            assetPath={`/cases/${caseDefinition.slug}/${asset.filename}`}
+            result={action.result}
+          />
         </div>
-      </div>
-    </div>
+      )}
+    </article>
   );
 }
 
@@ -859,62 +1145,250 @@ function ActionCard({
   );
 }
 
+function ClinicalWorkspace({
+  game,
+  caseDefinition,
+  activeTab,
+  notes,
+  draggedDiagnosis,
+  showClose,
+  onClose,
+  onTab,
+  onNotes,
+  onDragStart,
+  onDrop,
+  onAdd,
+  onMove,
+  onRemove,
+  onConfidence,
+  onTag,
+  nextHint,
+  onHint,
+}: {
+  game: GameState;
+  caseDefinition: MedicalCase;
+  activeTab: RightTab;
+  notes: string;
+  draggedDiagnosis: string | null;
+  showClose: boolean;
+  onClose: () => void;
+  onTab: (tab: RightTab) => void;
+  onNotes: (notes: string) => void;
+  onDragStart: (id: string | null) => void;
+  onDrop: (id: string) => void;
+  onAdd: (id: string) => void;
+  onMove: (id: string, direction: -1 | 1) => void;
+  onRemove: (id: string) => void;
+  onConfidence: (id: string, confidence: number) => void;
+  onTag: (diagnosisId: string, evidenceId: string, relationship: "supports" | "against") => void;
+  nextHint: MedicalCase["hints"][number] | undefined;
+  onHint: () => void;
+}) {
+  const tabs: Array<{
+    id: RightTab;
+    label: string;
+    icon: ComponentType<{ className?: string }>;
+    count?: number;
+  }> = [
+    { id: "chart", label: "Chart", icon: ClipboardList, count: game.discoveredEvidence.length },
+    { id: "notes", label: "Notes", icon: NotebookPen },
+    { id: "differential", label: "Differentials", icon: FileText, count: game.differential.length },
+  ];
+
+  return (
+    <section className="case-panel case-workspace-panel flex h-[calc(100vh-246px)] min-h-[500px] max-h-[720px] flex-col overflow-hidden">
+      <div className="flex items-start gap-3 border-b border-slate-100 px-4 py-4">
+        <span className="grid size-10 shrink-0 place-items-center rounded-2xl bg-[#dff4f1] text-[#107b80]">
+          <ClipboardList className="size-5" />
+        </span>
+        <div className="min-w-0 flex-1">
+          <h2 className="text-base font-black text-slate-900">Clinical workspace</h2>
+          <p className="mt-0.5 text-[10px] font-bold text-slate-500">
+            Chart · Notes · Differentials
+          </p>
+        </div>
+        {showClose && (
+          <button
+            type="button"
+            onClick={onClose}
+            className="grid size-9 place-items-center rounded-full bg-slate-100 text-slate-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#168d91]"
+            aria-label="Close clinical workspace"
+          >
+            <X className="size-4" />
+          </button>
+        )}
+      </div>
+      <div
+        className="grid grid-cols-3 gap-1 border-b border-slate-100 bg-slate-50/70 p-2"
+        role="tablist"
+      >
+        {tabs.map((tab) => {
+          const Icon = tab.icon;
+          return (
+            <button
+              key={tab.id}
+              type="button"
+              role="tab"
+              aria-selected={activeTab === tab.id}
+              onClick={() => onTab(tab.id)}
+              className={`min-w-0 rounded-xl px-1 py-2 text-[10px] font-black transition-colors ${activeTab === tab.id ? "bg-white text-[#107b80] shadow-sm" : "text-slate-500 hover:bg-white/70"}`}
+            >
+              <Icon className="mx-auto mb-1 size-4" />
+              <span className="block truncate">{tab.label}</span>
+              {tab.count !== undefined && tab.count > 0 && (
+                <span className="mt-1 inline-block rounded-full bg-slate-100 px-1.5 text-[8px] text-slate-500">
+                  {tab.count}
+                </span>
+              )}
+            </button>
+          );
+        })}
+      </div>
+      <div className="min-h-0 flex-1 overflow-y-auto p-4">
+        {activeTab === "chart" && <ChartPanel game={game} caseDefinition={caseDefinition} />}
+        {activeTab === "notes" && <NotesPanel notes={notes} onNotes={onNotes} />}
+        {activeTab === "differential" && (
+          <DifferentialBoard
+            game={game}
+            caseDefinition={caseDefinition}
+            draggedDiagnosis={draggedDiagnosis}
+            onDragStart={onDragStart}
+            onDrop={onDrop}
+            onAdd={onAdd}
+            onMove={onMove}
+            onRemove={onRemove}
+            onConfidence={onConfidence}
+            onTag={onTag}
+          />
+        )}
+      </div>
+      <HintPanel game={game} nextHint={nextHint} onHint={onHint} />
+    </section>
+  );
+}
+
 function ChartPanel({ game, caseDefinition }: { game: GameState; caseDefinition: MedicalCase }) {
-  const replies = game.completedActions
-    .map((entry) => ({
-      entry,
-      action: caseDefinition.actions.find((action) => action.id === entry.actionId),
-    }))
-    .filter(({ action }) => action?.result.type === "patient_reply");
+  const records = game.completedActions.flatMap((entry) => {
+    const action = caseDefinition.actions.find((candidate) => candidate.id === entry.actionId);
+    return action ? [{ entry, action }] : [];
+  });
+  const sections: Array<{
+    category: ActionCategory;
+    title: string;
+    empty: string;
+    icon: ComponentType<{ className?: string }>;
+  }> = [
+    {
+      category: "ask",
+      title: "History",
+      empty: "No history recorded yet.",
+      icon: MessageCircleMore,
+    },
+    {
+      category: "examine",
+      title: "Examination findings",
+      empty: "No examination findings recorded yet.",
+      icon: Stethoscope,
+    },
+    {
+      category: "test",
+      title: "Investigations",
+      empty: "No investigation results recorded yet.",
+      icon: FlaskConical,
+    },
+    {
+      category: "treat",
+      title: "Treatment record",
+      empty: "No treatments recorded yet.",
+      icon: Syringe,
+    },
+  ];
+
   return (
     <div className="space-y-5">
-      <div>
-        <h3 className="text-xs font-black uppercase tracking-wider text-slate-500">
-          Encounter timeline
-        </h3>
-        <ol className="mt-3 space-y-3">
-          {game.timeline
-            .filter((event) => !["hook", "case_started"].includes(event.type))
-            .map((event) => (
-              <li
-                key={event.id}
-                className="relative pl-7 text-xs before:absolute before:bottom-[-14px] before:left-[9px] before:top-4 before:w-px before:bg-slate-200 last:before:hidden"
-              >
-                <span
-                  className={`absolute left-0 top-0 grid size-[19px] place-items-center rounded-full text-[9px] ${event.type === "deterioration" || event.type === "warning" ? "bg-red-100 text-red-700" : event.isKeyClue ? "bg-amber-100 text-amber-700" : "bg-[#dff4f1] text-[#107b80]"}`}
-                >
-                  {event.isKeyClue ? "★" : "•"}
-                </span>
-                <div className="flex items-center justify-between gap-2">
-                  <p className="font-black text-slate-700">{event.title}</p>
-                  <time className="font-mono text-[10px] text-slate-400">+{event.timeMinute}m</time>
-                </div>
-                <p className="mt-0.5 line-clamp-3 leading-relaxed text-slate-500">{event.detail}</p>
-              </li>
-            ))}
-          {game.timeline.length <= 2 && (
-            <li className="text-sm text-slate-500">Findings will appear here as you work.</li>
-          )}
-        </ol>
-      </div>
-      {replies.length > 0 && (
+      <div className="flex items-center justify-between gap-3">
         <div>
-          <h3 className="text-xs font-black uppercase tracking-wider text-slate-500">
-            History transcript
-          </h3>
-          <div className="mt-3 space-y-2">
-            {replies.map(({ entry, action }) => (
-              <div
-                key={entry.actionId}
-                className="rounded-2xl bg-[#e8f8f5] p-3 text-xs leading-relaxed"
-              >
-                <p className="font-black text-[#107b80]">{action?.label}</p>
-                <p className="mt-1 text-slate-600">“{action?.result.content}”</p>
-              </div>
-            ))}
-          </div>
+          <h3 className="text-sm font-black text-slate-900">Recorded information</h3>
+          <p className="mt-0.5 text-[10px] leading-relaxed text-slate-500">
+            Findings appear here only after you discover them.
+          </p>
         </div>
-      )}
+        <span className="rounded-full bg-[#e8f8f5] px-2.5 py-1 text-[10px] font-black text-[#107b80]">
+          {game.discoveredEvidence.length} findings
+        </span>
+      </div>
+
+      {sections.map((section) => {
+        const items = records.filter(({ action }) => action.category === section.category);
+        const Icon = section.icon;
+        return (
+          <section key={section.category} aria-labelledby={`chart-${section.category}`}>
+            <div className="flex items-center gap-2">
+              <Icon className="size-3.5 text-slate-400" />
+              <h4
+                id={`chart-${section.category}`}
+                className="text-[10px] font-black uppercase tracking-wider text-slate-500"
+              >
+                {section.title}
+              </h4>
+              <span className="ml-auto text-[9px] font-black text-slate-400">{items.length}</span>
+            </div>
+            <div className="mt-2 space-y-2">
+              {items.map(({ entry, action }) => (
+                <article
+                  key={action.id}
+                  className={`rounded-2xl border p-3 transition-colors ${game.latestActionId === action.id && action.clueTier !== "none" ? "case-new-chart-entry border-[#8fcfca] bg-[#effaf8]" : "border-slate-100 bg-slate-50"}`}
+                >
+                  <div className="flex items-start justify-between gap-2">
+                    <p className="text-xs font-black text-slate-800">{action.label}</p>
+                    <time className="shrink-0 font-mono text-[9px] text-slate-400">
+                      +{entry.completedAtMinute}m
+                    </time>
+                  </div>
+                  <p className="mt-1.5 text-[11px] leading-relaxed text-slate-600">
+                    {action.result.content}
+                  </p>
+                  {action.category === "test" && (
+                    <span className="mt-2 inline-flex items-center gap-1 rounded-full bg-white px-2 py-1 text-[9px] font-black text-[#107b80]">
+                      <Check className="size-3" /> Result recorded
+                    </span>
+                  )}
+                </article>
+              ))}
+              {items.length === 0 && (
+                <div className="rounded-2xl border border-dashed border-slate-200 px-3 py-4 text-center text-[11px] text-slate-400">
+                  {section.empty}
+                </div>
+              )}
+            </div>
+          </section>
+        );
+      })}
+    </div>
+  );
+}
+
+function NotesPanel({ notes, onNotes }: { notes: string; onNotes: (notes: string) => void }) {
+  const notesId = useId();
+  return (
+    <div>
+      <label htmlFor={notesId} className="text-sm font-black text-slate-900">
+        Clinical notes
+      </label>
+      <p className="mt-1 text-[11px] leading-relaxed text-slate-500">
+        Capture your reasoning, questions, and management priorities. Notes stay available while you
+        work through this case.
+      </p>
+      <textarea
+        id={notesId}
+        value={notes}
+        onChange={(event) => onNotes(event.target.value)}
+        placeholder="Write your clinical notes…"
+        className="mt-3 min-h-72 w-full resize-y rounded-2xl border border-slate-200 bg-slate-50 p-3 text-sm leading-relaxed text-slate-800 outline-none transition focus:border-[#168d91] focus:bg-white focus:ring-4 focus:ring-[#168d91]/10"
+      />
+      <p className="mt-2 text-right text-[10px] font-bold text-slate-400">
+        {notes.length} characters
+      </p>
     </div>
   );
 }
@@ -942,6 +1416,7 @@ function DifferentialBoard({
   onConfidence: (id: string, confidence: number) => void;
   onTag: (diagnosisId: string, evidenceId: string, relationship: "supports" | "against") => void;
 }) {
+  const diagnosisSelectId = useId();
   const ranked = [...game.differential].sort((a, b) => a.rank - b.rank);
   const available = caseDefinition.differential.filter(
     (diagnosis) => !ranked.some((entry) => entry.diagnosisId === diagnosis.id),
@@ -950,13 +1425,13 @@ function DifferentialBoard({
     <div>
       <label
         className="text-xs font-black uppercase tracking-wider text-slate-500"
-        htmlFor="add-diagnosis"
+        htmlFor={diagnosisSelectId}
       >
         Add hypothesis
       </label>
       <div className="mt-2 flex gap-2">
         <select
-          id="add-diagnosis"
+          id={diagnosisSelectId}
           defaultValue=""
           onChange={(event) => {
             onAdd(event.target.value);
