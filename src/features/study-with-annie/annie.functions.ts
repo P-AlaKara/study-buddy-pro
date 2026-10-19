@@ -96,7 +96,139 @@ function isPdf(bytes: Uint8Array) {
   return bytes.length >= 5 && new TextDecoder().decode(bytes.slice(0, 5)) === "%PDF-";
 }
 
+// PDF.js references browser globals (notably `new DOMMatrix()` at module top level)
+// that don't exist in the Node/serverless runtime where we extract text. Without
+// them the import itself throws "DOMMatrix is not defined". We only read text and
+// never rasterise, so minimal pure-JS polyfills are enough and avoid pulling in a
+// native canvas dependency. Must run before importing PDF.js.
+function ensurePdfServerGlobals() {
+  const globalObject = globalThis as Record<string, unknown>;
+
+  if (typeof globalObject["DOMMatrix"] === "undefined") {
+    class DOMMatrixPolyfill {
+      a = 1;
+      b = 0;
+      c = 0;
+      d = 1;
+      e = 0;
+      f = 0;
+
+      constructor(init?: number[] | Float32Array | Float64Array | string) {
+        if (Array.isArray(init) || init instanceof Float32Array || init instanceof Float64Array) {
+          const values = Array.from(init);
+          if (values.length === 6) {
+            this.a = values[0]!;
+            this.b = values[1]!;
+            this.c = values[2]!;
+            this.d = values[3]!;
+            this.e = values[4]!;
+            this.f = values[5]!;
+          } else if (values.length === 16) {
+            this.a = values[0]!;
+            this.b = values[1]!;
+            this.c = values[4]!;
+            this.d = values[5]!;
+            this.e = values[12]!;
+            this.f = values[13]!;
+          }
+        }
+      }
+
+      private clone() {
+        return new DOMMatrixPolyfill([this.a, this.b, this.c, this.d, this.e, this.f]);
+      }
+
+      multiplySelf(other: DOMMatrixPolyfill) {
+        const a = this.a * other.a + this.c * other.b;
+        const b = this.b * other.a + this.d * other.b;
+        const c = this.a * other.c + this.c * other.d;
+        const d = this.b * other.c + this.d * other.d;
+        const e = this.a * other.e + this.c * other.f + this.e;
+        const f = this.b * other.e + this.d * other.f + this.f;
+        Object.assign(this, { a, b, c, d, e, f });
+        return this;
+      }
+
+      preMultiplySelf(other: DOMMatrixPolyfill) {
+        return this.multiplySelf(other);
+      }
+
+      multiply(other: DOMMatrixPolyfill) {
+        return this.clone().multiplySelf(other);
+      }
+
+      translateSelf(tx = 0, ty = 0) {
+        this.e += this.a * tx + this.c * ty;
+        this.f += this.b * tx + this.d * ty;
+        return this;
+      }
+
+      scaleSelf(sx = 1, sy = sx) {
+        this.a *= sx;
+        this.b *= sx;
+        this.c *= sy;
+        this.d *= sy;
+        return this;
+      }
+
+      translate(tx?: number, ty?: number) {
+        return this.clone().translateSelf(tx, ty);
+      }
+
+      scale(sx?: number, sy?: number) {
+        return this.clone().scaleSelf(sx, sy);
+      }
+
+      invertSelf() {
+        const det = this.a * this.d - this.b * this.c;
+        if (!det) {
+          Object.assign(this, { a: 0, b: 0, c: 0, d: 0, e: 0, f: 0 });
+          return this;
+        }
+        const a = this.d / det;
+        const b = -this.b / det;
+        const c = -this.c / det;
+        const d = this.a / det;
+        const e = (this.c * this.f - this.d * this.e) / det;
+        const f = (this.b * this.e - this.a * this.f) / det;
+        Object.assign(this, { a, b, c, d, e, f });
+        return this;
+      }
+    }
+    globalObject["DOMMatrix"] = DOMMatrixPolyfill;
+  }
+
+  if (typeof globalObject["Path2D"] === "undefined") {
+    class Path2DPolyfill {
+      addPath() {}
+      moveTo() {}
+      lineTo() {}
+      bezierCurveTo() {}
+      quadraticCurveTo() {}
+      arc() {}
+      rect() {}
+      closePath() {}
+    }
+    globalObject["Path2D"] = Path2DPolyfill;
+  }
+
+  if (typeof globalObject["ImageData"] === "undefined") {
+    class ImageDataPolyfill {
+      readonly width: number;
+      readonly height: number;
+      readonly data: Uint8ClampedArray;
+      constructor(width: number, height: number) {
+        this.width = width;
+        this.height = height;
+        this.data = new Uint8ClampedArray(Math.max(0, width * height * 4));
+      }
+    }
+    globalObject["ImageData"] = ImageDataPolyfill;
+  }
+}
+
 async function extractPdfPages(bytes: Uint8Array) {
+  ensurePdfServerGlobals();
   const pdfjs = await import("pdfjs-dist/legacy/build/pdf.mjs");
   const task = pdfjs.getDocument({ data: bytes, isEvalSupported: false });
   const document = await task.promise;
@@ -247,6 +379,24 @@ async function generateCandidates(pages: Array<{ page: number; text: string }>) 
     quizzes: generatedQuizzes.length ? generatedQuizzes : fallbackQuizzes,
     commentary: generatedCommentary.length ? generatedCommentary : fallbackCommentary,
   };
+}
+
+// Translate low-level processing failures (PDF.js internals, runtime globals,
+// network blips) into a short, reassuring message the student can act on, while
+// the technical detail is logged server-side for debugging.
+function friendlyProcessingError(error: unknown): string {
+  const raw = error instanceof Error ? error.message : String(error);
+  const name = error instanceof Error ? error.name : "";
+  if (name === "PasswordException" || /password|encrypted/i.test(raw)) {
+    return "This PDF is password-protected. Remove the password and upload it again.";
+  }
+  if (name === "InvalidPDFException" || /invalid pdf|corrupt|structure/i.test(raw)) {
+    return "This file doesn’t look like a readable PDF. Please check it and try again.";
+  }
+  if (/DOMMatrix|is not defined|canvas|worker|module/i.test(raw)) {
+    return "We couldn’t prepare this PDF just now. Please try again in a moment.";
+  }
+  return "We couldn’t prepare this PDF. Please try again, or upload a different file.";
 }
 
 async function ownedDocument(db: any, documentId: string, userId: string, columns = "*") {
@@ -400,7 +550,8 @@ export const processAnnieDocument = createServerFn({ method: "POST" })
           .eq("user_id", context.userId);
         return { status: "ready", error: null };
       } catch (error) {
-        const message = error instanceof Error ? error.message : "Processing failed. Please retry.";
+        console.error("[Annie] Failed to process document", document.id, error);
+        const message = friendlyProcessingError(error);
         await db
           .from("annie_documents")
           .update({ status: "failed", processing_error: message })
