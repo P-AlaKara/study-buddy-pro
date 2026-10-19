@@ -227,39 +227,101 @@ function ensurePdfServerGlobals() {
   }
 }
 
-async function extractPdfPages(bytes: Uint8Array) {
-  ensurePdfServerGlobals();
-  const pdfjs = await import("pdfjs-dist/legacy/build/pdf.mjs");
-  const task = pdfjs.getDocument({ data: bytes, isEvalSupported: false });
-  const document = await task.promise;
-  const pages: Array<{ page: number; text: string; layout_data: unknown[] }> = [];
+// In Node, PDF.js defaults to a "fake worker" that is set up by dynamically
+// importing "./pdf.worker.mjs" *relative to the bundled module*. In a bundled
+// serverless deployment (our Vercel target) that relative specifier isn't
+// resolvable at runtime, so the import throws and PDF.js rejects with
+// `Setting up fake worker failed: "Cannot find module './pdf.worker.mjs'"`.
+// That message hits the "worker"/"module" branch of friendlyProcessingError and
+// is the root cause of the frequent "we couldn't prepare this PDF" errors.
+//
+// Registering the worker's message handler on globalThis makes PDF.js use it
+// directly (see PDFWorker._setupFakeWorkerGlobal) and skip the fragile dynamic
+// import entirely. The static specifier below is bundled normally, so the code
+// is always present in the deployed function.
+let pdfWorkerReady: Promise<void> | null = null;
+function ensurePdfWorker() {
+  pdfWorkerReady ??= (async () => {
+    const workerModule = await import("pdfjs-dist/legacy/build/pdf.worker.mjs");
+    (globalThis as Record<string, unknown>)["pdfjsWorker"] = workerModule;
+  })();
+  return pdfWorkerReady;
+}
 
-  for (let pageNumber = 1; pageNumber <= document.numPages; pageNumber += 1) {
-    const page = await document.getPage(pageNumber);
-    const content = await page.getTextContent();
-    const layout = content.items.flatMap((item) => {
-      if (!("str" in item)) return [];
-      const transform = item.transform as number[];
-      return [
-        {
-          text: item.str,
-          x: transform[4] ?? 0,
-          y: transform[5] ?? 0,
-          width: item.width,
-          height: item.height,
-        },
-      ];
-    });
-    const text = content.items
-      .flatMap((item) => ("str" in item && item.str.trim() ? [item.str.trim()] : []))
-      .join(" ")
-      .replace(/\s+/g, " ")
-      .trim();
-    pages.push({ page: pageNumber, text, layout_data: layout });
-    page.cleanup();
+const PDF_EXTRACTION_ATTEMPTS = 2;
+
+type ExtractedPage = { page: number; text: string; layout_data: unknown[] };
+
+async function extractPdfPagesOnce(bytes: Uint8Array): Promise<ExtractedPage[]> {
+  ensurePdfServerGlobals();
+  await ensurePdfWorker();
+  const pdfjs = await import("pdfjs-dist/legacy/build/pdf.mjs");
+  // Pass a fresh copy: PDF.js may transfer/detach the underlying ArrayBuffer,
+  // which would break any retry that reuses the same bytes.
+  const task = pdfjs.getDocument({
+    data: new Uint8Array(bytes),
+    isEvalSupported: false,
+    disableFontFace: true,
+    useSystemFonts: false,
+    // Only surface genuine errors; otherwise PDF.js floods logs with per-glyph
+    // and missing-font warnings for ordinary notes.
+    verbosity: pdfjs.VerbosityLevel.ERRORS,
+  });
+  const document = await task.promise;
+  try {
+    const pages: ExtractedPage[] = [];
+    for (let pageNumber = 1; pageNumber <= document.numPages; pageNumber += 1) {
+      let page: Awaited<ReturnType<typeof document.getPage>> | undefined;
+      try {
+        page = await document.getPage(pageNumber);
+        const content = await page.getTextContent();
+        const layout = content.items.flatMap((item) => {
+          if (!("str" in item)) return [];
+          const transform = item.transform as number[];
+          return [
+            {
+              text: item.str,
+              x: transform[4] ?? 0,
+              y: transform[5] ?? 0,
+              width: item.width,
+              height: item.height,
+            },
+          ];
+        });
+        const text = content.items
+          .flatMap((item) => ("str" in item && item.str.trim() ? [item.str.trim()] : []))
+          .join(" ")
+          .replace(/\s+/g, " ")
+          .trim();
+        pages.push({ page: pageNumber, text, layout_data: layout });
+      } catch (pageError) {
+        // A single malformed page shouldn't sink the whole document. Keep its
+        // slot (with empty text) so page numbering stays aligned with the PDF.
+        console.error("[Annie] Failed to read page", pageNumber, pageError);
+        pages.push({ page: pageNumber, text: "", layout_data: [] });
+      } finally {
+        page?.cleanup();
+      }
+    }
+    return pages;
+  } finally {
+    await document.destroy();
   }
-  await document.destroy();
-  return pages;
+}
+
+async function extractPdfPages(bytes: Uint8Array): Promise<ExtractedPage[]> {
+  let lastError: unknown;
+  for (let attempt = 1; attempt <= PDF_EXTRACTION_ATTEMPTS; attempt += 1) {
+    try {
+      return await extractPdfPagesOnce(bytes);
+    } catch (error) {
+      lastError = error;
+      if (attempt < PDF_EXTRACTION_ATTEMPTS) {
+        console.warn(`[Annie] PDF extraction attempt ${attempt} failed; retrying`, error);
+      }
+    }
+  }
+  throw lastError;
 }
 
 type GeminiResponse = {
