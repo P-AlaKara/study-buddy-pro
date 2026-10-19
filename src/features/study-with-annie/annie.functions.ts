@@ -134,9 +134,18 @@ type GeminiResponse = {
   candidates?: Array<{ content?: { parts?: Array<{ text?: string }> } }>;
 };
 
+// Gemini occasionally wraps JSON in Markdown fences or adds stray prose even with
+// responseMimeType set. Pull out the first balanced JSON object before parsing.
+function extractJson(text: string): string {
+  const fenced = text.match(/```(?:json)?\s*([\s\S]*?)```/i);
+  const body = (fenced?.[1] ?? text).trim();
+  const start = body.indexOf("{");
+  const end = body.lastIndexOf("}");
+  return start >= 0 && end > start ? body.slice(start, end + 1) : body;
+}
+
 async function geminiJson<T>(
   prompt: string,
-  jsonSchema: Record<string, unknown>,
   parser: z.ZodType<T>,
   retryMalformed = true,
 ): Promise<T | null> {
@@ -157,9 +166,8 @@ async function geminiJson<T>(
           generationConfig: {
             temperature: 0.25,
             maxOutputTokens: 4096,
-            responseFormat: {
-              text: { mimeType: "application/json", schema: jsonSchema },
-            },
+            // Gemini uses responseMimeType (not responseFormat) to request JSON.
+            responseMimeType: "application/json",
           },
         }),
       },
@@ -168,9 +176,15 @@ async function geminiJson<T>(
     const payload = (await response.json()) as GeminiResponse;
     const text = payload.candidates?.[0]?.content?.parts?.[0]?.text;
     if (!text) return null;
-    const parsed = parser.safeParse(JSON.parse(text));
+    let json: unknown;
+    try {
+      json = JSON.parse(extractJson(text));
+    } catch {
+      return retryMalformed ? geminiJson(prompt, parser, false) : null;
+    }
+    const parsed = parser.safeParse(json);
     if (parsed.success) return parsed.data;
-    if (retryMalformed) return geminiJson(prompt, jsonSchema, parser, false);
+    if (retryMalformed) return geminiJson(prompt, parser, false);
     return null;
   } catch {
     return null;
@@ -178,44 +192,6 @@ async function geminiJson<T>(
     clearTimeout(timeout);
   }
 }
-
-const candidateJsonSchema = {
-  type: "object",
-  properties: {
-    candidate_blotouts: {
-      type: "array",
-      maxItems: 18,
-      items: {
-        type: "object",
-        properties: {
-          page: { type: "integer" },
-          text: { type: "string", description: "An exact, character-for-character page substring" },
-          question_prompt: { type: "string" },
-          difficulty: { type: "integer", minimum: 1, maximum: 3 },
-        },
-        required: ["page", "text", "question_prompt", "difficulty"],
-        additionalProperties: false,
-      },
-    },
-    commentary_candidates: {
-      type: "array",
-      maxItems: 18,
-      items: {
-        type: "object",
-        properties: {
-          page: { type: "integer" },
-          text: { type: "string" },
-          type: { type: "string", enum: ["explain", "common_mistake", "analogy", "context"] },
-          beyond_notes: { type: "boolean" },
-        },
-        required: ["page", "text", "type", "beyond_notes"],
-        additionalProperties: false,
-      },
-    },
-  },
-  required: ["candidate_blotouts", "commentary_candidates"],
-  additionalProperties: false,
-};
 
 async function generateCandidates(pages: Array<{ page: number; text: string }>) {
   const pageMap = new Map(pages.map((page) => [page.page, page.text]));
@@ -256,8 +232,7 @@ async function generateCandidates(pages: Array<{ page: number; text: string }>) 
   for (const group of batches) {
     const notes = group.map((page) => `PAGE ${page.page}\n${page.text}`).join("\n\n");
     const response = await geminiJson(
-      `Create concise study interactions from only the supplied note text. Blotout text MUST be an exact substring copied from its page. Commentary must be grounded in the page; set beyond_notes true if it adds any outside fact. Return 1-3 useful items per substantive page.\n\n${notes}`,
-      candidateJsonSchema,
+      `Create concise study interactions from only the supplied note text. Blotout text MUST be an exact substring copied from its page. Commentary must be grounded in the page; set beyond_notes true if it adds any outside fact. Return 1-3 useful items per substantive page.\n\nRespond with JSON of exactly this shape: {"candidate_blotouts":[{"page":<integer>,"text":<exact page substring>,"question_prompt":<string>,"difficulty":<1|2|3>}],"commentary_candidates":[{"page":<integer>,"text":<string>,"type":"explain"|"common_mistake"|"analogy"|"context","beyond_notes":<boolean>}]}. Use at most 18 items per array.\n\n${notes}`,
       generatedCandidatesSchema,
     );
     if (response) {
@@ -698,16 +673,7 @@ export const evaluateAnnieAnswer = createServerFn({ method: "POST" })
     let evaluation = null;
     if (await spendLlmCall(db, data.sessionId, context.userId)) {
       evaluation = await geminiJson(
-        `${ANNIE_SYSTEM_PROMPTS[data.mood]} Compare the student's answer only against the source text. Accept accurate paraphrases and tolerate typos. Return a classification and one short explanation.\n\nSOURCE TEXT:\n${candidate.text}\n\nSTUDENT ANSWER:\n${data.answer}`,
-        {
-          type: "object",
-          properties: {
-            result: { type: "string", enum: ["correct", "partially_correct", "incorrect"] },
-            explanation: { type: "string" },
-          },
-          required: ["result", "explanation"],
-          additionalProperties: false,
-        },
+        `${ANNIE_SYSTEM_PROMPTS[data.mood]} Compare the student's answer only against the source text. Accept accurate paraphrases and tolerate typos.\n\nRespond with JSON of exactly this shape: {"result":"correct"|"partially_correct"|"incorrect","explanation":<one short sentence, max 240 chars>}.\n\nSOURCE TEXT:\n${candidate.text}\n\nSTUDENT ANSWER:\n${data.answer}`,
         evaluationSchema,
       );
     }
@@ -779,16 +745,7 @@ export const askAnnie = createServerFn({ method: "POST" })
     let response = null;
     if (await spendLlmCall(db, data.sessionId, context.userId)) {
       response = await geminiJson(
-        `${ANNIE_SYSTEM_PROMPTS[data.mood]} Answer in at most 2 sentences. Use the page text as the primary source. If the answer includes anything not stated or directly inferable from the page, set beyond_notes true. Do not include links or recommend sources.\n\nPAGE TEXT:\n${page.text}\n\nQUESTION:\n${data.question}`,
-        {
-          type: "object",
-          properties: {
-            answer: { type: "string" },
-            beyond_notes: { type: "boolean" },
-          },
-          required: ["answer", "beyond_notes"],
-          additionalProperties: false,
-        },
+        `${ANNIE_SYSTEM_PROMPTS[data.mood]} Answer in at most 2 sentences. Use the page text as the primary source. If the answer includes anything not stated or directly inferable from the page, set beyond_notes true. Do not include links or recommend sources.\n\nRespond with JSON of exactly this shape: {"answer":<string>,"beyond_notes":<boolean>}.\n\nPAGE TEXT:\n${page.text}\n\nQUESTION:\n${data.question}`,
         questionAnswerSchema,
       );
     }

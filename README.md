@@ -150,13 +150,13 @@ npm run dev
 
 Set the Supabase values in `.env` before starting the app. Never expose `SUPABASE_SECRET_KEY` in client-side code or commit real credentials. `GEMINI_API_KEY` and `GEMINI_MODEL` are optional server-side settings for Study with Annie.
 
-Study with Annie is hidden by default while it is under local testing. To enable its navigation, routes, and server functions locally, add the following to `.env.local` (which is ignored by Git) and restart the development server:
+Study with Annie (shown as **AI Study** in the navigation) is enabled by default. If you ever need to hide its navigation, routes, and server functions, set the following build-time flag and create a new build:
 
 ```sh
-VITE_ENABLE_STUDY_WITH_ANNIE="true"
+VITE_ENABLE_STUDY_WITH_ANNIE="false"
 ```
 
-Leave the variable unset or set it to `"false"` in deployed environments. Because this is a build-time Vite flag, changing it requires a new build.
+Leaving the variable unset (or any value other than `"false"`) keeps the feature live. Because this is a build-time Vite flag, changing it requires a new build.
 
 Apply the migrations in `supabase/migrations` to the configured Supabase project before testing data-backed features. The Study with Annie migration also creates its private document bucket and access policies.
 

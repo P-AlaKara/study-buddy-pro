@@ -70,7 +70,7 @@ const columns =
 const nav = [
   { label: "Home", to: "/", icon: Home },
   ...(STUDY_WITH_ANNIE_ENABLED
-    ? [{ label: "Annie", to: "/study-with-annie" as const, icon: BookOpenText }]
+    ? [{ label: "AI Study", to: "/study-with-annie" as const, icon: BookOpenText }]
     : []),
   { label: "Cases", to: "/cases", icon: HeartPulse },
   { label: "Practice", to: "/practice", icon: Stethoscope },
