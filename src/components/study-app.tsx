@@ -18,6 +18,7 @@ import {
   Home,
   Layers3,
   Medal,
+  PersonStanding,
   Plus,
   Sparkles,
   Stethoscope,
@@ -40,6 +41,7 @@ import { DR_AMBROSE, DrAmbrose } from "@/features/case-challenge/components/dr-a
 import { PatientAvatar } from "@/features/case-challenge/components/patient-avatar";
 import { FEATURED_CASE } from "@/features/case-challenge/featured-case";
 import { STUDY_WITH_ANNIE_ENABLED } from "@/features/study-with-annie/feature-flag";
+import { ANATOMY_LAB_ENABLED } from "@/features/anatomy-lab/feature-flag";
 
 type Student = Pick<
   Database["public"]["Tables"]["students"]["Row"],
@@ -73,6 +75,9 @@ const nav = [
     ? [{ label: "Annie", to: "/study-with-annie" as const, icon: BookOpenText }]
     : []),
   { label: "Cases", to: "/cases", icon: HeartPulse },
+  ...(ANATOMY_LAB_ENABLED
+    ? [{ label: "Anatomy", to: "/anatomy" as const, icon: PersonStanding }]
+    : []),
   { label: "Practice", to: "/practice", icon: Stethoscope },
   { label: "Groups", to: "/groups", icon: Users },
   { label: "Profile", to: "/profile", icon: Activity },

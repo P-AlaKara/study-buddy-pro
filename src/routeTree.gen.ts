@@ -10,6 +10,7 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as AnatomyRouteImport } from './routes/anatomy'
 import { Route as CasesRouteImport } from './routes/cases'
 import { Route as FlashcardsRouteImport } from './routes/flashcards'
 import { Route as GroupsRouteImport } from './routes/groups'
@@ -35,6 +36,11 @@ import { Route as StudyWithAnnieDocumentIdRouteImport } from './routes/study-wit
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AnatomyRoute = AnatomyRouteImport.update({
+  id: '/anatomy',
+  path: '/anatomy',
   getParentRoute: () => rootRouteImport,
 } as any)
 const CasesRoute = CasesRouteImport.update({
@@ -146,6 +152,7 @@ const StudyWithAnnieDocumentIdRoute =
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/anatomy': typeof AnatomyRoute
   '/cases': typeof CasesRouteWithChildren
   '/flashcards': typeof FlashcardsRouteWithChildren
   '/groups': typeof GroupsRouteWithChildren
@@ -170,6 +177,7 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/anatomy': typeof AnatomyRoute
   '/leaderboards': typeof LeaderboardsRoute
   '/practice': typeof PracticeRoute
   '/profile': typeof ProfileRoute
@@ -190,6 +198,7 @@ export interface FileRoutesByTo {
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/anatomy': typeof AnatomyRoute
   '/cases': typeof CasesRouteWithChildren
   '/flashcards': typeof FlashcardsRouteWithChildren
   '/groups': typeof GroupsRouteWithChildren
@@ -216,6 +225,7 @@ export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/anatomy'
     | '/cases'
     | '/flashcards'
     | '/groups'
@@ -240,6 +250,7 @@ export interface FileRouteTypes {
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
+    | '/anatomy'
     | '/leaderboards'
     | '/practice'
     | '/profile'
@@ -259,6 +270,7 @@ export interface FileRouteTypes {
   id:
     | '__root__'
     | '/'
+    | '/anatomy'
     | '/cases'
     | '/flashcards'
     | '/groups'
@@ -284,6 +296,7 @@ export interface FileRouteTypes {
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  AnatomyRoute: typeof AnatomyRoute
   CasesRoute: typeof CasesRouteWithChildren
   FlashcardsRoute: typeof FlashcardsRouteWithChildren
   GroupsRoute: typeof GroupsRouteWithChildren
@@ -303,6 +316,13 @@ declare module '@tanstack/react-router' {
       path: '/'
       fullPath: '/'
       preLoaderRoute: typeof IndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/anatomy': {
+      id: '/anatomy'
+      path: '/anatomy'
+      fullPath: '/anatomy'
+      preLoaderRoute: typeof AnatomyRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/cases': {
@@ -522,6 +542,7 @@ const QuizRouteWithChildren = QuizRoute._addFileChildren(QuizRouteChildren)
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  AnatomyRoute: AnatomyRoute,
   CasesRoute: CasesRouteWithChildren,
   FlashcardsRoute: FlashcardsRouteWithChildren,
   GroupsRoute: GroupsRouteWithChildren,
