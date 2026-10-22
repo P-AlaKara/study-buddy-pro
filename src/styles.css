@@ -62,14 +62,38 @@
   --peach: oklch(0.88 0.08 43);
   --cream: oklch(0.985 0.013 87);
   --ink-soft: oklch(0.43 0.033 273);
-  --case-bg: #f7f4ed;
-  --case-surface: #fffefa;
-  --case-text: #17252d;
-  --case-accent: #168d91;
-  --case-warning: #e5a72f;
-  --case-critical: #d64d4d;
-  --case-success: #2f9b6d;
-  --case-monitor: #17242c;
+  /* Simulator palette — Medley brand accents on a light, app-consistent base.
+     Primary interactions/selection use purple + blue; mint signals positive
+     progress; pink/orange carry emphasis; critical vitals keep an accessible,
+     clinically recognizable red/amber (never pastel alone). */
+  --case-bg: #f4f6fb;
+  --case-surface: #ffffff;
+  --case-text: #253044;
+  --case-muted: #728096;
+  --case-border: #e7eaf1;
+  --case-accent: #9b83ef;
+  --case-accent-strong: #7c63e0;
+  --case-accent-soft: #efebfd;
+  --case-accent-ink: #5a44b5;
+  --case-blue: #5faedc;
+  --case-blue-soft: #e8f2fb;
+  --case-blue-ink: #2f7db0;
+  --case-mint: #52bb94;
+  --case-mint-soft: #e4f5ee;
+  --case-mint-ink: #2e8a66;
+  --case-pink: #ed7cb2;
+  --case-pink-soft: #fceaf3;
+  --case-pink-ink: #c74f8c;
+  --case-orange: #eb9470;
+  --case-orange-soft: #fcede5;
+  --case-yellow: #dcaa43;
+  --case-yellow-soft: #fbf3dd;
+  --case-yellow-ink: #8a6413;
+  --case-warning: #d97706;
+  --case-critical: #dc2626;
+  --case-critical-soft: #fee9e9;
+  --case-success: #2e8a66;
+  --case-monitor: #1f2a3d;
   --app-max-width: 93.75rem;
 }
 
@@ -405,11 +429,11 @@
   display: flex;
   align-items: center;
   gap: 0.65rem;
-  border: 1px solid #dce8e6;
+  border: 1px solid #e7eaf1;
   border-radius: 1rem;
   padding: 0.45rem 0.65rem;
   background: white;
-  box-shadow: 0 5px 16px -12px rgb(17 76 81 / 45%);
+  box-shadow: 0 5px 16px -12px rgb(90 68 181 / 45%);
   transition:
     border-color 160ms ease,
     background-color 160ms ease,
@@ -417,16 +441,16 @@
     transform 160ms ease;
 }
 .case-workspace-trigger:hover {
-  border-color: #8fcfca;
-  background: #f7fcfb;
+  border-color: #c9bef7;
+  background: #f7f5fe;
 }
 .case-workspace-trigger:focus-visible {
-  outline: 3px solid rgb(22 141 145 / 28%);
+  outline: 3px solid rgb(155 131 239 / 28%);
   outline-offset: 2px;
 }
 .case-workspace-trigger.is-discovered {
-  border-color: #55b9b4;
-  background: #effaf8;
+  border-color: #a98ff0;
+  background: #efebfd;
   animation: case-workspace-discovered 2.4s ease-out both;
 }
 .case-finding-notice {
@@ -438,7 +462,7 @@
   align-items: center;
   gap: 0.65rem;
   max-width: calc(100vw - 2rem);
-  border: 1px solid #c8e9e4;
+  border: 1px solid #d9d0f7;
   border-radius: 1rem;
   padding: 0.55rem;
   background: rgb(255 254 250 / 0.97);
@@ -452,18 +476,18 @@
   gap: 0.15rem;
   border-radius: 0.75rem;
   padding: 0.45rem 0.55rem;
-  color: #0d686d;
+  color: #5a44b5;
   font-size: 0.75rem;
   font-weight: 900;
 }
 .case-finding-notice button:hover {
-  background: #e8f8f5;
+  background: #efebfd;
 }
 .case-interaction-feed {
   scroll-behavior: smooth;
   scrollbar-gutter: stable;
   background:
-    radial-gradient(circle at 8% 3%, rgb(22 141 145 / 5%), transparent 13rem),
+    radial-gradient(circle at 8% 3%, rgb(155 131 239 / 5%), transparent 13rem),
     linear-gradient(180deg, #fffefa 0%, #fdfcf8 100%);
 }
 .case-feed-entry {
@@ -482,12 +506,12 @@
   background: rgb(255 255 255 / 0.72);
 }
 .case-action-tab.is-active {
-  color: #107b80;
+  color: #6b52c9;
   background: white;
   box-shadow: 0 4px 12px -9px rgb(15 23 42 / 42%);
 }
 .case-action-tab:focus-visible {
-  outline: 2px solid rgb(22 141 145 / 38%);
+  outline: 2px solid rgb(155 131 239 / 38%);
   outline-offset: 1px;
 }
 .case-new-chart-entry {
@@ -503,9 +527,9 @@
   place-items: center;
   border: 3px solid white;
   border-radius: 999px;
-  background: #168d91;
+  background: #9b83ef;
   color: white;
-  box-shadow: 0 8px 18px -8px rgb(13 104 109 / 70%);
+  box-shadow: 0 8px 18px -8px rgb(124 99 224 / 70%);
   animation: case-avatar-reaction 700ms ease-out both;
 }
 .case-workspace-mobile {
@@ -595,7 +619,7 @@
   color: white;
   font-weight: 900;
   box-shadow:
-    0 9px 18px -10px rgb(13 104 109 / 70%),
+    0 9px 18px -10px rgb(124 99 224 / 70%),
     inset 0 2px 1px rgb(255 255 255 / 28%);
   transition:
     transform 160ms ease,
@@ -605,11 +629,11 @@
 .case-primary-button:hover:not(:disabled) {
   transform: translateY(-1px);
   box-shadow:
-    0 12px 22px -10px rgb(13 104 109 / 78%),
+    0 12px 22px -10px rgb(124 99 224 / 78%),
     inset 0 2px 1px rgb(255 255 255 / 28%);
 }
 .case-primary-button:focus-visible {
-  outline: 3px solid rgb(22 141 145 / 32%);
+  outline: 3px solid rgb(155 131 239 / 32%);
   outline-offset: 2px;
 }
 .case-primary-button:disabled {
@@ -660,8 +684,8 @@
   font-weight: 900;
 }
 .case-mobile-nav button.is-active {
-  background: #dff4f1;
-  color: #0d686d;
+  background: #efebfd;
+  color: #5a44b5;
 }
 .case-mobile-nav button:focus-visible {
   outline: 2px solid var(--case-accent);
@@ -686,7 +710,7 @@
   backdrop-filter: blur(12px);
 }
 .case-mobile-mentor:focus-visible {
-  outline: 3px solid rgb(22 141 145 / 35%);
+  outline: 3px solid rgb(155 131 239 / 35%);
   outline-offset: 2px;
 }
 .case-mobile-coach-panel {
@@ -710,6 +734,125 @@
 .case-typing-dot {
   animation: case-typing 1s ease-in-out infinite alternate;
 }
+
+/* ───────────────────────── Three-zone simulator shell ───────────────────────── */
+.case-shell {
+  display: grid;
+  gap: 1rem;
+  align-items: start;
+  grid-template-columns: minmax(0, 1fr);
+}
+/* Tablet: left workspace tools fold away, patient + history stack. */
+@media (min-width: 64rem) {
+  .case-shell {
+    grid-template-columns: 17rem minmax(0, 1fr);
+  }
+}
+/* Desktop: full left-tools / center-patient / right-history layout. */
+@media (min-width: 80rem) {
+  .case-shell {
+    grid-template-columns: 17rem minmax(0, 1fr) var(--case-history-width, 23rem);
+  }
+  .case-shell[data-history="expanded"] {
+    --case-history-width: 32rem;
+  }
+}
+.case-zone-sticky {
+  position: sticky;
+  top: 1rem;
+}
+@media (min-width: 80rem) {
+  .case-zone-sticky {
+    top: 5.75rem;
+  }
+}
+
+/* Patient viewport — neutral, slightly recessed hospital setting so the patient
+   reads with depth against the light interface (holds the future 3D canvas). */
+.case-patient-stage {
+  position: relative;
+  overflow: hidden;
+  border-radius: 24px;
+  background: radial-gradient(130% 90% at 50% 8%, #e9edf6 0%, #dfe4ef 48%, #cdd4e3 100%);
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.6);
+}
+.case-patient-stage::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(70% 55% at 50% 118%, rgb(37 48 68 / 0.16), transparent 70%);
+  pointer-events: none;
+}
+.case-patient-floor {
+  position: absolute;
+  inset-inline: 0;
+  bottom: 0;
+  height: 34%;
+  background: linear-gradient(180deg, transparent, rgb(37 48 68 / 0.07));
+  pointer-events: none;
+}
+
+/* Vitals strip — light cards, but critical/warning states use clinical colors. */
+.case-vital-card {
+  border: 1px solid var(--case-border);
+  border-radius: 16px;
+  background: #fff;
+  transition:
+    border-color 160ms ease,
+    background-color 160ms ease;
+}
+.case-vital-card[data-state="warning"] {
+  border-color: #f4c77a;
+  background: var(--case-yellow-soft);
+}
+.case-vital-card[data-state="critical"] {
+  border-color: #f3b4b4;
+  background: var(--case-critical-soft);
+  animation: case-vital-alert 1.8s ease-in-out infinite;
+}
+@keyframes case-vital-alert {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 rgb(220 38 38 / 0.28);
+  }
+  50% {
+    box-shadow: 0 0 0 4px rgb(220 38 38 / 0);
+  }
+}
+
+/* Persistent interaction history (Zone C) */
+.case-history-panel {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+.case-history-scroll {
+  scroll-behavior: smooth;
+  scrollbar-gutter: stable;
+  background:
+    radial-gradient(circle at 8% 2%, rgb(155 131 239 / 0.05), transparent 13rem),
+    linear-gradient(180deg, #fff 0%, #fbfbfe 100%);
+}
+.case-history-entry {
+  animation: case-stage-in 220ms ease-out both;
+}
+/* A coloured rail on each event distinguishes its type at a glance. */
+.case-event-rail {
+  border-left: 3px solid var(--rail, var(--case-border));
+}
+.case-interaction-category {
+  transition:
+    transform 140ms ease,
+    box-shadow 140ms ease,
+    background-color 140ms ease,
+    border-color 140ms ease;
+}
+.case-interaction-category.is-active {
+  background: #fff;
+  border-color: color-mix(in srgb, var(--cat, var(--case-accent)) 55%, white);
+  box-shadow: 0 8px 20px -14px color-mix(in srgb, var(--cat, var(--case-accent)) 70%, transparent);
+}
+
 .patient-breathe {
   transform-box: view-box;
   transform-origin: 120px 268px;
@@ -908,8 +1051,8 @@
 @keyframes case-ready-pulse {
   50% {
     box-shadow:
-      0 0 0 7px rgb(22 141 145 / 12%),
-      0 12px 22px -10px rgb(13 104 109 / 78%);
+      0 0 0 7px rgb(155 131 239 / 12%),
+      0 12px 22px -10px rgb(124 99 224 / 78%);
   }
 }
 @keyframes case-stage-in {
@@ -924,13 +1067,13 @@
 }
 @keyframes case-workspace-discovered {
   0% {
-    box-shadow: 0 0 0 0 rgb(22 141 145 / 32%);
+    box-shadow: 0 0 0 0 rgb(155 131 239 / 32%);
   }
   38% {
-    box-shadow: 0 0 0 8px rgb(22 141 145 / 10%);
+    box-shadow: 0 0 0 8px rgb(155 131 239 / 10%);
   }
   100% {
-    box-shadow: 0 0 0 0 rgb(22 141 145 / 0%);
+    box-shadow: 0 0 0 0 rgb(155 131 239 / 0%);
   }
 }
 @keyframes case-notice-in {
@@ -945,10 +1088,10 @@
 }
 @keyframes case-chart-highlight {
   0% {
-    box-shadow: 0 0 0 5px rgb(22 141 145 / 14%);
+    box-shadow: 0 0 0 5px rgb(155 131 239 / 14%);
   }
   100% {
-    box-shadow: 0 0 0 0 rgb(22 141 145 / 0%);
+    box-shadow: 0 0 0 0 rgb(155 131 239 / 0%);
   }
 }
 @keyframes case-avatar-reaction {
@@ -1009,7 +1152,7 @@
   }
   45% {
     transform: translateY(-2px);
-    filter: drop-shadow(0 0 7px rgb(22 141 145 / 24%));
+    filter: drop-shadow(0 0 7px rgb(155 131 239 / 24%));
   }
 }
 @keyframes patient-blink {
