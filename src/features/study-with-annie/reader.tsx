@@ -235,16 +235,41 @@ export function AnnieReader({ documentId }: { documentId: string }) {
     return () => window.clearInterval(timer);
   }, [activeQuiz, bubble, currentPage, payload, settings, showBubble, silenced, startQuiz, tool]);
 
-  function goToPage(page: number) {
-    const maximum = payload?.document.page_count ?? pdf?.numPages ?? 1;
-    const next = Math.max(1, Math.min(maximum, page));
-    setCurrentPage(next);
-    pagesVisited.current.add(next);
-    pageEnteredAt.current = Date.now();
-    setBubble(null);
-    setActiveQuiz(null);
-    setRevealQuiz(false);
-  }
+  const goToPage = useCallback(
+    (page: number) => {
+      const maximum = payload?.document.page_count ?? pdf?.numPages ?? 1;
+      const next = Math.max(1, Math.min(maximum, page));
+      setCurrentPage(next);
+      pagesVisited.current.add(next);
+      pageEnteredAt.current = Date.now();
+      setBubble(null);
+      setActiveQuiz(null);
+      setRevealQuiz(false);
+    },
+    [payload, pdf],
+  );
+
+  // Turn pages with the left/right arrow keys, but never while the reader is
+  // focused on a form control (answer box, page field, note editor, selects).
+  useEffect(() => {
+    const onArrow = (event: KeyboardEvent) => {
+      if (event.key !== "ArrowLeft" && event.key !== "ArrowRight") return;
+      const target = event.target as HTMLElement | null;
+      if (
+        target &&
+        (target.isContentEditable ||
+          target.tagName === "INPUT" ||
+          target.tagName === "TEXTAREA" ||
+          target.tagName === "SELECT")
+      ) {
+        return;
+      }
+      event.preventDefault();
+      goToPage(currentPage + (event.key === "ArrowRight" ? 1 : -1));
+    };
+    window.addEventListener("keydown", onArrow);
+    return () => window.removeEventListener("keydown", onArrow);
+  }, [currentPage, goToPage]);
 
   async function changeSettings(next: AnnieSettings) {
     const moodChanged = settings?.mood !== next.mood;
@@ -443,7 +468,10 @@ export function AnnieReader({ documentId }: { documentId: string }) {
               <h1 className="max-w-48 truncate text-sm font-black sm:max-w-sm">
                 {payload.document.title}
               </h1>
-              <p className="text-[10px] font-bold text-[var(--reader-muted)]">
+              <p
+                className="text-[10px] font-bold text-[var(--reader-muted)]"
+                title="Use the ← and → arrow keys to turn pages"
+              >
                 Page {currentPage} of {pdf.numPages}
               </p>
             </div>

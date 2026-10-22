@@ -96,47 +96,250 @@ function isPdf(bytes: Uint8Array) {
   return bytes.length >= 5 && new TextDecoder().decode(bytes.slice(0, 5)) === "%PDF-";
 }
 
-async function extractPdfPages(bytes: Uint8Array) {
-  const pdfjs = await import("pdfjs-dist/legacy/build/pdf.mjs");
-  const task = pdfjs.getDocument({ data: bytes, isEvalSupported: false });
-  const document = await task.promise;
-  const pages: Array<{ page: number; text: string; layout_data: unknown[] }> = [];
+// PDF.js references browser globals (notably `new DOMMatrix()` at module top level)
+// that don't exist in the Node/serverless runtime where we extract text. Without
+// them the import itself throws "DOMMatrix is not defined". We only read text and
+// never rasterise, so minimal pure-JS polyfills are enough and avoid pulling in a
+// native canvas dependency. Must run before importing PDF.js.
+function ensurePdfServerGlobals() {
+  const globalObject = globalThis as Record<string, unknown>;
 
-  for (let pageNumber = 1; pageNumber <= document.numPages; pageNumber += 1) {
-    const page = await document.getPage(pageNumber);
-    const content = await page.getTextContent();
-    const layout = content.items.flatMap((item) => {
-      if (!("str" in item)) return [];
-      const transform = item.transform as number[];
-      return [
-        {
-          text: item.str,
-          x: transform[4] ?? 0,
-          y: transform[5] ?? 0,
-          width: item.width,
-          height: item.height,
-        },
-      ];
-    });
-    const text = content.items
-      .flatMap((item) => ("str" in item && item.str.trim() ? [item.str.trim()] : []))
-      .join(" ")
-      .replace(/\s+/g, " ")
-      .trim();
-    pages.push({ page: pageNumber, text, layout_data: layout });
-    page.cleanup();
+  if (typeof globalObject["DOMMatrix"] === "undefined") {
+    class DOMMatrixPolyfill {
+      a = 1;
+      b = 0;
+      c = 0;
+      d = 1;
+      e = 0;
+      f = 0;
+
+      constructor(init?: number[] | Float32Array | Float64Array | string) {
+        if (Array.isArray(init) || init instanceof Float32Array || init instanceof Float64Array) {
+          const values = Array.from(init);
+          if (values.length === 6) {
+            this.a = values[0]!;
+            this.b = values[1]!;
+            this.c = values[2]!;
+            this.d = values[3]!;
+            this.e = values[4]!;
+            this.f = values[5]!;
+          } else if (values.length === 16) {
+            this.a = values[0]!;
+            this.b = values[1]!;
+            this.c = values[4]!;
+            this.d = values[5]!;
+            this.e = values[12]!;
+            this.f = values[13]!;
+          }
+        }
+      }
+
+      private clone() {
+        return new DOMMatrixPolyfill([this.a, this.b, this.c, this.d, this.e, this.f]);
+      }
+
+      multiplySelf(other: DOMMatrixPolyfill) {
+        const a = this.a * other.a + this.c * other.b;
+        const b = this.b * other.a + this.d * other.b;
+        const c = this.a * other.c + this.c * other.d;
+        const d = this.b * other.c + this.d * other.d;
+        const e = this.a * other.e + this.c * other.f + this.e;
+        const f = this.b * other.e + this.d * other.f + this.f;
+        Object.assign(this, { a, b, c, d, e, f });
+        return this;
+      }
+
+      preMultiplySelf(other: DOMMatrixPolyfill) {
+        return this.multiplySelf(other);
+      }
+
+      multiply(other: DOMMatrixPolyfill) {
+        return this.clone().multiplySelf(other);
+      }
+
+      translateSelf(tx = 0, ty = 0) {
+        this.e += this.a * tx + this.c * ty;
+        this.f += this.b * tx + this.d * ty;
+        return this;
+      }
+
+      scaleSelf(sx = 1, sy = sx) {
+        this.a *= sx;
+        this.b *= sx;
+        this.c *= sy;
+        this.d *= sy;
+        return this;
+      }
+
+      translate(tx?: number, ty?: number) {
+        return this.clone().translateSelf(tx, ty);
+      }
+
+      scale(sx?: number, sy?: number) {
+        return this.clone().scaleSelf(sx, sy);
+      }
+
+      invertSelf() {
+        const det = this.a * this.d - this.b * this.c;
+        if (!det) {
+          Object.assign(this, { a: 0, b: 0, c: 0, d: 0, e: 0, f: 0 });
+          return this;
+        }
+        const a = this.d / det;
+        const b = -this.b / det;
+        const c = -this.c / det;
+        const d = this.a / det;
+        const e = (this.c * this.f - this.d * this.e) / det;
+        const f = (this.b * this.e - this.a * this.f) / det;
+        Object.assign(this, { a, b, c, d, e, f });
+        return this;
+      }
+    }
+    globalObject["DOMMatrix"] = DOMMatrixPolyfill;
   }
-  await document.destroy();
-  return pages;
+
+  if (typeof globalObject["Path2D"] === "undefined") {
+    class Path2DPolyfill {
+      addPath() {}
+      moveTo() {}
+      lineTo() {}
+      bezierCurveTo() {}
+      quadraticCurveTo() {}
+      arc() {}
+      rect() {}
+      closePath() {}
+    }
+    globalObject["Path2D"] = Path2DPolyfill;
+  }
+
+  if (typeof globalObject["ImageData"] === "undefined") {
+    class ImageDataPolyfill {
+      readonly width: number;
+      readonly height: number;
+      readonly data: Uint8ClampedArray;
+      constructor(width: number, height: number) {
+        this.width = width;
+        this.height = height;
+        this.data = new Uint8ClampedArray(Math.max(0, width * height * 4));
+      }
+    }
+    globalObject["ImageData"] = ImageDataPolyfill;
+  }
+}
+
+// In Node, PDF.js defaults to a "fake worker" that is set up by dynamically
+// importing "./pdf.worker.mjs" *relative to the bundled module*. In a bundled
+// serverless deployment (our Vercel target) that relative specifier isn't
+// resolvable at runtime, so the import throws and PDF.js rejects with
+// `Setting up fake worker failed: "Cannot find module './pdf.worker.mjs'"`.
+// That message hits the "worker"/"module" branch of friendlyProcessingError and
+// is the root cause of the frequent "we couldn't prepare this PDF" errors.
+//
+// Registering the worker's message handler on globalThis makes PDF.js use it
+// directly (see PDFWorker._setupFakeWorkerGlobal) and skip the fragile dynamic
+// import entirely. The static specifier below is bundled normally, so the code
+// is always present in the deployed function.
+let pdfWorkerReady: Promise<void> | null = null;
+function ensurePdfWorker() {
+  pdfWorkerReady ??= (async () => {
+    const workerModule = await import("pdfjs-dist/legacy/build/pdf.worker.mjs");
+    (globalThis as Record<string, unknown>)["pdfjsWorker"] = workerModule;
+  })();
+  return pdfWorkerReady;
+}
+
+const PDF_EXTRACTION_ATTEMPTS = 2;
+
+type ExtractedPage = { page: number; text: string; layout_data: unknown[] };
+
+async function extractPdfPagesOnce(bytes: Uint8Array): Promise<ExtractedPage[]> {
+  ensurePdfServerGlobals();
+  await ensurePdfWorker();
+  const pdfjs = await import("pdfjs-dist/legacy/build/pdf.mjs");
+  // Pass a fresh copy: PDF.js may transfer/detach the underlying ArrayBuffer,
+  // which would break any retry that reuses the same bytes.
+  const task = pdfjs.getDocument({
+    data: new Uint8Array(bytes),
+    isEvalSupported: false,
+    disableFontFace: true,
+    useSystemFonts: false,
+    // Only surface genuine errors; otherwise PDF.js floods logs with per-glyph
+    // and missing-font warnings for ordinary notes.
+    verbosity: pdfjs.VerbosityLevel.ERRORS,
+  });
+  const document = await task.promise;
+  try {
+    const pages: ExtractedPage[] = [];
+    for (let pageNumber = 1; pageNumber <= document.numPages; pageNumber += 1) {
+      let page: Awaited<ReturnType<typeof document.getPage>> | undefined;
+      try {
+        page = await document.getPage(pageNumber);
+        const content = await page.getTextContent();
+        const layout = content.items.flatMap((item) => {
+          if (!("str" in item)) return [];
+          const transform = item.transform as number[];
+          return [
+            {
+              text: item.str,
+              x: transform[4] ?? 0,
+              y: transform[5] ?? 0,
+              width: item.width,
+              height: item.height,
+            },
+          ];
+        });
+        const text = content.items
+          .flatMap((item) => ("str" in item && item.str.trim() ? [item.str.trim()] : []))
+          .join(" ")
+          .replace(/\s+/g, " ")
+          .trim();
+        pages.push({ page: pageNumber, text, layout_data: layout });
+      } catch (pageError) {
+        // A single malformed page shouldn't sink the whole document. Keep its
+        // slot (with empty text) so page numbering stays aligned with the PDF.
+        console.error("[Annie] Failed to read page", pageNumber, pageError);
+        pages.push({ page: pageNumber, text: "", layout_data: [] });
+      } finally {
+        page?.cleanup();
+      }
+    }
+    return pages;
+  } finally {
+    await document.destroy();
+  }
+}
+
+async function extractPdfPages(bytes: Uint8Array): Promise<ExtractedPage[]> {
+  let lastError: unknown;
+  for (let attempt = 1; attempt <= PDF_EXTRACTION_ATTEMPTS; attempt += 1) {
+    try {
+      return await extractPdfPagesOnce(bytes);
+    } catch (error) {
+      lastError = error;
+      if (attempt < PDF_EXTRACTION_ATTEMPTS) {
+        console.warn(`[Annie] PDF extraction attempt ${attempt} failed; retrying`, error);
+      }
+    }
+  }
+  throw lastError;
 }
 
 type GeminiResponse = {
   candidates?: Array<{ content?: { parts?: Array<{ text?: string }> } }>;
 };
 
+// Gemini occasionally wraps JSON in Markdown fences or adds stray prose even with
+// responseMimeType set. Pull out the first balanced JSON object before parsing.
+function extractJson(text: string): string {
+  const fenced = text.match(/```(?:json)?\s*([\s\S]*?)```/i);
+  const body = (fenced?.[1] ?? text).trim();
+  const start = body.indexOf("{");
+  const end = body.lastIndexOf("}");
+  return start >= 0 && end > start ? body.slice(start, end + 1) : body;
+}
+
 async function geminiJson<T>(
   prompt: string,
-  jsonSchema: Record<string, unknown>,
   parser: z.ZodType<T>,
   retryMalformed = true,
 ): Promise<T | null> {
@@ -157,9 +360,8 @@ async function geminiJson<T>(
           generationConfig: {
             temperature: 0.25,
             maxOutputTokens: 4096,
-            responseFormat: {
-              text: { mimeType: "application/json", schema: jsonSchema },
-            },
+            // Gemini uses responseMimeType (not responseFormat) to request JSON.
+            responseMimeType: "application/json",
           },
         }),
       },
@@ -168,9 +370,15 @@ async function geminiJson<T>(
     const payload = (await response.json()) as GeminiResponse;
     const text = payload.candidates?.[0]?.content?.parts?.[0]?.text;
     if (!text) return null;
-    const parsed = parser.safeParse(JSON.parse(text));
+    let json: unknown;
+    try {
+      json = JSON.parse(extractJson(text));
+    } catch {
+      return retryMalformed ? geminiJson(prompt, parser, false) : null;
+    }
+    const parsed = parser.safeParse(json);
     if (parsed.success) return parsed.data;
-    if (retryMalformed) return geminiJson(prompt, jsonSchema, parser, false);
+    if (retryMalformed) return geminiJson(prompt, parser, false);
     return null;
   } catch {
     return null;
@@ -178,44 +386,6 @@ async function geminiJson<T>(
     clearTimeout(timeout);
   }
 }
-
-const candidateJsonSchema = {
-  type: "object",
-  properties: {
-    candidate_blotouts: {
-      type: "array",
-      maxItems: 18,
-      items: {
-        type: "object",
-        properties: {
-          page: { type: "integer" },
-          text: { type: "string", description: "An exact, character-for-character page substring" },
-          question_prompt: { type: "string" },
-          difficulty: { type: "integer", minimum: 1, maximum: 3 },
-        },
-        required: ["page", "text", "question_prompt", "difficulty"],
-        additionalProperties: false,
-      },
-    },
-    commentary_candidates: {
-      type: "array",
-      maxItems: 18,
-      items: {
-        type: "object",
-        properties: {
-          page: { type: "integer" },
-          text: { type: "string" },
-          type: { type: "string", enum: ["explain", "common_mistake", "analogy", "context"] },
-          beyond_notes: { type: "boolean" },
-        },
-        required: ["page", "text", "type", "beyond_notes"],
-        additionalProperties: false,
-      },
-    },
-  },
-  required: ["candidate_blotouts", "commentary_candidates"],
-  additionalProperties: false,
-};
 
 async function generateCandidates(pages: Array<{ page: number; text: string }>) {
   const pageMap = new Map(pages.map((page) => [page.page, page.text]));
@@ -256,8 +426,7 @@ async function generateCandidates(pages: Array<{ page: number; text: string }>) 
   for (const group of batches) {
     const notes = group.map((page) => `PAGE ${page.page}\n${page.text}`).join("\n\n");
     const response = await geminiJson(
-      `Create concise study interactions from only the supplied note text. Blotout text MUST be an exact substring copied from its page. Commentary must be grounded in the page; set beyond_notes true if it adds any outside fact. Return 1-3 useful items per substantive page.\n\n${notes}`,
-      candidateJsonSchema,
+      `Create concise study interactions from only the supplied note text. Blotout text MUST be an exact substring copied from its page. Commentary must be grounded in the page; set beyond_notes true if it adds any outside fact. Return 1-3 useful items per substantive page.\n\nRespond with JSON of exactly this shape: {"candidate_blotouts":[{"page":<integer>,"text":<exact page substring>,"question_prompt":<string>,"difficulty":<1|2|3>}],"commentary_candidates":[{"page":<integer>,"text":<string>,"type":"explain"|"common_mistake"|"analogy"|"context","beyond_notes":<boolean>}]}. Use at most 18 items per array.\n\n${notes}`,
       generatedCandidatesSchema,
     );
     if (response) {
@@ -272,6 +441,24 @@ async function generateCandidates(pages: Array<{ page: number; text: string }>) 
     quizzes: generatedQuizzes.length ? generatedQuizzes : fallbackQuizzes,
     commentary: generatedCommentary.length ? generatedCommentary : fallbackCommentary,
   };
+}
+
+// Translate low-level processing failures (PDF.js internals, runtime globals,
+// network blips) into a short, reassuring message the student can act on, while
+// the technical detail is logged server-side for debugging.
+function friendlyProcessingError(error: unknown): string {
+  const raw = error instanceof Error ? error.message : String(error);
+  const name = error instanceof Error ? error.name : "";
+  if (name === "PasswordException" || /password|encrypted/i.test(raw)) {
+    return "This PDF is password-protected. Remove the password and upload it again.";
+  }
+  if (name === "InvalidPDFException" || /invalid pdf|corrupt|structure/i.test(raw)) {
+    return "This file doesn’t look like a readable PDF. Please check it and try again.";
+  }
+  if (/DOMMatrix|is not defined|canvas|worker|module/i.test(raw)) {
+    return "We couldn’t prepare this PDF just now. Please try again in a moment.";
+  }
+  return "We couldn’t prepare this PDF. Please try again, or upload a different file.";
 }
 
 async function ownedDocument(db: any, documentId: string, userId: string, columns = "*") {
@@ -425,7 +612,8 @@ export const processAnnieDocument = createServerFn({ method: "POST" })
           .eq("user_id", context.userId);
         return { status: "ready", error: null };
       } catch (error) {
-        const message = error instanceof Error ? error.message : "Processing failed. Please retry.";
+        console.error("[Annie] Failed to process document", document.id, error);
+        const message = friendlyProcessingError(error);
         await db
           .from("annie_documents")
           .update({ status: "failed", processing_error: message })
@@ -698,16 +886,7 @@ export const evaluateAnnieAnswer = createServerFn({ method: "POST" })
     let evaluation = null;
     if (await spendLlmCall(db, data.sessionId, context.userId)) {
       evaluation = await geminiJson(
-        `${ANNIE_SYSTEM_PROMPTS[data.mood]} Compare the student's answer only against the source text. Accept accurate paraphrases and tolerate typos. Return a classification and one short explanation.\n\nSOURCE TEXT:\n${candidate.text}\n\nSTUDENT ANSWER:\n${data.answer}`,
-        {
-          type: "object",
-          properties: {
-            result: { type: "string", enum: ["correct", "partially_correct", "incorrect"] },
-            explanation: { type: "string" },
-          },
-          required: ["result", "explanation"],
-          additionalProperties: false,
-        },
+        `${ANNIE_SYSTEM_PROMPTS[data.mood]} Compare the student's answer only against the source text. Accept accurate paraphrases and tolerate typos.\n\nRespond with JSON of exactly this shape: {"result":"correct"|"partially_correct"|"incorrect","explanation":<one short sentence, max 240 chars>}.\n\nSOURCE TEXT:\n${candidate.text}\n\nSTUDENT ANSWER:\n${data.answer}`,
         evaluationSchema,
       );
     }
@@ -779,16 +958,7 @@ export const askAnnie = createServerFn({ method: "POST" })
     let response = null;
     if (await spendLlmCall(db, data.sessionId, context.userId)) {
       response = await geminiJson(
-        `${ANNIE_SYSTEM_PROMPTS[data.mood]} Answer in at most 2 sentences. Use the page text as the primary source. If the answer includes anything not stated or directly inferable from the page, set beyond_notes true. Do not include links or recommend sources.\n\nPAGE TEXT:\n${page.text}\n\nQUESTION:\n${data.question}`,
-        {
-          type: "object",
-          properties: {
-            answer: { type: "string" },
-            beyond_notes: { type: "boolean" },
-          },
-          required: ["answer", "beyond_notes"],
-          additionalProperties: false,
-        },
+        `${ANNIE_SYSTEM_PROMPTS[data.mood]} Answer in at most 2 sentences. Use the page text as the primary source. If the answer includes anything not stated or directly inferable from the page, set beyond_notes true. Do not include links or recommend sources.\n\nRespond with JSON of exactly this shape: {"answer":<string>,"beyond_notes":<boolean>}.\n\nPAGE TEXT:\n${page.text}\n\nQUESTION:\n${data.question}`,
         questionAnswerSchema,
       );
     }
