@@ -50,10 +50,10 @@ export default function AnatomyScene({ atlas, state, onSelect, onProgress, onErr
       return;
     }
     renderer.setPixelRatio(Math.min(devicePixelRatio, innerWidth < 768 ? 1.5 : 2));
-    renderer.setClearColor("#f2f3f3");
+    renderer.setClearColor("#34373d");
     renderer.outputColorSpace = T.SRGBColorSpace;
     renderer.toneMapping = T.ACESFilmicToneMapping;
-    renderer.toneMappingExposure = 1.12;
+    renderer.toneMappingExposure = 1.0;
     el.appendChild(renderer.domElement);
     renderer.domElement.setAttribute(
       "aria-label",
@@ -78,32 +78,51 @@ export default function AnatomyScene({ atlas, state, onSelect, onProgress, onErr
     scene.environment = env.texture;
     room.dispose();
     pmrem.dispose();
-    scene.add(new T.HemisphereLight(0xffffff, 0xa7acb2, 1.05));
-    const key = new T.DirectionalLight(0xfffaf4, 2.3);
+    // Soft neutral gradient backdrop — a calm medical-visualization grey that keeps both
+    // dark-red vessels and pale bone/nerve legible, with a touch of depth. It replaces the
+    // old near-white clear colour that washed out light-coloured structures.
+    const bgCanvas = document.createElement("canvas");
+    bgCanvas.width = bgCanvas.height = 64;
+    const bgCtx = bgCanvas.getContext("2d")!;
+    const bgGrad = bgCtx.createRadialGradient(32, 26, 4, 32, 34, 48);
+    bgGrad.addColorStop(0, "#64686f");
+    bgGrad.addColorStop(1, "#303338");
+    bgCtx.fillStyle = bgGrad;
+    bgCtx.fillRect(0, 0, 64, 64);
+    const bgTexture = new T.CanvasTexture(bgCanvas);
+    bgTexture.colorSpace = T.SRGBColorSpace;
+    scene.background = bgTexture;
+    scene.add(new T.HemisphereLight(0xeef1f6, 0x5b5f66, 0.72));
+    const key = new T.DirectionalLight(0xfff6ec, 2.15);
     key.position.set(-2, 4, 3);
     scene.add(key);
-    const rim = new T.DirectionalLight(0xe9f0ff, 1.8);
+    const rim = new T.DirectionalLight(0xdfe8ff, 1.5);
     rim.position.set(2, 2, -3);
     scene.add(rim);
+    // Gentle frontal fill so structures facing the camera keep readable surface detail
+    // against the darker backdrop without washing out.
+    const fill = new T.DirectionalLight(0xf3f0ff, 0.6);
+    fill.position.set(0, 1.2, 4);
+    scene.add(fill);
     const ground = new T.Mesh(
       new T.CircleGeometry(30, 96),
-      new T.MeshStandardMaterial({ color: 0xd5d9dc, roughness: 1 }),
+      new T.MeshStandardMaterial({ color: 0x3c3f45, roughness: 1 }),
     );
     ground.rotation.x = -Math.PI / 2;
     ground.position.y = -0.019;
     scene.add(ground);
     const platform = new T.Mesh(
       new T.CylinderGeometry(0.68, 0.7, 0.028, 100),
-      new T.MeshStandardMaterial({ color: 0xeeeeec, metalness: 0.12, roughness: 0.67 }),
+      new T.MeshStandardMaterial({ color: 0x4b4f57, metalness: 0.1, roughness: 0.7 }),
     );
     platform.position.y = -0.016;
     scene.add(platform);
     const ring = new T.Mesh(
       new T.RingGeometry(0.63, 0.632, 128),
       new T.MeshBasicMaterial({
-        color: 0x8c969f,
+        color: 0x9aa4af,
         transparent: true,
-        opacity: 0.4,
+        opacity: 0.34,
         side: T.DoubleSide,
       }),
     );
@@ -113,9 +132,9 @@ export default function AnatomyScene({ atlas, state, onSelect, onProgress, onErr
     const innerRing = new T.Mesh(
       new T.RingGeometry(0.55, 0.551, 128),
       new T.MeshBasicMaterial({
-        color: 0xa4aeb8,
+        color: 0x8d97a2,
         transparent: true,
-        opacity: 0.16,
+        opacity: 0.13,
         side: T.DoubleSide,
       }),
     );
@@ -205,8 +224,9 @@ export default function AnatomyScene({ atlas, state, onSelect, onProgress, onErr
     const materialFor = (system: string) => {
       const m = new T.MeshStandardMaterial({
         color: SYSTEMS.find((s) => s.id === system)?.color ?? "#aebbb8",
-        metalness: 0.08,
-        roughness: 0.53,
+        metalness: 0.0,
+        roughness: 0.62,
+        envMapIntensity: 0.55,
         side: T.DoubleSide,
         transparent: system === "integumentary",
         opacity: system === "integumentary" ? 0.1 : 1,
@@ -217,21 +237,31 @@ export default function AnatomyScene({ atlas, state, onSelect, onProgress, onErr
         shader.uniforms["selectionState"] = { value: selectionTexture };
         shader.uniforms["stateWidth"] = { value: width };
         shader.vertexShader =
-          "attribute float partIndex; uniform sampler2D partState; uniform sampler2D selectionState; uniform float stateWidth; varying float partVisible; varying float partSelected;\n" +
+          "attribute float partIndex; uniform sampler2D partState; uniform sampler2D selectionState; uniform float stateWidth; varying float partVisible; varying float partSelected; varying float partShade;\n" +
           shader.vertexShader;
         shader.vertexShader = shader.vertexShader.replace(
           "#include <begin_vertex>",
-          "#include <begin_vertex>\nvec2 stateUv = vec2((partIndex + 0.5) / stateWidth, 0.5); vec4 state = texture2D(partState, stateUv); transformed += state.xyz; partVisible = state.w; partSelected = texture2D(selectionState, stateUv).r;",
+          "#include <begin_vertex>\nvec2 stateUv = vec2((partIndex + 0.5) / stateWidth, 0.5); vec4 state = texture2D(partState, stateUv); transformed += state.xyz; partVisible = state.w; partSelected = texture2D(selectionState, stateUv).r; partShade = fract(sin(partIndex * 12.9898) * 43758.5453);",
         );
         shader.fragmentShader =
-          "varying float partVisible; varying float partSelected;\n" + shader.fragmentShader;
+          "varying float partVisible; varying float partSelected; varying float partShade;\n" +
+          shader.fragmentShader;
         shader.fragmentShader = shader.fragmentShader.replace(
           "#include <clipping_planes_fragment>",
           "#include <clipping_planes_fragment>\nif (partVisible < 0.5) discard;",
         );
+        // Every structure keeps its anatomical colour in all views (full-body, system,
+        // isolated and exploded). A small per-part lightness shift separates neighbouring
+        // pieces of the same system so a multi-part organ never reads as one flat blob.
+        // Selection adds only a light-blue sheen plus a soft glow, so the underlying
+        // anatomical colour still reads through — isolating no longer turns things blue.
         shader.fragmentShader = shader.fragmentShader.replace(
           "#include <color_fragment>",
-          "#include <color_fragment>\ndiffuseColor.rgb = mix(diffuseColor.rgb, vec3(0.42, 0.85, 0.78), partSelected * 0.75);",
+          "#include <color_fragment>\ndiffuseColor.rgb *= mix(0.84, 1.08, partShade);\ndiffuseColor.rgb = mix(diffuseColor.rgb, vec3(0.44, 0.78, 0.95), partSelected * 0.30);",
+        );
+        shader.fragmentShader = shader.fragmentShader.replace(
+          "#include <emissivemap_fragment>",
+          "#include <emissivemap_fragment>\ntotalEmissiveRadiance += vec3(0.08, 0.26, 0.40) * partSelected;",
         );
       };
       materials.push(m);
@@ -432,6 +462,7 @@ export default function AnatomyScene({ atlas, state, onSelect, onProgress, onErr
     renderer.domElement.addEventListener("pointercancel", cancel);
     const clock = new T.Clock();
     let lastExtent = -1;
+    let hadVisible = false;
     const animate = () => {
       if (disposed) return;
       frame = requestAnimationFrame(animate);
@@ -448,10 +479,17 @@ export default function AnatomyScene({ atlas, state, onSelect, onProgress, onErr
       }
       if (changed || moving || lastExtent < 0) {
         const visible = new Set(s.visible),
-          selection = new Set(s.selected);
+          selection = new Set(s.selected),
+          isolateSet = new Set(s.isolateSet);
+        // Isolation shows the frozen isolate set, NOT the live selection. This keeps every
+        // isolated part on screen (and in its exploded position) while the student clicks
+        // between them to inspect each one.
         const visibleParts = atlas.parts.filter((p) =>
-          s.isolate ? selection.has(p.id) : visible.has(p.system) || selection.has(p.id),
+          s.isolate ? isolateSet.has(p.id) : visible.has(p.system) || selection.has(p.id),
         );
+        const nowHasVisible = visibleParts.length > 0;
+        if (nowHasVisible && !hadVisible && !s.isolate) fit(s.view, amount);
+        hadVisible = nowHasVisible;
         const nextLayoutKey =
           visibleParts.map((p) => p.id).join(",") + ":" + camera.aspect.toFixed(3);
         if (nextLayoutKey !== layoutKey) {
@@ -489,7 +527,12 @@ export default function AnatomyScene({ atlas, state, onSelect, onProgress, onErr
           }
           const selected = selection.has(p.id);
           data.set(
-            [dx, dy, dz, (s.isolate ? selected : visible.has(p.system) || selected) ? 1 : 0],
+            [
+              dx,
+              dy,
+              dz,
+              (s.isolate ? isolateSet.has(p.id) : visible.has(p.system) || selected) ? 1 : 0,
+            ],
             i * 4,
           );
           selectedData[i * 4] = selected ? 255 : 0;
@@ -519,13 +562,13 @@ export default function AnatomyScene({ atlas, state, onSelect, onProgress, onErr
       if (moving && !s.isolate)
         fit(amount > 0.5 ? "front" : s.view, Math.max(0, (amount - 0.3) / 0.7));
       const isolateKey = s.isolate
-        ? s.selected.join(",") + ":" + s.reset + ":" + s.inspectorOpen + ":" + camera.aspect
+        ? s.isolateSet.join(",") + ":" + s.reset + ":" + s.inspectorOpen + ":" + camera.aspect
         : "";
       if (isolateKey !== lastIsolate || (s.isolate && moving)) {
         if (s.isolate) {
           const box = new T.Box3();
           atlas.parts.forEach((p, i) => {
-            if (s.selected.includes(p.id))
+            if (s.isolateSet.includes(p.id))
               box.union(
                 bounds[i]!.clone().translate(
                   new T.Vector3(data[i * 4], data[i * 4 + 1], data[i * 4 + 2]),
@@ -674,6 +717,7 @@ export default function AnatomyScene({ atlas, state, onSelect, onProgress, onErr
         }
       });
       env.dispose();
+      bgTexture.dispose();
       partTexture.dispose();
       selectionTexture.dispose();
       markerGeometry.dispose();

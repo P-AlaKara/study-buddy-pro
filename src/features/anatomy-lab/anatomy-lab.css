@@ -24,6 +24,7 @@
   --al-muted: var(--muted-foreground);
   --al-panel: oklch(1 0 0 / 92%);
   --al-stroke: var(--border);
+  --al-field: oklch(1 0 0 / 60%);
 }
 
 /* Stage ------------------------------------------------------------------- */
@@ -172,7 +173,7 @@
   display: flex;
   flex-direction: column;
   padding: 16px 14px 0;
-  max-height: 680px;
+  max-height: min(760px, calc(100dvh - 180px));
 }
 .anatomy-lab .al-panel-head {
   display: flex;
@@ -205,8 +206,12 @@
   padding: 0 12px;
   border-radius: 13px;
   border: 1px solid var(--al-stroke);
-  background: oklch(1 0 0 / 60%);
+  background: var(--al-field);
   color: var(--foreground);
+}
+.anatomy-lab .al-search-field:focus-within {
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px oklch(from var(--primary) l c h / 25%);
 }
 .anatomy-lab .al-search-field input {
   flex: 1;
@@ -230,7 +235,7 @@
 }
 .anatomy-lab .al-results {
   margin-top: 8px;
-  max-height: 230px;
+  max-height: 196px;
   overflow-y: auto;
   overscroll-behavior: contain;
   scrollbar-width: thin;
@@ -306,7 +311,11 @@
   background: var(--lavender-soft);
   border-color: transparent;
 }
+/* Grow to fill the panel and scroll internally so the full system list stays usable
+   instead of collapsing to a clipped sliver. */
 .anatomy-lab .al-systems {
+  flex: 1 1 auto;
+  min-height: 132px;
   overflow-y: auto;
   overscroll-behavior: contain;
   padding: 4px 0;
@@ -432,7 +441,8 @@
   display: flex;
   align-items: center;
   gap: 14px;
-  color: var(--al-muted);
+  color: oklch(0.83 0.015 275);
+  text-shadow: 0 1px 6px oklch(0.2 0.02 275 / 45%);
   letter-spacing: 0.13em;
   font-size: 10px;
   font-weight: 800;
@@ -444,8 +454,36 @@
 .anatomy-lab .al-caption-line {
   width: 22px;
   height: 1px;
-  background: var(--al-stroke);
+  background: oklch(0.6 0.02 275 / 60%);
   flex-shrink: 0;
+}
+
+/* Empty stage message ----------------------------------------------------- */
+.anatomy-lab .al-empty-state {
+  position: absolute;
+  top: 46%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 10;
+  width: min(430px, calc(100% - 48px));
+  text-align: center;
+  pointer-events: none;
+}
+.anatomy-lab .al-empty-title {
+  margin: 0;
+  font-family: "Nunito", sans-serif;
+  font-weight: 800;
+  font-size: 19px;
+  letter-spacing: -0.3px;
+  color: oklch(0.96 0.01 275);
+  text-shadow: 0 1px 12px oklch(0.2 0.02 275 / 55%);
+}
+.anatomy-lab .al-empty-sub {
+  margin: 10px 0 0;
+  font-size: 13.5px;
+  line-height: 1.6;
+  color: oklch(0.82 0.015 275);
+  text-shadow: 0 1px 8px oklch(0.2 0.02 275 / 45%);
 }
 
 /* Bottom dock — explode --------------------------------------------------- */
@@ -735,13 +773,14 @@
   z-index: 12;
   font-size: 11px;
   font-weight: 700;
-  color: var(--al-muted);
+  color: oklch(0.82 0.015 275);
+  text-shadow: 0 1px 6px oklch(0.2 0.02 275 / 45%);
   pointer-events: none;
 }
 .anatomy-lab .al-hint b {
   font-weight: 400;
   margin: 0 6px;
-  color: var(--al-stroke);
+  color: oklch(0.6 0.02 275 / 70%);
 }
 
 /* Credits sheet ----------------------------------------------------------- */
@@ -920,11 +959,40 @@
   }
 }
 
-/* Dark mode: the clinical stage stays light; lift panel contrast only. */
+/* Dark mode: keep the dark clay panels, but lift EVERY text/surface token the panels and
+   their controls draw from — otherwise foreground text (dark navy by default) renders
+   dark-on-dark. Scoped to .anatomy-lab so only the lab is affected; the 3D stage keeps its
+   own fixed neutral backdrop. */
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) .anatomy-lab {
-    --al-panel: oklch(0.29 0.03 274 / 0.9);
+    --al-panel: oklch(0.275 0.028 274 / 0.92);
+    --al-field: oklch(0.34 0.03 274 / 0.9);
+    --background: oklch(0.3 0.03 274);
+    --card: oklch(0.34 0.03 274);
+    --foreground: oklch(0.97 0.01 90);
+    --muted-foreground: oklch(0.77 0.02 275);
     --al-ink: oklch(0.97 0.01 90);
-    --al-muted: oklch(0.72 0.02 275);
+    --al-muted: oklch(0.78 0.022 275);
+    --border: oklch(0.56 0.03 275 / 45%);
+    --al-stroke: oklch(0.56 0.03 275 / 45%);
+    --muted: oklch(0.46 0.03 275 / 40%);
+    --primary: oklch(0.83 0.13 305);
+    --secondary: oklch(0.4 0.04 304 / 50%);
+    --lavender-soft: oklch(0.55 0.08 305 / 45%);
+  }
+  :root:not([data-theme="light"]) .anatomy-lab .al-glass {
+    box-shadow:
+      0 14px 34px -14px oklch(0.12 0.02 280 / 60%),
+      inset 0 1px 0 oklch(1 0 0 / 8%);
+  }
+  /* Keep the system toggles clearly readable as on/off against the dark panel. */
+  :root:not([data-theme="light"]) .anatomy-lab button[role="switch"][data-state="unchecked"] {
+    background: oklch(0.52 0.03 275 / 55%);
+  }
+  :root:not([data-theme="light"]) .anatomy-lab button[role="switch"][data-state="checked"] {
+    background: var(--primary);
+  }
+  :root:not([data-theme="light"]) .anatomy-lab button[role="switch"] > span {
+    background: oklch(0.96 0.01 90);
   }
 }

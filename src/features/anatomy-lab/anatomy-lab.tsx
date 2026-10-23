@@ -21,7 +21,6 @@ import { Switch } from "@/components/ui/switch";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { ATLAS_MANIFEST_URL } from "./config";
 import {
-  DEFAULT_VISIBLE,
   EXPLANATIONS,
   SYSTEMS,
   explanation,
@@ -39,10 +38,13 @@ import "./anatomy-lab.css";
 // keeping it out of the initial route chunk.
 const AnatomyScene = lazy(() => import("./engine/scene"));
 
+// New sessions open on an empty stage — no systems, no selection, explode at zero — so the
+// student chooses where to begin instead of facing the whole body at once.
 const INITIAL: SceneState = {
   explode: 0,
-  visible: DEFAULT_VISIBLE,
+  visible: [],
   selected: [],
+  isolateSet: [],
   isolate: false,
   view: "three-quarter",
   rotate: false,
@@ -96,7 +98,7 @@ export function AnatomyLab() {
     setError("");
     setAtlas(null);
     setChosen(null);
-    setState({ ...INITIAL, visible: DEFAULT_VISIBLE });
+    setState(INITIAL);
     fetch(ATLAS_MANIFEST_URL, { signal: abort.signal })
       .then((r) => {
         if (!r.ok) throw new Error("The anatomy catalogue could not be loaded.");
@@ -141,7 +143,7 @@ export function AnatomyLab() {
   const visibleCount =
     atlas?.parts.filter((p) =>
       state.isolate
-        ? state.selected.includes(p.id)
+        ? state.isolateSet.includes(p.id)
         : state.visible.includes(p.system) || state.selected.includes(p.id),
     ).length ?? 0;
 
@@ -162,41 +164,68 @@ export function AnatomyLab() {
 
   const choose = (c: Concept) => {
     setChosen(c);
-    setState((s) => ({ ...s, selected: c.elements, isolate: false, rotate: false }));
+    setState((s) => ({
+      ...s,
+      selected: c.elements,
+      isolate: false,
+      isolateSet: [],
+      rotate: false,
+    }));
     if (isMobile) setMobilePanel(false);
   };
+  // Clicking a structure in the 3D view only selects it for inspection. It must never exit
+  // isolation or restore the full body — so `isolate`/`isolateSet` are left untouched here.
   const choosePart = (id: string) => {
     const p = parts.get(id);
     if (!p) return;
     setChosen({ id: p.conceptId, name: p.name, elements: [id] });
-    setState((s) => ({ ...s, selected: [id], isolate: false, rotate: false }));
+    setState((s) => ({ ...s, selected: [id], rotate: false }));
   };
   const toggleSystem = (id: SystemId) =>
-    setState((s) => ({
-      ...s,
-      selected: [],
-      isolate: false,
-      visible: s.visible.includes(id) ? s.visible.filter((x) => x !== id) : [...s.visible, id],
-    }));
+    setState((s) => {
+      const visible = s.visible.includes(id)
+        ? s.visible.filter((x) => x !== id)
+        : [...s.visible, id];
+      // Drop any selected part whose system is no longer shown, so the detail panel never
+      // lingers on a hidden structure. Toggling a system also leaves isolation.
+      const selected = s.selected.filter((pid) => {
+        const p = parts.get(pid);
+        return p && visible.includes(p.system);
+      });
+      return {
+        ...s,
+        visible,
+        isolate: false,
+        isolateSet: [],
+        selected,
+        explode: visible.length === 0 ? 0 : s.explode,
+      };
+    });
   const soloSystem = (id: SystemId) =>
-    setState((s) => ({ ...s, visible: [id], isolate: false, selected: [] }));
+    setState((s) => ({ ...s, visible: [id], isolate: false, isolateSet: [], selected: [] }));
   const clearSelection = () => {
-    setState((s) => ({ ...s, selected: [], isolate: false }));
+    setState((s) => ({ ...s, selected: [], isolate: false, isolateSet: [] }));
     setChosen(null);
   };
   const reset = () => {
-    setState((s) => ({ ...INITIAL, visible: DEFAULT_VISIBLE, reset: s.reset + 1 }));
+    setState((s) => ({ ...INITIAL, reset: s.reset + 1 }));
     setChosen(null);
     setQuery("");
   };
 
   const caption = state.isolate
     ? (chosen?.name ?? "Selected structure")
-    : state.explode > 0.95
-      ? "Anatomical inventory"
-      : state.explode > 0.05
-        ? "Separated structures"
-        : "Adult human · male";
+    : visibleCount === 0
+      ? ""
+      : state.explode > 0.95
+        ? "Anatomical inventory"
+        : state.explode > 0.05
+          ? "Separated structures"
+          : "Adult human · male";
+
+  // The empty stage shows a quiet instruction instead of a model, once loading is done.
+  const showEmpty =
+    !!atlas && progress === 100 && !error && !state.isolate && visibleCount === 0 && !detailOpen;
 
   const allOn =
     activeSystems.length > 0 && activeSystems.every((x) => state.visible.includes(x.id));
@@ -222,6 +251,15 @@ export function AnatomyLab() {
         </Suspense>
       )}
       <div className="al-vignette" />
+
+      {showEmpty && (
+        <div className="al-empty-state" role="status">
+          <p className="al-empty-title">Select an anatomical system to begin exploring.</p>
+          <p className="al-empty-sub">
+            Use the panel on the left to display systems or explore individual structures.
+          </p>
+        </div>
+      )}
 
       {/* Top bar: Medley identity + feature actions (no duplicate main nav). */}
       <header className="identity">
@@ -356,6 +394,7 @@ export function AnatomyLab() {
                 ...s,
                 selected: [],
                 isolate: false,
+                isolateSet: [],
                 visible: activeSystems.map((x) => x.id),
               }))
             }
@@ -367,7 +406,13 @@ export function AnatomyLab() {
             className="al-preset"
             aria-pressed={skeletonOn}
             onClick={() =>
-              setState((s) => ({ ...s, selected: [], isolate: false, visible: ["skeletal"] }))
+              setState((s) => ({
+                ...s,
+                selected: [],
+                isolate: false,
+                isolateSet: [],
+                visible: ["skeletal"],
+              }))
             }
           >
             Skeleton
@@ -377,7 +422,13 @@ export function AnatomyLab() {
             className="al-preset"
             aria-pressed={organsOn}
             onClick={() =>
-              setState((s) => ({ ...s, selected: [], isolate: false, visible: [...ORGAN_PRESET] }))
+              setState((s) => ({
+                ...s,
+                selected: [],
+                isolate: false,
+                isolateSet: [],
+                visible: [...ORGAN_PRESET],
+              }))
             }
           >
             Organs
@@ -414,7 +465,16 @@ export function AnatomyLab() {
           <button
             type="button"
             className="al-link-btn"
-            onClick={() => setState((s) => ({ ...s, visible: [], selected: [], isolate: false }))}
+            onClick={() =>
+              setState((s) => ({
+                ...s,
+                visible: [],
+                selected: [],
+                isolate: false,
+                isolateSet: [],
+                explode: 0,
+              }))
+            }
           >
             Hide all
           </button>
@@ -453,11 +513,13 @@ export function AnatomyLab() {
         </button>
       </nav>
 
-      <div className="al-caption">
-        <span className="al-caption-line" />
-        <span>{caption}</span>
-        <span className="al-caption-line" />
-      </div>
+      {caption && (
+        <div className="al-caption">
+          <span className="al-caption-line" />
+          <span>{caption}</span>
+          <span className="al-caption-line" />
+        </div>
+      )}
 
       {/* Bottom dock: exploded view */}
       <div className="al-dock al-glass">
@@ -483,6 +545,7 @@ export function AnatomyLab() {
             min={0}
             max={100}
             step={1}
+            disabled={visibleCount === 0}
             value={[state.explode * 100]}
             onValueChange={(v) => {
               const next = (Array.isArray(v) ? (v[0] ?? 0) : v) / 100;
@@ -578,7 +641,16 @@ export function AnatomyLab() {
           <div className="detail-actions">
             <Button
               variant={state.isolate ? "default" : "outline"}
-              onClick={() => setState((s) => ({ ...s, isolate: !s.isolate, explode: 0 }))}
+              onClick={() =>
+                setState((s) => ({
+                  ...s,
+                  isolate: !s.isolate,
+                  // Freeze the current selection as the isolate set when entering isolation;
+                  // clear it when leaving so the surrounding anatomy returns.
+                  isolateSet: s.isolate ? [] : s.selected,
+                  explode: 0,
+                }))
+              }
             >
               <Focus size={18} />
               {state.isolate ? "Show surrounding anatomy" : "Isolate structure"}

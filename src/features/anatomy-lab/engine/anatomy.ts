@@ -154,7 +154,11 @@ export interface SceneState {
   inspectorOpen?: boolean;
   explode: number;
   visible: SystemId[];
+  /** Highlighted/inspected structure — drives the detail panel and the selection sheen. */
   selected: string[];
+  /** When `isolate` is on, the frozen set of parts kept on screen. Decoupled from
+   * `selected` so clicking between isolated/exploded parts never hides the others. */
+  isolateSet: string[];
   isolate: boolean;
   view: View;
   rotate: boolean;
