@@ -21,7 +21,8 @@ export const theLongFlight: MedicalCase = {
       ageCues: "young_adult",
     },
     personality: "Usually composed; frightened now, speaking quickly in short, breathless phrases.",
-    chiefComplaint: "Sudden breathlessness and pleuritic chest pain",
+    chiefComplaint: "Sudden breathlessness and pleuritic chest pain after a long-haul flight.",
+    presentingTags: ["Short of breath", "Chest pain", "Recent travel"],
     initialExpression: "struggling_to_breathe",
   },
   vitalsTimeline: [

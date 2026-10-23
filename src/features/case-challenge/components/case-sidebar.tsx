@@ -1,13 +1,14 @@
 import { type ComponentType } from "react";
 import {
+  BookOpen,
   Check,
   ClipboardList,
   FileText,
   FlaskConical,
-  Image as ImageIcon,
-  ListChecks,
   MessageCircleMore,
+  Network,
   NotebookPen,
+  Pill,
   Stethoscope,
   Syringe,
 } from "lucide-react";
@@ -39,9 +40,10 @@ const TOOLS: Array<{
 }> = [
   { tab: "chart", label: "Patient chart", icon: ClipboardList, withBadge: true },
   { tab: "notes", label: "Clinical notes", icon: NotebookPen },
-  { tab: "differential", label: "Differentials", icon: ListChecks },
-  { tab: "chart", label: "Investigations & results", icon: FlaskConical },
-  { tab: "chart", label: "Imaging", icon: ImageIcon },
+  { tab: "chart", label: "Order investigations", icon: FlaskConical },
+  { tab: "chart", label: "Drug reference", icon: Pill },
+  { tab: "chart", label: "Clinical guidelines", icon: BookOpen },
+  { tab: "differential", label: "Differential builder", icon: Network },
 ];
 
 /**
@@ -147,11 +149,9 @@ export function CaseSidebar({
                 <button
                   type="button"
                   onClick={() => onOpenWorkspace(tool.tab)}
-                  className="flex w-full items-center gap-2.5 rounded-xl px-2 py-2 text-left text-xs font-bold text-slate-600 transition-colors hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--case-accent)]"
+                  className="flex w-full items-center gap-3 rounded-xl px-2.5 py-2.5 text-left text-[13px] font-bold text-slate-700 transition-colors hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--case-accent)]"
                 >
-                  <span className="grid size-7 shrink-0 place-items-center rounded-lg bg-slate-100 text-slate-500">
-                    <Icon className="size-4" />
-                  </span>
+                  <Icon className="size-[18px] shrink-0 text-slate-500" />
                   <span className="flex-1 truncate">{tool.label}</span>
                   {badge > 0 && (
                     <span className="grid size-5 shrink-0 place-items-center rounded-full bg-[var(--case-pink)] text-[10px] font-black text-white">

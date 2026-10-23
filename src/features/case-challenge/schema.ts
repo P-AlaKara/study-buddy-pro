@@ -25,6 +25,12 @@ export interface CasePatient {
   avatar: PatientAvatarConfig;
   personality: string;
   chiefComplaint: string;
+  /**
+   * Short presenting-feature chips shown on the patient viewport overlay
+   * (e.g. "Short of breath", "Chest pain"). Falls back to the case specialty
+   * when absent.
+   */
+  presentingTags?: string[];
   initialExpression: PatientExpression;
 }
 

@@ -1,69 +1,269 @@
-import { useEffect, useRef, useState, type ComponentType, type CSSProperties } from "react";
+import {
+  useEffect,
+  useRef,
+  useState,
+  type ComponentType,
+  type CSSProperties,
+  type ReactNode,
+} from "react";
 import {
   AlertTriangle,
-  ArrowRight,
   CheckCircle2,
   ChevronDown,
   Flag,
+  FlaskConical,
   HeartPulse,
+  HelpCircle,
   Lightbulb,
   ListChecks,
   Maximize2,
+  MessageCircleMore,
   Minimize2,
   Sparkles,
-  UserRound,
+  Stethoscope,
+  Syringe,
   XCircle,
 } from "lucide-react";
-import type { GameState, TimelineEvent, TimelineEventType } from "../engine.js";
-import type { CaseAction, MedicalCase } from "../schema.js";
-import { actionCategoryLabel, categoryMeta } from "./case-constants.js";
-import { ActionResultEntry, TypingDots } from "./case-ui.js";
+import type { GameState, TimelineEvent } from "../engine.js";
+import type { ActionCategory, CaseAction, MedicalCase } from "../schema.js";
+import { CaseImageViewer } from "./case-image-viewer.js";
+import { TypingDots } from "./case-ui.js";
+import { formatEncounterClock } from "./patient-media.js";
 
-/**
- * Visual treatment for each system (non-action, non-hook) event in the unified
- * timeline. `detail: false` keeps an entry compact when its text is already
- * shown by the adjacent action card (clues), avoiding duplication while still
- * surfacing the event. Action and hook events get bespoke rendering below.
- */
-const systemEventStyle: Partial<
+/** One node on the vertical encounter timeline. */
+function TimelineNode({
+  color,
+  icon: Icon,
+  label,
+  time,
+  children,
+}: {
+  color: string;
+  icon: ComponentType<{ className?: string }>;
+  label: string;
+  time: string;
+  children: ReactNode;
+}) {
+  return (
+    <li className="case-tl-node" style={{ "--dot": color } as CSSProperties}>
+      <span className="case-tl-dot" aria-hidden="true">
+        <Icon className="size-3.5" />
+      </span>
+      <div className="min-w-0">
+        <div className="flex items-baseline justify-between gap-2">
+          <p
+            className="truncate text-[10px] font-black uppercase tracking-[0.12em]"
+            style={{ color }}
+          >
+            {label}
+          </p>
+          <time className="shrink-0 font-mono text-[10px] font-bold text-slate-400">{time}</time>
+        </div>
+        <div className="mt-1.5">{children}</div>
+      </div>
+    </li>
+  );
+}
+
+const YOU_META: Record<
+  ActionCategory,
+  { label: string; color: string; icon: ComponentType<{ className?: string }> }
+> = {
+  ask: { label: "You – history question", color: "var(--case-blue)", icon: HelpCircle },
+  examine: { label: "You – examination", color: "var(--case-mint)", icon: Stethoscope },
+  test: { label: "You – investigation", color: "var(--case-blue)", icon: FlaskConical },
+  treat: { label: "You – management", color: "var(--case-pink)", icon: Syringe },
+};
+
+/** Soft-tinted bubble for a patient utterance. */
+function PatientBubble({ text }: { text: string }) {
+  return (
+    <p className="rounded-2xl rounded-tl-md bg-[var(--case-accent-soft)] px-3.5 py-2.5 text-[13px] font-bold leading-relaxed text-slate-700">
+      “{text}”
+    </p>
+  );
+}
+
+/** Neutral card body for an examination / investigation / treatment result. */
+function ResultBody({
+  action,
+  caseDefinition,
+}: {
+  action: CaseAction;
+  caseDefinition: MedicalCase;
+}) {
+  const asset = action.result.assetId
+    ? caseDefinition.assets.find((candidate) => candidate.id === action.result.assetId)
+    : undefined;
+  const leadLabel =
+    action.category === "examine" ? "Findings" : action.category === "test" ? "Result" : "Response";
+
+  return (
+    <div className="space-y-2">
+      <p className="text-[13px] font-bold leading-relaxed text-slate-700">
+        <span className="font-black text-slate-900">{leadLabel}:</span> {action.result.content}
+      </p>
+
+      {action.result.type === "lab_table" && action.result.labs && (
+        <div className="overflow-x-auto rounded-xl border border-[var(--case-border)]">
+          <table className="w-full min-w-[320px] text-left text-xs">
+            <thead className="bg-slate-50 text-[9px] uppercase tracking-wider text-slate-500">
+              <tr>
+                <th className="px-3 py-2">Test</th>
+                <th className="px-3 py-2">Result</th>
+                <th className="px-3 py-2">Reference</th>
+              </tr>
+            </thead>
+            <tbody>
+              {action.result.labs.map((lab) => (
+                <tr key={lab.test} className="border-t border-slate-100">
+                  <td className="px-3 py-2 font-bold">{lab.test}</td>
+                  <td
+                    className={`px-3 py-2 font-mono font-black ${
+                      lab.flag && lab.flag !== "normal"
+                        ? "text-[var(--case-critical)]"
+                        : "text-slate-700"
+                    }`}
+                  >
+                    {lab.result}
+                  </td>
+                  <td className="px-3 py-2 text-slate-500">{lab.reference ?? "—"}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      {asset && (action.result.type === "image" || action.result.type === "ecg") && (
+        <div className="overflow-hidden rounded-xl">
+          <CaseImageViewer
+            asset={asset}
+            assetPath={`/cases/${caseDefinition.slug}/${asset.filename}`}
+            result={action.result}
+          />
+        </div>
+      )}
+    </div>
+  );
+}
+
+const SYSTEM_META: Partial<
   Record<
-    TimelineEventType,
-    { icon: ComponentType<{ className?: string }>; rail: string; tint: string; detail: boolean }
+    TimelineEvent["type"],
+    { label: string; color: string; icon: ComponentType<{ className?: string }> }
   >
 > = {
-  clue: { icon: Sparkles, rail: "var(--case-mint)", tint: "var(--case-mint-soft)", detail: false },
-  deterioration: {
-    icon: AlertTriangle,
-    rail: "var(--case-critical)",
-    tint: "var(--case-critical-soft)",
-    detail: true,
-  },
-  warning: {
-    icon: AlertTriangle,
-    rail: "var(--case-orange)",
-    tint: "var(--case-orange-soft)",
-    detail: true,
-  },
-  hint: {
-    icon: Lightbulb,
-    rail: "var(--case-yellow)",
-    tint: "var(--case-yellow-soft)",
-    detail: true,
-  },
-  differential: {
-    icon: ListChecks,
-    rail: "var(--case-blue)",
-    tint: "var(--case-blue-soft)",
-    detail: true,
-  },
-  commit: { icon: Flag, rail: "var(--case-accent)", tint: "var(--case-accent-soft)", detail: true },
-  outcome: {
-    icon: CheckCircle2,
-    rail: "var(--case-accent)",
-    tint: "var(--case-accent-soft)",
-    detail: true,
-  },
+  clue: { label: "Finding logged", color: "var(--case-mint)", icon: Sparkles },
+  deterioration: { label: "Deterioration", color: "var(--case-critical)", icon: AlertTriangle },
+  warning: { label: "Warning", color: "var(--case-orange)", icon: AlertTriangle },
+  hint: { label: "Hint", color: "var(--case-yellow)", icon: Lightbulb },
+  differential: { label: "Differential", color: "var(--case-blue)", icon: ListChecks },
+  commit: { label: "Diagnosis committed", color: "var(--case-accent)", icon: Flag },
+  outcome: { label: "Outcome", color: "var(--case-accent)", icon: CheckCircle2 },
 };
+
+/** Expand a single engine event into one or more timeline nodes. */
+function nodesForEvent(
+  event: TimelineEvent,
+  caseDefinition: MedicalCase,
+  game: GameState,
+  actionById: Map<string, CaseAction>,
+  onStart: () => void,
+): ReactNode[] {
+  const time = formatEncounterClock(caseDefinition.setting, event.timeMinute);
+
+  if (event.type === "hook") {
+    return [
+      <TimelineNode
+        key={event.id}
+        color="var(--case-accent)"
+        icon={HeartPulse}
+        label="Opening presentation"
+        time={time}
+      >
+        <p className="rounded-2xl rounded-tl-md bg-[var(--case-accent-soft)] px-3.5 py-2.5 text-[13px] font-bold leading-relaxed text-slate-800">
+          {event.detail}
+        </p>
+      </TimelineNode>,
+    ];
+  }
+
+  if (event.type === "case_started") {
+    return [
+      <li key={event.id} className="case-tl-divider">
+        <span>Encounter started · {time}</span>
+      </li>,
+    ];
+  }
+
+  if (event.type === "action" && event.actionId) {
+    const action = actionById.get(event.actionId);
+    if (!action) return [];
+    const you = YOU_META[action.category];
+    const isReply = action.result.type === "patient_reply";
+    const resultColor = isReply
+      ? "var(--case-accent)"
+      : action.category === "examine"
+        ? "var(--case-mint)"
+        : action.category === "test"
+          ? "var(--case-blue)"
+          : "var(--case-pink)";
+    const resultLabel = isReply
+      ? "Patient response"
+      : action.category === "examine"
+        ? "Examination findings"
+        : action.category === "test"
+          ? "Investigation result"
+          : "Treatment response";
+    const resultIcon = isReply
+      ? MessageCircleMore
+      : action.category === "examine"
+        ? Stethoscope
+        : action.category === "test"
+          ? FlaskConical
+          : Syringe;
+
+    return [
+      <TimelineNode key={`${event.id}-you`} color={you.color} icon={you.icon} label={you.label} time={time}>
+        <p className="text-[13px] font-bold leading-relaxed text-slate-700">{action.label}</p>
+      </TimelineNode>,
+      <TimelineNode
+        key={`${event.id}-result`}
+        color={resultColor}
+        icon={resultIcon}
+        label={resultLabel}
+        time={time}
+      >
+        {isReply ? (
+          <PatientBubble text={action.result.content} />
+        ) : (
+          <ResultBody action={action} caseDefinition={caseDefinition} />
+        )}
+      </TimelineNode>,
+    ];
+  }
+
+  const meta = SYSTEM_META[event.type];
+  if (!meta) return [];
+  const isLost = event.type === "outcome" && /lost|missed/i.test(event.title);
+  const color = isLost ? "var(--case-critical)" : meta.color;
+  const Icon = isLost ? XCircle : meta.icon;
+
+  return [
+    <TimelineNode key={event.id} color={color} icon={Icon} label={meta.label} time={time}>
+      <p className="text-[13px] font-black leading-snug text-slate-800">{event.title}</p>
+      {event.detail && (
+        <p className="mt-0.5 text-[12px] font-bold leading-relaxed text-slate-600">{event.detail}</p>
+      )}
+      {event.type === "clue" && (
+        <p className="mt-0.5 text-[10px] font-black text-[var(--case-mint-ink)]">
+          Logged to patient chart
+        </p>
+      )}
+    </TimelineNode>,
+  ];
+}
 
 export function InteractionHistory({
   caseDefinition,
@@ -90,6 +290,9 @@ export function InteractionHistory({
   // The complete, chronological encounter log — every event the engine records,
   // never filtered by clinical stage.
   const events = game.timeline;
+  const nodes = events.flatMap((event) =>
+    nodesForEvent(event, caseDefinition, game, actionById, onStart),
+  );
 
   function scrollToLatest(behavior: ScrollBehavior = "smooth") {
     const node = scrollRef.current;
@@ -136,7 +339,7 @@ export function InteractionHistory({
       <div className="relative min-h-0 flex-1">
         <div
           ref={scrollRef}
-          className="case-history-scroll h-full overflow-y-auto px-3 py-4 sm:px-4"
+          className="case-history-scroll h-full overflow-y-auto px-4 py-4"
           role="log"
           aria-live="polite"
           aria-relevant="additions"
@@ -147,17 +350,8 @@ export function InteractionHistory({
             setFollowingLatest(distanceFromBottom < 56);
           }}
         >
-          <ol className="space-y-3">
-            {events.map((event) => (
-              <HistoryEntry
-                key={event.id}
-                event={event}
-                caseDefinition={caseDefinition}
-                game={game}
-                actionById={actionById}
-                onStart={onStart}
-              />
-            ))}
+          <ol className="case-tl">
+            {nodes}
 
             {game.phase === "investigate" &&
               game.completedActions.length === 0 &&
@@ -168,20 +362,16 @@ export function InteractionHistory({
               )}
 
             {typingAction && (
-              <li className="case-history-entry space-y-2.5">
-                <StudentBubble action={typingAction} />
-                <article className="mr-auto flex max-w-[92%] items-center gap-3 rounded-[18px] rounded-bl-md bg-[var(--case-blue-soft)] px-4 py-3">
-                  <span className="grid size-8 shrink-0 place-items-center rounded-full bg-white text-[var(--case-blue-ink)] shadow-sm">
-                    <UserRound className="size-4" />
-                  </span>
-                  <div>
-                    <p className="text-[10px] font-black uppercase tracking-wider text-[var(--case-blue-ink)]">
-                      Patient · {caseDefinition.patient.name}
-                    </p>
-                    <TypingDots className="mt-2" />
-                  </div>
-                </article>
-              </li>
+              <TimelineNode
+                color="var(--case-accent)"
+                icon={MessageCircleMore}
+                label="Patient response"
+                time={formatEncounterClock(caseDefinition.setting, game.timeMinute)}
+              >
+                <span className="inline-flex rounded-2xl rounded-tl-md bg-[var(--case-accent-soft)] px-3.5 py-3">
+                  <TypingDots />
+                </span>
+              </TimelineNode>
             )}
           </ol>
         </div>
@@ -197,121 +387,5 @@ export function InteractionHistory({
         )}
       </div>
     </section>
-  );
-}
-
-function StudentBubble({ action }: { action: CaseAction }) {
-  const MetaIcon = categoryMeta[action.category].icon;
-  return (
-    <article className="ml-auto max-w-[92%] rounded-[18px] rounded-br-md bg-slate-900 px-4 py-3 text-white">
-      <p className="flex items-center gap-2 text-[10px] font-black uppercase tracking-wider text-white/60">
-        <MetaIcon className="size-3.5" /> You · {actionCategoryLabel(action.category)}
-      </p>
-      <p className="mt-1.5 text-sm font-bold leading-relaxed">{action.label}</p>
-    </article>
-  );
-}
-
-function HistoryEntry({
-  event,
-  caseDefinition,
-  game,
-  actionById,
-  onStart,
-}: {
-  event: TimelineEvent;
-  caseDefinition: MedicalCase;
-  game: GameState;
-  actionById: Map<string, CaseAction>;
-  onStart: () => void;
-}) {
-  if (event.type === "hook") {
-    return (
-      <li className="case-history-entry">
-        <article className="rounded-[20px] border border-[var(--case-border)] bg-[var(--case-accent-soft)]/50 p-4">
-          <div className="flex items-center justify-between gap-3">
-            <span className="inline-flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.15em] text-[var(--case-accent-ink)]">
-              <HeartPulse className="size-4" /> Opening presentation
-            </span>
-            <time className="font-mono text-[10px] font-bold text-slate-400">
-              +{event.timeMinute}m
-            </time>
-          </div>
-          <p className="mt-2.5 text-sm font-bold leading-relaxed text-slate-800">{event.detail}</p>
-          {game.phase === "hook" && (
-            <button
-              type="button"
-              onClick={onStart}
-              className="case-primary-button mt-4 px-5 py-2.5 text-sm"
-            >
-              Take over the case <ArrowRight className="size-4" />
-            </button>
-          )}
-        </article>
-      </li>
-    );
-  }
-
-  if (event.type === "case_started") {
-    return (
-      <li className="case-history-entry flex items-center gap-3 py-1">
-        <span className="h-px flex-1 bg-[var(--case-border)]" />
-        <span className="text-[10px] font-black uppercase tracking-wider text-slate-400">
-          Encounter started · +{event.timeMinute}m
-        </span>
-        <span className="h-px flex-1 bg-[var(--case-border)]" />
-      </li>
-    );
-  }
-
-  if (event.type === "action" && event.actionId) {
-    const action = actionById.get(event.actionId);
-    if (!action) return null;
-    return (
-      <li className="case-history-entry space-y-2.5">
-        <StudentBubble action={action} />
-        <ActionResultEntry action={action} caseDefinition={caseDefinition} />
-      </li>
-    );
-  }
-
-  const style = systemEventStyle[event.type];
-  if (!style) return null;
-  const Icon = style.icon;
-  const isLost = event.type === "outcome" && /lost|missed/i.test(event.title);
-  const OutcomeIcon = event.type === "outcome" ? (isLost ? XCircle : CheckCircle2) : Icon;
-  const rail = event.type === "outcome" && isLost ? "var(--case-critical)" : style.rail;
-  const tint = event.type === "outcome" && isLost ? "var(--case-critical-soft)" : style.tint;
-
-  return (
-    <li className="case-history-entry">
-      <article
-        className="case-event-rail flex gap-2.5 rounded-r-[14px] rounded-l-md py-2 pl-3 pr-3"
-        style={{ "--rail": rail, backgroundColor: tint } as CSSProperties}
-      >
-        <span
-          className="mt-0.5 grid size-6 shrink-0 place-items-center rounded-lg bg-white/70"
-          style={{ color: rail }}
-        >
-          <OutcomeIcon className="size-3.5" />
-        </span>
-        <div className="min-w-0 flex-1">
-          <div className="flex items-center justify-between gap-2">
-            <p className="text-xs font-black text-slate-800">{event.title}</p>
-            <time className="shrink-0 font-mono text-[10px] text-slate-400">
-              +{event.timeMinute}m
-            </time>
-          </div>
-          {style.detail && event.detail && (
-            <p className="mt-0.5 text-[11px] leading-relaxed text-slate-600">{event.detail}</p>
-          )}
-          {event.type === "clue" && (
-            <p className="mt-0.5 text-[10px] font-bold text-[var(--case-mint-ink)]">
-              Logged to patient chart
-            </p>
-          )}
-        </div>
-      </article>
-    </li>
   );
 }

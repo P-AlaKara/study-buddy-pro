@@ -21,7 +21,8 @@ export const theTearingPain: MedicalCase = {
       ageCues: "middle_aged",
     },
     personality: "Direct and stoic, but unable to hide severe pain; answers in clipped phrases.",
-    chiefComplaint: "Sudden severe chest pain radiating to the back",
+    chiefComplaint: "Sudden severe chest pain radiating to the back.",
+    presentingTags: ["Chest pain", "Back pain", "Sweating"],
     initialExpression: "in_pain",
   },
   vitalsTimeline: [

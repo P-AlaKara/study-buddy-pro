@@ -382,7 +382,7 @@ export function CaseChallengeScreen({ caseDefinition }: { caseDefinition: Medica
           </button>
 
           <div className="min-w-0 flex-1">
-            <p className="text-[10px] font-black uppercase tracking-[0.14em] text-slate-500">
+            <p className="text-[10px] font-black uppercase tracking-[0.14em] text-[var(--case-accent-ink)]">
               {caseDefinition.setting}
             </p>
             <h1 className="truncate font-display text-base font-black text-slate-900 md:text-lg">
