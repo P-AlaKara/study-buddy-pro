@@ -3,18 +3,20 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { validateQuizCandidates, sentenceCandidates } from "./candidate-validation";
-import { ANNIE_SYSTEM_PROMPTS, DEFAULT_ANNIE_SETTINGS, fallbackLine } from "./config";
+import { ANNIE_SYSTEM_PROMPT, DEFAULT_READER_PREFERENCES } from "./config";
 import { requireStudyWithAnnieEnabled } from "./feature-flag";
+import { chunkPageText, contextAroundSelection, normalizePdfText } from "./text-mapping";
 import type {
   AnnieAnnotation,
   AnnieDocument,
-  AnnieMood,
-  AnnieSettings,
-  CommentaryCandidate,
+  ExplanationResult,
+  PageOverview,
   PageText,
-  QuizCandidate,
   QuizResult,
+  ReaderPreferences,
   ReaderPayload,
+  RecallChallenge,
+  RecallEvaluation,
   SessionSummary,
 } from "./types";
 
@@ -23,14 +25,8 @@ const STORAGE_BUCKET = "annie-notes";
 const RUNTIME_LLM_CALL_LIMIT = 20;
 
 const idSchema = z.object({ documentId: z.string().uuid() });
-const settingsSchema = z.object({
-  mood: z.enum(["stern", "friendly", "cheeky"]),
-  chattiness: z.enum(["quiet", "normal", "chatty"]),
-  quizzes_enabled: z.boolean(),
-  commentary_enabled: z.boolean(),
+const preferencesSchema = z.object({
   theme: z.enum(["light", "dark", "sepia"]),
-  silenced_until: z.string().datetime().nullable(),
-  silenced_forever: z.boolean(),
 });
 const rectSchema = z.object({
   x: z.number().min(0).max(1),
@@ -58,24 +54,31 @@ const generatedCandidatesSchema = z.object({
       difficulty: z.number().int().min(1).max(3),
     }),
   ),
-  commentary_candidates: z.array(
-    z.object({
-      page: z.number().int().positive(),
-      text: z.string().min(1).max(500),
-      type: z.enum(["explain", "common_mistake", "analogy", "context"]),
-      beyond_notes: z.boolean(),
-    }),
-  ),
 });
 
 const evaluationSchema = z.object({
-  result: z.enum(["correct", "partially_correct", "incorrect"]),
-  explanation: z.string().min(1).max(240),
+  verdict: z.enum(["correct", "partially_correct", "incorrect"]),
+  feedback: z.string().min(1).max(500),
+  correct_explanation: z.string().min(1).max(700),
 });
 
-const questionAnswerSchema = z.object({
-  answer: z.string().min(1).max(900),
-  beyond_notes: z.boolean(),
+const overviewSchema = z.object({
+  summary: z.string().min(1).max(1200),
+  learning_objectives: z.array(z.string().min(1).max(240)).min(1).max(5),
+  key_concepts: z.array(z.string().min(1).max(240)).min(1).max(6),
+});
+
+const explanationSchema = z.object({
+  explanation: z.string().min(1).max(1800),
+  terms: z
+    .array(z.object({ term: z.string().min(1).max(100), definition: z.string().min(1).max(400) }))
+    .max(6),
+  memory_aid: z.string().min(1).max(500).nullable(),
+});
+
+const recallGenerationSchema = z.object({
+  target_text: z.string().min(1).max(1200),
+  question: z.string().min(1).max(400),
 });
 
 async function adminDb() {
@@ -390,24 +393,8 @@ async function geminiJson<T>(
 async function generateCandidates(pages: Array<{ page: number; text: string }>) {
   const pageMap = new Map(pages.map((page) => [page.page, page.text]));
   const fallbackQuizzes = pages.flatMap((page) => sentenceCandidates(page.page, page.text));
-  const fallbackCommentary = pages.flatMap((page) => {
-    const anchor = sentenceCandidates(page.page, page.text)[0]?.text;
-    return anchor
-      ? [
-          {
-            page: page.page,
-            text: `A useful anchor on this page is: “${anchor.slice(0, 220)}”`,
-            type: "context" as const,
-            beyond_notes: false,
-          },
-        ]
-      : [];
-  });
 
   const generatedQuizzes: ReturnType<typeof sentenceCandidates> = [];
-  const generatedCommentary: Array<
-    z.infer<typeof generatedCandidatesSchema>["commentary_candidates"][number]
-  > = [];
 
   const batches: (typeof pages)[] = [];
   let batch: typeof pages = [];
@@ -426,21 +413,15 @@ async function generateCandidates(pages: Array<{ page: number; text: string }>) 
   for (const group of batches) {
     const notes = group.map((page) => `PAGE ${page.page}\n${page.text}`).join("\n\n");
     const response = await geminiJson(
-      `Create concise study interactions from only the supplied note text. Blotout text MUST be an exact substring copied from its page. Commentary must be grounded in the page; set beyond_notes true if it adds any outside fact. Return 1-3 useful items per substantive page.\n\nRespond with JSON of exactly this shape: {"candidate_blotouts":[{"page":<integer>,"text":<exact page substring>,"question_prompt":<string>,"difficulty":<1|2|3>}],"commentary_candidates":[{"page":<integer>,"text":<string>,"type":"explain"|"common_mistake"|"analogy"|"context","beyond_notes":<boolean>}]}. Use at most 18 items per array.\n\n${notes}`,
+      `${ANNIE_SYSTEM_PROMPT} Identify important definitions, mechanisms, relationships, or explanations suitable for active recall. The target text MUST be an exact substring copied from its page. Return 1-3 useful items per substantive page.\n\nRespond with JSON of exactly this shape: {"candidate_blotouts":[{"page":<integer>,"text":<exact page substring>,"question_prompt":<string>,"difficulty":<1|2|3>}]}. Use at most 18 items.\n\n${notes}`,
       generatedCandidatesSchema,
     );
     if (response) {
       generatedQuizzes.push(...validateQuizCandidates(pageMap, response.candidate_blotouts));
-      generatedCommentary.push(
-        ...response.commentary_candidates.filter((candidate) => pageMap.has(candidate.page)),
-      );
     }
   }
 
-  return {
-    quizzes: generatedQuizzes.length ? generatedQuizzes : fallbackQuizzes,
-    commentary: generatedCommentary.length ? generatedCommentary : fallbackCommentary,
-  };
+  return generatedQuizzes.length ? generatedQuizzes : fallbackQuizzes;
 }
 
 // Translate low-level processing failures (PDF.js internals, runtime globals,
@@ -478,7 +459,7 @@ export const listAnnieDocuments = createServerFn({ method: "GET" })
     const db = await adminDb();
     const { data, error } = await db
       .from("annie_documents")
-      .select("id,title,page_count,status,processing_error,last_opened_at,created_at")
+      .select("id,title,page_count,status,processing_error,last_opened_at,last_page,created_at")
       .eq("user_id", context.userId)
       .order("last_opened_at", { ascending: false, nullsFirst: false })
       .order("created_at", { ascending: false });
@@ -515,7 +496,7 @@ export const uploadAnnieDocument = createServerFn({ method: "POST" })
         file_path: filePath,
         status: "processing",
       })
-      .select("id,title,page_count,status,processing_error,last_opened_at,created_at")
+      .select("id,title,page_count,status,processing_error,last_opened_at,last_page,created_at")
       .single();
     if (error || !document) {
       await db.storage.from(STORAGE_BUCKET).remove([filePath]);
@@ -571,6 +552,7 @@ export const processAnnieDocument = createServerFn({ method: "POST" })
           db.from("annie_page_texts").delete().eq("document_id", document.id),
           db.from("annie_quiz_candidates").delete().eq("document_id", document.id),
           db.from("annie_commentary_candidates").delete().eq("document_id", document.id),
+          db.from("annie_page_overviews").delete().eq("document_id", document.id),
         ]);
         const { error: pageError } = await db.from("annie_page_texts").insert(
           pages.map((page) => ({
@@ -581,26 +563,14 @@ export const processAnnieDocument = createServerFn({ method: "POST" })
           })),
         );
         if (pageError) throw new Error(pageError.message);
-        if (candidates.quizzes.length) {
+        if (candidates.length) {
           const { error } = await db.from("annie_quiz_candidates").insert(
-            candidates.quizzes.map((candidate) => ({
+            candidates.map((candidate) => ({
               document_id: document.id,
               page: candidate.page,
               text: candidate.text,
               prompt: candidate.question_prompt,
               difficulty: candidate.difficulty,
-            })),
-          );
-          if (error) throw new Error(error.message);
-        }
-        if (candidates.commentary.length) {
-          const { error } = await db.from("annie_commentary_candidates").insert(
-            candidates.commentary.map((candidate) => ({
-              document_id: document.id,
-              page: candidate.page,
-              text: candidate.text,
-              type: candidate.type,
-              beyond_notes: candidate.beyond_notes,
             })),
           );
           if (error) throw new Error(error.message);
@@ -648,57 +618,29 @@ export const openAnnieDocument = createServerFn({ method: "GET" })
     const document = await ownedDocument(db, data.documentId, context.userId);
     if (document.status !== "ready") throw new Error("This document is not ready yet.");
 
-    const [pageResult, quizResult, commentaryResult, annotationResult, settingsResult] =
-      await Promise.all([
-        db
-          .from("annie_page_texts")
-          .select("page,text,layout_data")
-          .eq("document_id", document.id)
-          .order("page"),
-        db
-          .from("annie_quiz_candidates")
-          .select("id,page,text,prompt,difficulty")
-          .eq("document_id", document.id)
-          .order("page"),
-        db
-          .from("annie_commentary_candidates")
-          .select("id,page,text,type,beyond_notes")
-          .eq("document_id", document.id)
-          .order("page"),
-        db
-          .from("annie_annotations")
-          .select("*")
-          .eq("document_id", document.id)
-          .eq("user_id", context.userId)
-          .order("created_at"),
-        db
-          .from("user_annie_settings")
-          .select(
-            "mood,chattiness,quizzes_enabled,commentary_enabled,theme,silenced_until,silenced_forever",
-          )
-          .eq("user_id", context.userId)
-          .maybeSingle(),
-      ]);
-    for (const result of [pageResult, quizResult, commentaryResult, annotationResult]) {
-      if (result.error) throw new Error(result.error.message);
-    }
-
-    const candidateIds = (quizResult.data ?? []).map((candidate: { id: string }) => candidate.id);
-    let attempts: any[] = [];
-    if (candidateIds.length) {
-      const result = await db
-        .from("annie_quiz_attempts")
-        .select("candidate_id,result,created_at")
+    const [pageResult, annotationResult, settingsResult] = await Promise.all([
+      db
+        .from("annie_page_texts")
+        .select("page,text,layout_data")
+        .eq("document_id", document.id)
+        .order("page"),
+      db
+        .from("annie_annotations")
+        .select("*")
+        .eq("document_id", document.id)
         .eq("user_id", context.userId)
-        .in("candidate_id", candidateIds)
-        .order("created_at", { ascending: false });
+        .order("created_at"),
+      db.from("user_annie_settings").select("theme").eq("user_id", context.userId).maybeSingle(),
+    ]);
+    for (const result of [pageResult, annotationResult]) {
       if (result.error) throw new Error(result.error.message);
-      attempts = result.data ?? [];
     }
 
-    const settings = (settingsResult.data ?? DEFAULT_ANNIE_SETTINGS) as AnnieSettings;
+    const preferences = (settingsResult.data ?? DEFAULT_READER_PREFERENCES) as ReaderPreferences;
     if (!settingsResult.data) {
-      await db.from("user_annie_settings").upsert({ user_id: context.userId, ...settings });
+      await db
+        .from("user_annie_settings")
+        .upsert({ user_id: context.userId, ...DEFAULT_READER_PREFERENCES });
     }
     const { data: signed, error: signedError } = await db.storage
       .from(STORAGE_BUCKET)
@@ -717,13 +659,6 @@ export const openAnnieDocument = createServerFn({ method: "GET" })
       .eq("id", document.id)
       .eq("user_id", context.userId);
 
-    const quizzes = (quizResult.data ?? []).map((candidate: any) => ({
-      ...candidate,
-      attempts: attempts
-        .filter((attempt) => attempt.candidate_id === candidate.id)
-        .map(({ result, created_at }) => ({ result, created_at })),
-    }));
-
     return {
       document: {
         id: document.id,
@@ -732,14 +667,13 @@ export const openAnnieDocument = createServerFn({ method: "GET" })
         status: document.status,
         processing_error: document.processing_error,
         last_opened_at: document.last_opened_at,
+        last_page: Math.min(document.page_count ?? 1, Math.max(1, document.last_page ?? 1)),
         created_at: document.created_at,
       },
       fileUrl: signed.signedUrl,
       pages: (pageResult.data ?? []) as PageText[],
-      quizCandidates: quizzes as QuizCandidate[],
-      commentaryCandidates: (commentaryResult.data ?? []) as CommentaryCandidate[],
       annotations: (annotationResult.data ?? []) as AnnieAnnotation[],
-      settings,
+      preferences,
       sessionId: session.id,
     };
   });
@@ -783,64 +717,38 @@ export const deleteAnnieAnnotation = createServerFn({ method: "POST" })
     return { ok: true };
   });
 
-export const saveAnnieSettings = createServerFn({ method: "POST" })
+export const saveReaderPreferences = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .validator((input: unknown) => settingsSchema.parse(input))
-  .handler(async ({ data, context }): Promise<AnnieSettings> => {
+  .validator((input: unknown) => preferencesSchema.parse(input))
+  .handler(async ({ data, context }): Promise<ReaderPreferences> => {
     const db = await adminDb();
     const { data: settings, error } = await db
       .from("user_annie_settings")
       .upsert({ user_id: context.userId, ...data })
-      .select(
-        "mood,chattiness,quizzes_enabled,commentary_enabled,theme,silenced_until,silenced_forever",
-      )
+      .select("theme")
       .single();
-    if (error || !settings) throw new Error(error?.message ?? "Settings could not be saved.");
-    return settings as AnnieSettings;
+    if (error || !settings)
+      throw new Error(error?.message ?? "Reader settings could not be saved.");
+    return settings as ReaderPreferences;
   });
 
-function fallbackEvaluation(answer: string, source: string) {
-  const ignored = new Set([
-    "the",
-    "a",
-    "an",
-    "and",
-    "or",
-    "of",
-    "to",
-    "in",
-    "is",
-    "are",
-    "was",
-    "were",
-  ]);
-  const words = (value: string) =>
-    new Set(
-      value
-        .toLowerCase()
-        .replace(/[^a-z0-9\s]/g, " ")
-        .split(/\s+/)
-        .filter((word) => word.length > 2 && !ignored.has(word)),
-    );
-  const expected = words(source);
-  const actual = words(answer);
-  const overlap =
-    [...expected].filter((word) => actual.has(word)).length / Math.max(1, expected.size);
-  if (overlap >= 0.62)
-    return {
-      result: "correct" as const,
-      explanation: "Your answer captures the key details in the hidden text.",
-    };
-  if (overlap >= 0.3)
-    return {
-      result: "partially_correct" as const,
-      explanation: "You have part of the idea, but an important detail is missing.",
-    };
-  return {
-    result: "incorrect" as const,
-    explanation: "Your answer does not yet match the main idea in the hidden text.",
-  };
-}
+export const saveReadingProgress = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .validator((input: unknown) =>
+    z.object({ documentId: z.string().uuid(), page: z.number().int().positive() }).parse(input),
+  )
+  .handler(async ({ data, context }) => {
+    const db = await adminDb();
+    const document = await ownedDocument(db, data.documentId, context.userId, "id,page_count");
+    const page = Math.min(document.page_count ?? data.page, data.page);
+    const { error } = await db
+      .from("annie_documents")
+      .update({ last_page: page })
+      .eq("id", document.id)
+      .eq("user_id", context.userId);
+    if (error) throw new Error(error.message);
+    return { page, progress: document.page_count ? page / document.page_count : 0 };
+  });
 
 async function spendLlmCall(db: any, sessionId: string, userId: string) {
   const { data } = await db
@@ -861,78 +769,42 @@ async function spendLlmCall(db: any, sessionId: string, userId: string) {
   return true;
 }
 
-export const evaluateAnnieAnswer = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
-  .validator((input: unknown) =>
-    z
-      .object({
-        candidateId: z.string().uuid(),
-        sessionId: z.string().uuid(),
-        answer: z.string().trim().min(1).max(1500),
-        mood: z.enum(["stern", "friendly", "cheeky"]),
-      })
-      .parse(input),
-  )
-  .handler(async ({ data, context }) => {
-    const db = await adminDb();
-    const { data: candidate, error } = await db
-      .from("annie_quiz_candidates")
-      .select("id,text,document_id,annie_documents!inner(user_id)")
-      .eq("id", data.candidateId)
-      .eq("annie_documents.user_id", context.userId)
-      .single();
-    if (error || !candidate) throw new Error("Quiz passage not found.");
+async function pageTextForOwner(db: any, documentId: string, page: number, userId: string) {
+  const document = await ownedDocument(db, documentId, userId, "id,title,page_count");
+  if (page > (document.page_count ?? page)) throw new Error("Page not found.");
+  const { data, error } = await db
+    .from("annie_page_texts")
+    .select("text")
+    .eq("document_id", documentId)
+    .eq("page", page)
+    .single();
+  if (error || !data?.text?.trim()) {
+    throw new Error(
+      "An accurate response is unavailable because text could not be extracted from this page.",
+    );
+  }
+  return { text: data.text as string, title: document.title as string };
+}
 
-    let evaluation = null;
-    if (await spendLlmCall(db, data.sessionId, context.userId)) {
-      evaluation = await geminiJson(
-        `${ANNIE_SYSTEM_PROMPTS[data.mood]} Compare the student's answer only against the source text. Accept accurate paraphrases and tolerate typos.\n\nRespond with JSON of exactly this shape: {"result":"correct"|"partially_correct"|"incorrect","explanation":<one short sentence, max 240 chars>}.\n\nSOURCE TEXT:\n${candidate.text}\n\nSTUDENT ANSWER:\n${data.answer}`,
-        evaluationSchema,
-      );
-    }
-    evaluation ??= fallbackEvaluation(data.answer, candidate.text);
-    const { error: attemptError } = await db.from("annie_quiz_attempts").insert({
-      user_id: context.userId,
-      candidate_id: candidate.id,
-      result: evaluation.result,
-      user_answer: data.answer,
-    });
-    if (attemptError) throw new Error(attemptError.message);
-    return {
-      ...evaluation,
-      reaction: fallbackLine(
-        data.mood,
-        evaluation.result === "partially_correct" ? "partial" : evaluation.result,
-      ),
-    };
-  });
+async function createOverview(text: string, title: string, page: number) {
+  const chunks = chunkPageText(text);
+  const partials: z.infer<typeof overviewSchema>[] = [];
+  for (const chunk of chunks) {
+    const overview = await geminiJson(
+      `${ANNIE_SYSTEM_PROMPT}\nCreate a quick orientation for page ${page} of “${title}”. State what the student will learn and the concepts worth remembering. Be concise and use only the supplied page text.\n\nRespond as JSON: {"summary":<string>,"learning_objectives":[<string>],"key_concepts":[<string>]}.\n\nPAGE TEXT:\n${chunk}`,
+      overviewSchema,
+    );
+    if (!overview) return null;
+    partials.push(overview);
+  }
+  if (partials.length === 1) return partials[0]!;
+  return geminiJson(
+    `${ANNIE_SYSTEM_PROMPT}\nCombine these grounded partial page overviews into one concise orientation without adding facts. Respond as JSON: {"summary":<string>,"learning_objectives":[<string>],"key_concepts":[<string>]}.\n\nPARTIAL OVERVIEWS:\n${JSON.stringify(partials)}`,
+    overviewSchema,
+  );
+}
 
-export const skipAnnieQuiz = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
-  .validator((input: unknown) =>
-    z
-      .object({ candidateId: z.string().uuid(), mood: z.enum(["stern", "friendly", "cheeky"]) })
-      .parse(input),
-  )
-  .handler(async ({ data, context }) => {
-    const db = await adminDb();
-    const { data: candidate } = await db
-      .from("annie_quiz_candidates")
-      .select("id,annie_documents!inner(user_id)")
-      .eq("id", data.candidateId)
-      .eq("annie_documents.user_id", context.userId)
-      .maybeSingle();
-    if (!candidate) throw new Error("Quiz passage not found.");
-    await db.from("annie_quiz_attempts").insert({
-      user_id: context.userId,
-      candidate_id: candidate.id,
-      result: "skipped",
-      user_answer: "",
-    });
-    return { result: "skipped" as QuizResult, reaction: fallbackLine(data.mood, "skip") };
-  });
-
-export const askAnnie = createServerFn({ method: "POST" })
+export const generatePageOverview = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .validator((input: unknown) =>
     z
@@ -940,36 +812,235 @@ export const askAnnie = createServerFn({ method: "POST" })
         documentId: z.string().uuid(),
         page: z.number().int().positive(),
         sessionId: z.string().uuid(),
-        question: z.string().trim().min(2).max(600),
-        mood: z.enum(["stern", "friendly", "cheeky"]),
       })
       .parse(input),
   )
-  .handler(async ({ data, context }) => {
+  .handler(async ({ data, context }): Promise<PageOverview> => {
     const db = await adminDb();
     await ownedDocument(db, data.documentId, context.userId, "id");
-    const { data: page } = await db
-      .from("annie_page_texts")
-      .select("text")
+    const { data: cached } = await db
+      .from("annie_page_overviews")
+      .select("summary,learning_objectives,key_concepts")
       .eq("document_id", data.documentId)
       .eq("page", data.page)
-      .single();
-    if (!page) throw new Error("Page text not found.");
-    let response = null;
-    if (await spendLlmCall(db, data.sessionId, context.userId)) {
-      response = await geminiJson(
-        `${ANNIE_SYSTEM_PROMPTS[data.mood]} Answer in at most 2 sentences. Use the page text as the primary source. If the answer includes anything not stated or directly inferable from the page, set beyond_notes true. Do not include links or recommend sources.\n\nRespond with JSON of exactly this shape: {"answer":<string>,"beyond_notes":<boolean>}.\n\nPAGE TEXT:\n${page.text}\n\nQUESTION:\n${data.question}`,
-        questionAnswerSchema,
+      .maybeSingle();
+    if (cached) {
+      return {
+        page: data.page,
+        summary: cached.summary,
+        learningObjectives: cached.learning_objectives ?? [],
+        keyConcepts: cached.key_concepts ?? [],
+      };
+    }
+    const source = await pageTextForOwner(db, data.documentId, data.page, context.userId);
+    if (!(await spendLlmCall(db, data.sessionId, context.userId)))
+      throw new Error("Annie has reached the AI limit for this study session.");
+    const overview = await createOverview(source.text, source.title, data.page);
+    if (!overview) throw new Error("An accurate page overview could not be generated right now.");
+    const { error } = await db.from("annie_page_overviews").upsert({
+      document_id: data.documentId,
+      page: data.page,
+      summary: overview.summary,
+      learning_objectives: overview.learning_objectives,
+      key_concepts: overview.key_concepts,
+    });
+    if (error)
+      console.error("[Annie] overview cache write failed", {
+        documentId: data.documentId,
+        page: data.page,
+        error: error.message,
+      });
+    return {
+      page: data.page,
+      summary: overview.summary,
+      learningObjectives: overview.learning_objectives,
+      keyConcepts: overview.key_concepts,
+    };
+  });
+
+export const explainSelection = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .validator((input: unknown) =>
+    z
+      .object({
+        documentId: z.string().uuid(),
+        page: z.number().int().positive(),
+        sessionId: z.string().uuid(),
+        selectedText: z.string().trim().min(2).max(8000),
+        followUpQuestion: z.string().trim().min(2).max(600).optional(),
+      })
+      .parse(input),
+  )
+  .handler(async ({ data, context }): Promise<ExplanationResult> => {
+    const db = await adminDb();
+    const source = await pageTextForOwner(db, data.documentId, data.page, context.userId);
+    const surrounding = contextAroundSelection(source.text, data.selectedText);
+    if (!surrounding) throw new Error("The selected text could not be matched to this page.");
+    if (!(await spendLlmCall(db, data.sessionId, context.userId)))
+      throw new Error("Annie has reached the AI limit for this study session.");
+    const followUp = data.followUpQuestion ? `\nFOLLOW-UP QUESTION:\n${data.followUpQuestion}` : "";
+    const response = await geminiJson(
+      `${ANNIE_SYSTEM_PROMPT}\nExplain the selected material so it is intuitive without oversimplifying it. Define unfamiliar terms. Add a memory aid only when it is accurate and genuinely useful. Answer a follow-up only in relation to this selection.\n\nRespond as JSON: {"explanation":<string>,"terms":[{"term":<string>,"definition":<string>}],"memory_aid":<string|null>}.\n\nSELECTED TEXT:\n${data.selectedText}\n\nSURROUNDING PAGE CONTEXT:\n${surrounding}${followUp}`,
+      explanationSchema,
+    );
+    if (!response) throw new Error("An accurate explanation could not be generated right now.");
+    return {
+      explanation: response.explanation,
+      terms: response.terms,
+      memoryAid: response.memory_aid,
+    };
+  });
+
+export const generateRecallChallenge = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .validator((input: unknown) =>
+    z
+      .object({
+        documentId: z.string().uuid(),
+        page: z.number().int().positive(),
+        sessionId: z.string().uuid(),
+        selectedText: z.string().trim().min(2).max(8000).optional(),
+      })
+      .parse(input),
+  )
+  .handler(async ({ data, context }): Promise<RecallChallenge> => {
+    const db = await adminDb();
+    const source = await pageTextForOwner(db, data.documentId, data.page, context.userId);
+    let { data: candidates } = await db
+      .from("annie_quiz_candidates")
+      .select("id,page,text,prompt,difficulty")
+      .eq("document_id", data.documentId)
+      .eq("page", data.page)
+      .order("difficulty", { ascending: true });
+    if (data.selectedText) {
+      const selected = normalizePdfText(data.selectedText);
+      candidates = (candidates ?? []).filter((candidate: any) =>
+        selected.includes(normalizePdfText(candidate.text)),
       );
     }
-    response ??= {
-      answer: "I couldn’t check that just now. Try using the wording on this page as your anchor.",
-      beyond_notes: false,
-    };
+    if (candidates?.length) {
+      const candidateIds = candidates.map((candidate: any) => candidate.id);
+      const { data: attempts } = await db
+        .from("annie_quiz_attempts")
+        .select("candidate_id,result,created_at")
+        .eq("user_id", context.userId)
+        .in("candidate_id", candidateIds)
+        .order("created_at", { ascending: false });
+      const rank = (candidate: any) => {
+        const latest = (attempts ?? []).find(
+          (attempt: any) => attempt.candidate_id === candidate.id,
+        );
+        if (!latest) return 0;
+        if (latest.result === "incorrect") return 1;
+        if (latest.result === "partially_correct") return 2;
+        if (latest.result === "skipped") return 3;
+        return 4;
+      };
+      candidates.sort((left: any, right: any) => rank(left) - rank(right));
+    }
+    let candidate = candidates?.[0] ?? null;
+    if (!candidate) {
+      if (!(await spendLlmCall(db, data.sessionId, context.userId)))
+        throw new Error("Annie has reached the AI limit for this study session.");
+      const focus =
+        data.selectedText && contextAroundSelection(source.text, data.selectedText)
+          ? data.selectedText
+          : source.text.slice(0, 12_000);
+      const generated = await geminiJson(
+        `${ANNIE_SYSTEM_PROMPT}\nChoose one meaningful definition, mechanism, relationship, or explanation for active recall. target_text must be an exact substring of the supplied text and should be reasonable to recall. Respond as JSON: {"target_text":<exact substring>,"question":<concise conceptual prompt>}.\n\nTEXT:\n${focus}`,
+        recallGenerationSchema,
+      );
+      if (!generated || !source.text.includes(generated.target_text))
+        throw new Error("No suitable recall passage could be found on this page.");
+      const { data: inserted, error } = await db
+        .from("annie_quiz_candidates")
+        .upsert(
+          {
+            document_id: data.documentId,
+            page: data.page,
+            text: generated.target_text,
+            prompt: generated.question,
+            difficulty: 2,
+          },
+          { onConflict: "document_id,page,text" },
+        )
+        .select("id,page,text,prompt")
+        .single();
+      if (error || !inserted)
+        throw new Error(error?.message ?? "The recall challenge could not be prepared.");
+      candidate = inserted;
+    }
     return {
-      answer: `${response.beyond_notes ? "Beyond your notes: " : ""}${response.answer}`,
-      beyondNotes: response.beyond_notes,
+      id: candidate.id,
+      page: candidate.page,
+      prompt: candidate.prompt,
+      targetText: candidate.text,
     };
+  });
+
+export const evaluateRecallAnswer = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .validator((input: unknown) =>
+    z
+      .object({
+        challengeId: z.string().uuid(),
+        sessionId: z.string().uuid(),
+        studentAnswer: z.string().trim().min(1).max(1500),
+      })
+      .parse(input),
+  )
+  .handler(async ({ data, context }): Promise<RecallEvaluation> => {
+    const db = await adminDb();
+    const { data: candidate, error } = await db
+      .from("annie_quiz_candidates")
+      .select("id,text,document_id,annie_documents!inner(user_id)")
+      .eq("id", data.challengeId)
+      .eq("annie_documents.user_id", context.userId)
+      .single();
+    if (error || !candidate) throw new Error("Recall passage not found.");
+    if (!(await spendLlmCall(db, data.sessionId, context.userId)))
+      throw new Error("Annie has reached the AI limit for this study session.");
+    const evaluation = await geminiJson(
+      `${ANNIE_SYSTEM_PROMPT}\nEvaluate conceptual understanding against only the source passage. Accept accurate paraphrases and tolerate typos. Do not require exact wording. A correct verdict requires the essential meaning; partial means a key point is missing; incorrect means the central meaning is wrong.\n\nRespond as JSON: {"verdict":"correct"|"partially_correct"|"incorrect","feedback":<concise specific feedback>,"correct_explanation":<concise grounded explanation>}.\n\nSOURCE PASSAGE:\n${candidate.text}\n\nSTUDENT ANSWER:\n${data.studentAnswer}`,
+      evaluationSchema,
+    );
+    if (!evaluation)
+      throw new Error(
+        "Annie could not evaluate that answer. The original passage has been restored.",
+      );
+    const { error: attemptError } = await db.from("annie_quiz_attempts").insert({
+      user_id: context.userId,
+      candidate_id: candidate.id,
+      result: evaluation.verdict,
+      user_answer: data.studentAnswer,
+    });
+    if (attemptError) throw new Error(attemptError.message);
+    return {
+      verdict: evaluation.verdict,
+      feedback: evaluation.feedback,
+      correctExplanation: evaluation.correct_explanation,
+    };
+  });
+
+export const skipRecallChallenge = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .validator((input: unknown) => z.object({ challengeId: z.string().uuid() }).parse(input))
+  .handler(async ({ data, context }) => {
+    const db = await adminDb();
+    const { data: candidate } = await db
+      .from("annie_quiz_candidates")
+      .select("id,annie_documents!inner(user_id)")
+      .eq("id", data.challengeId)
+      .eq("annie_documents.user_id", context.userId)
+      .maybeSingle();
+    if (!candidate) throw new Error("Recall passage not found.");
+    await db.from("annie_quiz_attempts").insert({
+      user_id: context.userId,
+      candidate_id: candidate.id,
+      result: "skipped",
+      user_answer: "",
+    });
+    return { result: "skipped" as QuizResult };
   });
 
 export const finishAnnieSession = createServerFn({ method: "POST" })
@@ -979,7 +1050,6 @@ export const finishAnnieSession = createServerFn({ method: "POST" })
       .object({
         sessionId: z.string().uuid(),
         documentId: z.string().uuid(),
-        mood: z.enum(["stern", "friendly", "cheeky"]),
         pages: z.array(z.number().int().positive()).max(1000),
         results: z.array(
           z.object({
@@ -1018,19 +1088,9 @@ export const finishAnnieSession = createServerFn({ method: "POST" })
       .eq("user_id", context.userId);
 
     const score = attempted ? correct / attempted : 0;
-    const messageByMood: Record<AnnieMood, string> = {
-      stern:
-        score >= 0.75
-          ? "Solid work. Revisit the weak passages before you stop."
-          : "There is work left. Review the marked passages.",
-      friendly:
-        score >= 0.75
-          ? "Great session — you held onto most of the key ideas."
-          : "Good effort. A quick revisit will make these ideas much stronger.",
-      cheeky:
-        score >= 0.75
-          ? "Not bad at all — your brain was clearly on duty."
-          : "A few ideas escaped. Luckily, I took names.",
-    };
-    return { attempted, correct, pagesCovered, revisit, message: messageByMood[data.mood] };
+    const message =
+      score >= 0.75
+        ? "Strong session. Revisit the marked passages once more before you stop."
+        : "A short review of the marked passages will strengthen the concepts that need more work.";
+    return { attempted, correct, pagesCovered, revisit, message };
   });

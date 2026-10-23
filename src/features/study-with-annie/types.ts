@@ -1,10 +1,7 @@
-export type AnnieMood = "stern" | "friendly" | "cheeky";
-export type AnnieState =
-  "idle" | "reading" | "thinking" | "celebrating" | "teasing" | "disappointed";
-export type Chattiness = "quiet" | "normal" | "chatty";
 export type ReaderTheme = "light" | "dark" | "sepia";
 export type AnnotationType = "highlight" | "note" | "bookmark";
-export type QuizResult = "correct" | "partially_correct" | "incorrect" | "skipped";
+export type RecallVerdict = "correct" | "partially_correct" | "incorrect";
+export type QuizResult = RecallVerdict | "skipped";
 export type JsonValue =
   string | number | boolean | null | JsonValue[] | { [key: string]: JsonValue };
 
@@ -22,6 +19,7 @@ export type AnnieDocument = {
   status: "processing" | "ready" | "failed";
   processing_error: string | null;
   last_opened_at: string | null;
+  last_page: number;
   created_at: string;
 };
 
@@ -40,14 +38,6 @@ export type QuizCandidate = {
   attempts?: Array<{ result: QuizResult; created_at: string }>;
 };
 
-export type CommentaryCandidate = {
-  id: string;
-  page: number;
-  text: string;
-  type: "explain" | "common_mistake" | "analogy" | "context";
-  beyond_notes: boolean;
-};
-
 export type AnnieAnnotation = {
   id: string;
   document_id: string;
@@ -61,24 +51,59 @@ export type AnnieAnnotation = {
   updated_at: string;
 };
 
-export type AnnieSettings = {
-  mood: AnnieMood;
-  chattiness: Chattiness;
-  quizzes_enabled: boolean;
-  commentary_enabled: boolean;
+export type ReaderPreferences = {
   theme: ReaderTheme;
-  silenced_until: string | null;
-  silenced_forever: boolean;
 };
+
+export type PageOverview = {
+  page: number;
+  summary: string;
+  learningObjectives: string[];
+  keyConcepts: string[];
+};
+
+export type SelectionSnapshot = {
+  page: number;
+  text: string;
+  geometry: NormalizedRect[];
+  anchor: { x: number; y: number };
+};
+
+export type ExplanationResult = {
+  explanation: string;
+  terms: Array<{ term: string; definition: string }>;
+  memoryAid: string | null;
+};
+
+export type RecallChallenge = {
+  id: string;
+  page: number;
+  prompt: string;
+  targetText: string;
+};
+
+export type RecallEvaluation = {
+  verdict: RecallVerdict;
+  feedback: string;
+  correctExplanation: string;
+};
+
+export type AssistantStatus =
+  "idle" | "thinking" | "speaking" | "expanded" | "awaiting_answer" | "feedback";
+
+export type AssistantMessage =
+  | { kind: "overview"; overview: PageOverview }
+  | { kind: "explanation"; explanation: ExplanationResult; selection: SelectionSnapshot }
+  | { kind: "recall"; challenge: RecallChallenge }
+  | { kind: "feedback"; evaluation: RecallEvaluation }
+  | { kind: "error"; title: string; detail: string };
 
 export type ReaderPayload = {
   document: AnnieDocument;
   fileUrl: string;
   pages: PageText[];
-  quizCandidates: QuizCandidate[];
-  commentaryCandidates: CommentaryCandidate[];
   annotations: AnnieAnnotation[];
-  settings: AnnieSettings;
+  preferences: ReaderPreferences;
   sessionId: string;
 };
 

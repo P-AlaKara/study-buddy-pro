@@ -81,7 +81,10 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { title: "Medley | Study medicine together" },
       { name: "description", content: "A joyful study space for medical students in Rwanda." },
       { property: "og:title", content: "Medley" },
-      { property: "og:description", content: "A joyful study space for medical students in Rwanda." },
+      {
+        property: "og:description",
+        content: "A joyful study space for medical students in Rwanda.",
+      },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
     ],
@@ -93,7 +96,10 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { rel: "icon", href: "/favicon.svg", type: "image/svg+xml" },
       { rel: "preconnect", href: "https://fonts.googleapis.com" },
       { rel: "preconnect", href: "https://fonts.gstatic.com", crossOrigin: "anonymous" },
-      { rel: "stylesheet", href: "https://fonts.googleapis.com/css2?family=Nunito+Sans:wght@400;500;600;700;800&family=Nunito:wght@600;700;800;900&display=swap" },
+      {
+        rel: "stylesheet",
+        href: "https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Nunito+Sans:wght@400;500;600;700;800&family=Nunito:wght@600;700;800;900&display=swap",
+      },
     ],
   }),
   shellComponent: RootShell,

@@ -1,8 +1,15 @@
 import { useEffect, useRef, useState } from "react";
 import type { PDFDocumentProxy, PDFPageProxy } from "pdfjs-dist";
 import pdfWorker from "pdfjs-dist/build/pdf.worker.min.mjs?url";
-import { LoaderCircle, Save, Trash2, X } from "lucide-react";
-import type { AnnieAnnotation, NormalizedRect, QuizCandidate, ReaderTheme } from "./types";
+import { Lightbulb, LoaderCircle, Save, Trash2, X } from "lucide-react";
+import { normalizePdfText } from "./text-mapping";
+import type {
+  AnnieAnnotation,
+  NormalizedRect,
+  ReaderTheme,
+  RecallChallenge,
+  SelectionSnapshot,
+} from "./types";
 
 type AnnotationTool = "select" | "highlight" | "note";
 
@@ -17,30 +24,60 @@ function rectStyle(rect: NormalizedRect) {
   };
 }
 
-function findCandidateRects(container: HTMLElement, wrapper: HTMLElement, text: string) {
-  const spans = [...container.querySelectorAll("span")].filter((span) => span.textContent?.trim());
-  const parts = spans.map((span) => span.textContent ?? "");
-  const joined = parts.join(" ");
-  const start = joined.indexOf(text);
-  if (start < 0) return [];
-  const end = start + text.length;
+type DomPosition = { node: Text; offset: number };
+
+function buildTextIndex(container: HTMLElement) {
+  let text = "";
+  const positions: DomPosition[] = [];
+  const nodes: Text[] = [];
+  const walker = document.createTreeWalker(container, NodeFilter.SHOW_TEXT);
+  let current = walker.nextNode();
+  while (current) {
+    nodes.push(current as Text);
+    current = walker.nextNode();
+  }
+  for (const node of nodes) {
+    const value = node.data;
+    if (text && !text.endsWith(" ")) {
+      text += " ";
+      positions.push({ node, offset: 0 });
+    }
+    for (let offset = 0; offset < value.length; offset += 1) {
+      const character = value[offset]!;
+      if (/\s/.test(character)) {
+        if (text && !text.endsWith(" ")) {
+          text += " ";
+          positions.push({ node, offset });
+        }
+      } else {
+        text += character.toLocaleLowerCase();
+        positions.push({ node, offset });
+      }
+    }
+  }
+  return { text: text.trim(), positions };
+}
+
+function findCandidateRects(container: HTMLElement, wrapper: HTMLElement, target: string) {
+  const index = buildTextIndex(container);
+  const normalizedTarget = normalizePdfText(target);
+  const start = index.text.indexOf(normalizedTarget);
+  if (start < 0 || !normalizedTarget) return [];
+  const first = index.positions[start];
+  const last = index.positions[start + normalizedTarget.length - 1];
+  if (!first || !last) return [];
+  const range = document.createRange();
+  range.setStart(first.node, first.offset);
+  range.setEnd(last.node, Math.min(last.node.length, last.offset + 1));
   const wrapperRect = wrapper.getBoundingClientRect();
-  let cursor = 0;
-  return spans.flatMap((span, index) => {
-    const partStart = cursor;
-    const partEnd = cursor + parts[index]!.length;
-    cursor = partEnd + 1;
-    if (partEnd <= start || partStart >= end) return [];
-    const rect = span.getBoundingClientRect();
-    return [
-      {
-        x: (rect.left - wrapperRect.left) / wrapperRect.width,
-        y: (rect.top - wrapperRect.top) / wrapperRect.height,
-        width: rect.width / wrapperRect.width,
-        height: rect.height / wrapperRect.height,
-      },
-    ];
-  });
+  return [...range.getClientRects()]
+    .filter((rect) => rect.width > 1 && rect.height > 1)
+    .map((rect) => ({
+      x: Math.max(0, (rect.left - wrapperRect.left) / wrapperRect.width),
+      y: Math.max(0, (rect.top - wrapperRect.top) / wrapperRect.height),
+      width: Math.min(1, rect.width / wrapperRect.width),
+      height: Math.min(1, rect.height / wrapperRect.height),
+    }));
 }
 
 export function PdfPage({
@@ -51,12 +88,16 @@ export function PdfPage({
   annotations,
   tool,
   highlightColor,
-  activeQuiz,
-  revealQuiz,
+  activeRecall,
+  revealRecall,
+  selection,
   onHighlight,
   onAddNote,
   onUpdateNote,
   onDeleteAnnotation,
+  onSelectionChange,
+  onExplainSelection,
+  onMaskFailure,
 }: {
   pdf: PDFDocumentProxy;
   pageNumber: number;
@@ -65,12 +106,16 @@ export function PdfPage({
   annotations: AnnieAnnotation[];
   tool: AnnotationTool;
   highlightColor: string;
-  activeQuiz: QuizCandidate | null;
-  revealQuiz: boolean;
+  activeRecall: RecallChallenge | null;
+  revealRecall: boolean;
+  selection: SelectionSnapshot | null;
   onHighlight: (rects: NormalizedRect[], text: string, color: string) => Promise<void>;
   onAddNote: (rect: NormalizedRect, text: string) => Promise<void>;
   onUpdateNote: (annotation: AnnieAnnotation, text: string) => Promise<void>;
   onDeleteAnnotation: (annotation: AnnieAnnotation) => Promise<void>;
+  onSelectionChange: (selection: SelectionSnapshot | null) => void;
+  onExplainSelection: () => void;
+  onMaskFailure: () => void;
 }) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const textLayerRef = useRef<HTMLDivElement>(null);
@@ -79,6 +124,7 @@ export function PdfPage({
   const [rendering, setRendering] = useState(true);
   const [noteDraft, setNoteDraft] = useState<NoteDraft>(null);
   const [blotRects, setBlotRects] = useState<NormalizedRect[]>([]);
+  const maskFailureRef = useRef<string | null>(null);
 
   useEffect(() => {
     let active = true;
@@ -134,15 +180,34 @@ export function PdfPage({
   }, [page, scale, theme]);
 
   useEffect(() => {
-    if (!activeQuiz || revealQuiz || rendering || !textLayerRef.current || !wrapperRef.current) {
+    if (
+      !activeRecall ||
+      revealRecall ||
+      rendering ||
+      !textLayerRef.current ||
+      !wrapperRef.current
+    ) {
       setBlotRects([]);
       return;
     }
-    setBlotRects(findCandidateRects(textLayerRef.current, wrapperRef.current, activeQuiz.text));
-  }, [activeQuiz, revealQuiz, rendering]);
+    const rects = findCandidateRects(
+      textLayerRef.current,
+      wrapperRef.current,
+      activeRecall.targetText,
+    );
+    setBlotRects(rects);
+    if (!rects.length && maskFailureRef.current !== activeRecall.id) {
+      maskFailureRef.current = activeRecall.id;
+      onMaskFailure();
+    }
+  }, [activeRecall, onMaskFailure, revealRecall, rendering, scale]);
+
+  useEffect(() => {
+    onSelectionChange(null);
+  }, [onSelectionChange, pageNumber, scale]);
 
   function captureSelection() {
-    if (tool !== "highlight" || !wrapperRef.current) return;
+    if ((tool !== "highlight" && tool !== "select") || !wrapperRef.current) return;
     const selection = window.getSelection();
     if (!selection || selection.isCollapsed || !selection.rangeCount) return;
     const range = selection.getRangeAt(0);
@@ -157,8 +222,20 @@ export function PdfPage({
         height: Math.min(1, rect.height / pageRect.height),
       }));
     const selectedText = selection.toString().trim();
-    if (rects.length && selectedText) void onHighlight(rects, selectedText, highlightColor);
-    selection.removeAllRanges();
+    if (!rects.length || !selectedText) return;
+    if (tool === "highlight") {
+      void onHighlight(rects, selectedText, highlightColor);
+      selection.removeAllRanges();
+      onSelectionChange(null);
+      return;
+    }
+    const last = rects.at(-1)!;
+    onSelectionChange({
+      page: pageNumber,
+      text: selectedText,
+      geometry: rects,
+      anchor: { x: Math.min(0.94, last.x + last.width), y: Math.max(0.01, last.y) },
+    });
   }
 
   function beginNote(event: React.MouseEvent<HTMLDivElement>) {
@@ -185,6 +262,22 @@ export function PdfPage({
     >
       <canvas ref={canvasRef} className="block" aria-label={`Page ${pageNumber}`} />
       <div ref={textLayerRef} className="textLayer" />
+
+      {selection?.page === pageNumber && tool === "select" && (
+        <button
+          type="button"
+          onMouseDown={(event) => event.preventDefault()}
+          onClick={onExplainSelection}
+          className="absolute z-[8] inline-flex -translate-y-[calc(100%+8px)] items-center gap-1.5 whitespace-nowrap rounded-md bg-slate-900 px-2.5 py-1.5 text-xs font-semibold text-white shadow-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#7566b7] focus-visible:ring-offset-2"
+          style={{
+            left: `${selection.anchor.x * 100}%`,
+            top: `${selection.anchor.y * 100}%`,
+            transform: "translate(-100%, calc(-100% - 8px))",
+          }}
+        >
+          <Lightbulb className="size-3.5" /> Explain this
+        </button>
+      )}
 
       <div className="pointer-events-none absolute inset-0 z-[2]" aria-hidden="true">
         {annotations

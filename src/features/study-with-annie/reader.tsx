@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useReducer, useRef, useState } from "react";
 import { Link } from "@tanstack/react-router";
 import type { PDFDocumentProxy } from "pdfjs-dist";
 import pdfWorker from "pdfjs-dist/build/pdf.worker.min.mjs?url";
@@ -16,28 +16,30 @@ import {
   X,
 } from "lucide-react";
 import {
-  askAnnie,
   deleteAnnieAnnotation,
-  evaluateAnnieAnswer,
+  evaluateRecallAnswer,
+  explainSelection,
   finishAnnieSession,
+  generatePageOverview,
+  generateRecallChallenge,
   openAnnieDocument,
   saveAnnieAnnotation,
-  saveAnnieSettings,
-  skipAnnieQuiz,
+  saveReaderPreferences,
+  saveReadingProgress,
+  skipRecallChallenge,
 } from "./annie.functions";
-import { AnniePanel, type AnnieBubble } from "./annie-panel";
+import { AnniePanel } from "./annie-panel";
+import { assistantReducer, initialAssistantView } from "./assistant-state";
+import { OVERVIEW_DISMISS_MS } from "./config";
 import { PdfPage } from "./pdf-page";
-import { BehaviorScheduler, pickWeightedQuizCandidate } from "./behavior-scheduler";
-import { fallbackLine, stateForResult } from "./config";
 import type {
   AnnieAnnotation,
-  AnnieSettings,
-  AnnieState,
   NormalizedRect,
-  QuizCandidate,
+  PageOverview,
   QuizResult,
   ReaderPayload,
   ReaderTheme,
+  SelectionSnapshot,
   SessionSummary,
 } from "./types";
 
@@ -54,24 +56,23 @@ export function AnnieReader({ documentId }: { documentId: string }) {
   const [tool, setTool] = useState<AnnotationTool>("select");
   const [highlightColor, setHighlightColor] = useState(highlightColors[0]!);
   const [annotations, setAnnotations] = useState<AnnieAnnotation[]>([]);
-  const [settings, setSettings] = useState<AnnieSettings | null>(null);
-  const [bubble, setBubble] = useState<AnnieBubble | null>(null);
-  const [annieState, setAnnieState] = useState<AnnieState>("reading");
-  const [activeQuiz, setActiveQuiz] = useState<QuizCandidate | null>(null);
-  const [revealQuiz, setRevealQuiz] = useState(false);
-  const [sessionSilenced, setSessionSilenced] = useState(false);
+  const [preferences, setPreferences] = useState<ReaderPayload["preferences"] | null>(null);
+  const [selection, setSelection] = useState<SelectionSnapshot | null>(null);
+  const [assistant, dispatch] = useReducer(assistantReducer, initialAssistantView);
+  const [assistantBusy, setAssistantBusy] = useState(false);
+  const [assistantEngaged, setAssistantEngaged] = useState(false);
+  const [revealRecall, setRevealRecall] = useState(false);
   const [summary, setSummary] = useState<SessionSummary | null>(null);
   const [ending, setEnding] = useState(false);
-  const schedulerRef = useRef(new BehaviorScheduler());
-  const pageEnteredAt = useRef(Date.now());
-  const lastScrollAt = useRef(0);
-  const bubbleId = useRef(0);
-  const pagesVisited = useRef(new Set<number>([1]));
+  const requestVersion = useRef(0);
+  const overviewCache = useRef(new Map<number, PageOverview>());
+  const overviewRequests = useRef(new Map<number, Promise<PageOverview>>());
+  const progressPage = useRef(1);
+  const pagesVisited = useRef(new Set<number>());
   const sessionResults = useRef<Array<{ candidateId: string; result: QuizResult }>>([]);
 
-  const showBubble = useCallback((next: Omit<AnnieBubble, "id">) => {
-    bubbleId.current += 1;
-    setBubble({ ...next, id: bubbleId.current });
+  const showError = useCallback((title: string, detail: string) => {
+    dispatch({ type: "show", message: { kind: "error", title, detail } });
   }, []);
 
   useEffect(() => {
@@ -81,19 +82,14 @@ export function AnnieReader({ documentId }: { documentId: string }) {
         if (cancelled) return;
         setPayload(readerPayload);
         setAnnotations(readerPayload.annotations);
-        setSettings(readerPayload.settings);
+        setPreferences(readerPayload.preferences);
+        setCurrentPage(readerPayload.document.last_page);
+        pagesVisited.current.add(readerPayload.document.last_page);
         const pdfjs = await import("pdfjs-dist");
         pdfjs.GlobalWorkerOptions.workerSrc = pdfWorker;
         const document = await pdfjs.getDocument({ url: readerPayload.fileUrl }).promise;
-        if (cancelled) {
-          await document.destroy();
-          return;
-        }
+        if (cancelled) return void document.destroy();
         setPdf(document);
-        showBubble({
-          type: "commentary",
-          text: fallbackLine(readerPayload.settings.mood, "greeting"),
-        });
       })
       .catch((loadError) =>
         setError(
@@ -103,8 +99,9 @@ export function AnnieReader({ documentId }: { documentId: string }) {
       .finally(() => setLoading(false));
     return () => {
       cancelled = true;
+      requestVersion.current += 1;
     };
-  }, [documentId, showBubble]);
+  }, [documentId]);
 
   useEffect(
     () => () => {
@@ -113,192 +110,122 @@ export function AnnieReader({ documentId }: { documentId: string }) {
     [pdf],
   );
 
-  useEffect(() => {
-    const onScroll = () => {
-      lastScrollAt.current = Date.now();
-    };
-    window.addEventListener("scroll", onScroll, { passive: true });
-    return () => window.removeEventListener("scroll", onScroll);
-  }, []);
-
-  const silenced = useMemo(() => {
-    if (!settings) return false;
-    if (sessionSilenced || settings.silenced_forever) return true;
-    return settings.silenced_until
-      ? new Date(settings.silenced_until).getTime() > Date.now()
-      : false;
-  }, [sessionSilenced, settings]);
-
-  useEffect(() => {
-    if (!bubble || bubble.type === "quiz") return;
-    const timer = window.setTimeout(() => {
-      schedulerRef.current.recordOutcome("ignored");
-      setBubble(null);
-      if (activeQuiz) {
-        setActiveQuiz(null);
-        setRevealQuiz(false);
+  const requestOverview = useCallback(async () => {
+    if (!payload) return;
+    const page = currentPage;
+    const version = ++requestVersion.current;
+    dispatch({ type: "think" });
+    setAssistantBusy(true);
+    try {
+      const cached = overviewCache.current.get(page);
+      let request = overviewRequests.current.get(page);
+      if (!cached && !request) {
+        request = generatePageOverview({
+          data: { documentId, page, sessionId: payload.sessionId },
+        }).finally(() => overviewRequests.current.delete(page));
+        overviewRequests.current.set(page, request);
       }
-    }, 9_000);
-    return () => window.clearTimeout(timer);
-  }, [activeQuiz, bubble]);
-
-  const recordLocalAttempt = useCallback((candidateId: string, result: QuizResult) => {
-    sessionResults.current.push({ candidateId, result });
-    setPayload((current) =>
-      current
-        ? {
-            ...current,
-            quizCandidates: current.quizCandidates.map((candidate) =>
-              candidate.id === candidateId
-                ? {
-                    ...candidate,
-                    attempts: [
-                      { result, created_at: new Date().toISOString() },
-                      ...(candidate.attempts ?? []),
-                    ],
-                  }
-                : candidate,
-            ),
-          }
-        : current,
-    );
-  }, []);
-
-  useEffect(() => {
-    const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key !== "Escape") return;
-      if (bubble) schedulerRef.current.recordOutcome("dismissed");
-      setBubble(null);
-      if (bubble?.type !== "quiz") {
-        setActiveQuiz(null);
-        setRevealQuiz(false);
-      }
-    };
-    window.addEventListener("keydown", onKeyDown);
-    return () => window.removeEventListener("keydown", onKeyDown);
-  }, [bubble]);
-
-  const startQuiz = useCallback(() => {
-    if (!payload || !settings || silenced || activeQuiz) return;
-    const candidate = pickWeightedQuizCandidate(
-      payload.quizCandidates.filter((item) => item.page === currentPage),
-      currentPage,
-    );
-    if (!candidate) {
-      showBubble({ type: "commentary", text: "I don’t have a useful blot-out for this page yet." });
-      return;
+      const overview = cached ?? (await request!);
+      if (version !== requestVersion.current || page !== currentPage) return;
+      overviewCache.current.set(page, overview);
+      dispatch({ type: "show", message: { kind: "overview", overview } });
+    } catch (overviewError) {
+      if (version !== requestVersion.current) return;
+      showError(
+        "Page overview unavailable",
+        overviewError instanceof Error
+          ? overviewError.message
+          : "An accurate overview could not be generated.",
+      );
+    } finally {
+      if (version === requestVersion.current) setAssistantBusy(false);
     }
-    setActiveQuiz(candidate);
-    setRevealQuiz(false);
-    setAnnieState("teasing");
-    showBubble({ type: "quiz", text: candidate.prompt });
-  }, [activeQuiz, currentPage, payload, settings, showBubble, silenced]);
+  }, [currentPage, documentId, payload, showError]);
 
   useEffect(() => {
-    if (!payload || !settings) return;
-    const timer = window.setInterval(() => {
-      const behavior = schedulerRef.current.next({
-        currentPage,
-        pageEnteredAt: pageEnteredAt.current,
-        lastScrollAt: lastScrollAt.current,
-        typingNote: tool === "note",
-        interactionOpen: Boolean(bubble || activeQuiz),
-        silencedUntil: silenced ? "session" : null,
-        chattiness: settings.chattiness,
-        quizzesEnabled: settings.quizzes_enabled,
-        commentaryEnabled: settings.commentary_enabled,
-        availableQuizPages: payload.quizCandidates.map((candidate) => candidate.page),
-        availableCommentaryPages: payload.commentaryCandidates.map((candidate) => candidate.page),
-      });
-      if (behavior === "quiz") startQuiz();
-      if (behavior === "commentary") {
-        const candidates = payload.commentaryCandidates.filter(
-          (candidate) => candidate.page === currentPage,
-        );
-        const candidate = candidates[Math.floor(Math.random() * candidates.length)];
-        if (candidate) {
-          const moodLead =
-            settings.mood === "stern"
-              ? "Pay attention to this: "
-              : settings.mood === "cheeky"
-                ? "Tiny brain hook: "
-                : "Here’s a useful anchor: ";
-          setAnnieState("thinking");
-          showBubble({
-            type: "commentary",
-            text: `${moodLead}${candidate.text}`,
-            beyondNotes: candidate.beyond_notes,
-          });
-        }
+    if (!payload || !pdf) return;
+    void requestOverview();
+  }, [currentPage, payload, pdf, requestOverview]);
+
+  useEffect(() => {
+    if (assistant.message?.kind !== "overview" || assistant.expanded || assistantEngaged) return;
+    const timer = window.setTimeout(() => dispatch({ type: "dismiss" }), OVERVIEW_DISMISS_MS);
+    return () => window.clearTimeout(timer);
+  }, [assistant.expanded, assistant.message, assistantEngaged]);
+
+  useEffect(() => {
+    if (!payload) return;
+    progressPage.current = currentPage;
+    const timer = window.setTimeout(() => {
+      void saveReadingProgress({ data: { documentId, page: currentPage } });
+    }, 500);
+    return () => window.clearTimeout(timer);
+  }, [currentPage, documentId, payload]);
+
+  useEffect(() => {
+    if (!payload) return;
+    return () => {
+      void saveReadingProgress({ data: { documentId, page: progressPage.current } });
+    };
+  }, [documentId, payload]);
+
+  const cancelAssistant = useCallback(
+    (recordSkip = false) => {
+      requestVersion.current += 1;
+      if (recordSkip && assistant.challenge) {
+        void skipRecallChallenge({ data: { challengeId: assistant.challenge.id } });
+        sessionResults.current.push({ candidateId: assistant.challenge.id, result: "skipped" });
       }
-    }, 3_000);
-    return () => window.clearInterval(timer);
-  }, [activeQuiz, bubble, currentPage, payload, settings, showBubble, silenced, startQuiz, tool]);
+      setRevealRecall(true);
+      setAssistantBusy(false);
+      dispatch({ type: "dismiss" });
+    },
+    [assistant.challenge],
+  );
 
   const goToPage = useCallback(
     (page: number) => {
       const maximum = payload?.document.page_count ?? pdf?.numPages ?? 1;
       const next = Math.max(1, Math.min(maximum, page));
+      if (next === currentPage) return;
+      cancelAssistant(Boolean(assistant.challenge));
+      setSelection(null);
+      setRevealRecall(false);
       setCurrentPage(next);
       pagesVisited.current.add(next);
-      pageEnteredAt.current = Date.now();
-      setBubble(null);
-      setActiveQuiz(null);
-      setRevealQuiz(false);
     },
-    [payload, pdf],
+    [assistant.challenge, cancelAssistant, currentPage, payload, pdf],
   );
 
-  // Turn pages with the left/right arrow keys, but never while the reader is
-  // focused on a form control (answer box, page field, note editor, selects).
   useEffect(() => {
-    const onArrow = (event: KeyboardEvent) => {
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        cancelAssistant(Boolean(assistant.challenge));
+        return;
+      }
       if (event.key !== "ArrowLeft" && event.key !== "ArrowRight") return;
       const target = event.target as HTMLElement | null;
       if (
         target &&
-        (target.isContentEditable ||
-          target.tagName === "INPUT" ||
-          target.tagName === "TEXTAREA" ||
-          target.tagName === "SELECT")
-      ) {
+        (target.isContentEditable || ["INPUT", "TEXTAREA", "SELECT"].includes(target.tagName))
+      )
         return;
-      }
       event.preventDefault();
       goToPage(currentPage + (event.key === "ArrowRight" ? 1 : -1));
     };
-    window.addEventListener("keydown", onArrow);
-    return () => window.removeEventListener("keydown", onArrow);
-  }, [currentPage, goToPage]);
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [assistant.challenge, cancelAssistant, currentPage, goToPage]);
 
-  async function changeSettings(next: AnnieSettings) {
-    const moodChanged = settings?.mood !== next.mood;
-    setSettings(next);
-    if (moodChanged) showBubble({ type: "commentary", text: fallbackLine(next.mood, "greeting") });
+  async function changeTheme(theme: ReaderTheme) {
+    if (!preferences) return;
+    const previous = preferences;
+    setPreferences({ theme });
     try {
-      const saved = await saveAnnieSettings({ data: next });
-      setSettings(saved);
+      setPreferences(await saveReaderPreferences({ data: { theme } }));
     } catch {
-      if (settings) setSettings(settings);
+      setPreferences(previous);
     }
-  }
-
-  function silence(choice: "ten_minutes" | "session" | "forever" | "off") {
-    if (!settings) return;
-    if (choice === "session") {
-      setSessionSilenced(true);
-      setBubble(null);
-      return;
-    }
-    setSessionSilenced(false);
-    const next = {
-      ...settings,
-      silenced_until:
-        choice === "ten_minutes" ? new Date(Date.now() + 10 * 60_000).toISOString() : null,
-      silenced_forever: choice === "forever",
-    };
-    setBubble(null);
-    void changeSettings(next);
   }
 
   async function createAnnotation(values: {
@@ -350,133 +277,163 @@ export function AnnieReader({ documentId }: { documentId: string }) {
       });
   }
 
-  async function submitQuiz(answer: string) {
-    if (!activeQuiz || !payload || !settings) return;
-    setAnnieState("thinking");
-    const result = await evaluateAnnieAnswer({
-      data: {
-        candidateId: activeQuiz.id,
-        sessionId: payload.sessionId,
-        answer,
-        mood: settings.mood,
-      },
-    });
-    setRevealQuiz(true);
-    setAnnieState(stateForResult(result.result));
-    showBubble({ type: "result", text: `${result.reaction} ${result.explanation}` });
-    recordLocalAttempt(activeQuiz.id, result.result);
-    schedulerRef.current.recordOutcome("engaged");
-  }
+  const explainCurrentSelection = useCallback(
+    async (followUpQuestion?: string) => {
+      const sourceSelection =
+        assistant.message?.kind === "explanation" ? assistant.message.selection : selection;
+      if (!payload || !sourceSelection || sourceSelection.page !== currentPage) return;
+      if (assistant.challenge) {
+        void skipRecallChallenge({ data: { challengeId: assistant.challenge.id } });
+        sessionResults.current.push({ candidateId: assistant.challenge.id, result: "skipped" });
+        setRevealRecall(true);
+        dispatch({ type: "dismiss" });
+      }
+      const version = ++requestVersion.current;
+      dispatch({ type: "think" });
+      setAssistantBusy(true);
+      try {
+        const explanation = await explainSelection({
+          data: {
+            documentId,
+            page: sourceSelection.page,
+            sessionId: payload.sessionId,
+            selectedText: sourceSelection.text,
+            followUpQuestion,
+          },
+        });
+        if (version !== requestVersion.current) return;
+        dispatch({
+          type: "show",
+          message: { kind: "explanation", explanation, selection: sourceSelection },
+        });
+      } catch (explanationError) {
+        if (version === requestVersion.current)
+          showError(
+            "Explanation unavailable",
+            explanationError instanceof Error
+              ? explanationError.message
+              : "An accurate explanation could not be generated.",
+          );
+      } finally {
+        if (version === requestVersion.current) setAssistantBusy(false);
+      }
+    },
+    [
+      assistant.challenge,
+      assistant.message,
+      currentPage,
+      documentId,
+      payload,
+      selection,
+      showError,
+    ],
+  );
 
-  async function reveal(kind: "show" | "skip") {
-    if (!activeQuiz || !settings) return;
-    const result = await skipAnnieQuiz({
-      data: { candidateId: activeQuiz.id, mood: settings.mood },
-    });
-    setRevealQuiz(true);
-    setAnnieState("reading");
-    showBubble({
-      type: "result",
-      text: kind === "show" ? `Here it is. ${result.reaction}` : result.reaction,
-    });
-    recordLocalAttempt(activeQuiz.id, "skipped");
-    schedulerRef.current.recordOutcome(kind === "show" ? "engaged" : "dismissed");
-  }
+  const startRecall = useCallback(async () => {
+    if (!payload || assistant.challenge) return;
+    const version = ++requestVersion.current;
+    dispatch({ type: "think" });
+    setAssistantBusy(true);
+    setRevealRecall(false);
+    try {
+      const challenge = await generateRecallChallenge({
+        data: {
+          documentId,
+          page: currentPage,
+          sessionId: payload.sessionId,
+          selectedText: selection?.page === currentPage ? selection.text : undefined,
+        },
+      });
+      if (version !== requestVersion.current) return;
+      dispatch({ type: "start_recall", challenge });
+    } catch (recallError) {
+      if (version === requestVersion.current)
+        showError(
+          "Recall activity unavailable",
+          recallError instanceof Error
+            ? recallError.message
+            : "No suitable passage could be prepared.",
+        );
+    } finally {
+      if (version === requestVersion.current) setAssistantBusy(false);
+    }
+  }, [assistant.challenge, currentPage, documentId, payload, selection, showError]);
 
-  async function ask(question: string) {
-    if (!payload || !settings) return;
-    setAnnieState("thinking");
-    showBubble({ type: "answer", text: fallbackLine(settings.mood, "thinking") });
-    const response = await askAnnie({
-      data: {
-        documentId,
-        page: currentPage,
-        sessionId: payload.sessionId,
-        question,
-        mood: settings.mood,
-      },
-    });
-    setAnnieState("reading");
-    showBubble({ type: "answer", text: response.answer });
-    schedulerRef.current.recordOutcome("engaged");
+  async function submitRecall(studentAnswer: string) {
+    if (!assistant.challenge || !payload) return;
+    const challenge = assistant.challenge;
+    setAssistantBusy(true);
+    try {
+      const evaluation = await evaluateRecallAnswer({
+        data: { challengeId: challenge.id, sessionId: payload.sessionId, studentAnswer },
+      });
+      setRevealRecall(true);
+      sessionResults.current.push({ candidateId: challenge.id, result: evaluation.verdict });
+      dispatch({ type: "feedback", message: { kind: "feedback", evaluation } });
+    } catch (evaluationError) {
+      setRevealRecall(true);
+      showError(
+        "Answer not evaluated",
+        evaluationError instanceof Error
+          ? evaluationError.message
+          : "The original passage has been restored.",
+      );
+    } finally {
+      setAssistantBusy(false);
+    }
   }
 
   async function endSession() {
-    if (!payload || !settings || ending) return;
+    if (!payload || ending) return;
     setEnding(true);
     try {
-      const result = await finishAnnieSession({
-        data: {
-          sessionId: payload.sessionId,
-          documentId,
-          mood: settings.mood,
-          pages: [...pagesVisited.current],
-          results: sessionResults.current,
-        },
-      });
-      setSummary(result);
+      setSummary(
+        await finishAnnieSession({
+          data: {
+            sessionId: payload.sessionId,
+            documentId,
+            pages: [...pagesVisited.current],
+            results: sessionResults.current,
+          },
+        }),
+      );
     } finally {
       setEnding(false);
     }
   }
 
   if (loading) return <ReaderLoading />;
-  if (error || !payload || !settings)
+  if (error || !payload || !preferences)
     return <ReaderError message={error || "The reader could not be opened."} />;
   if (!pdf) return <ReaderLoading />;
 
   const pageAnnotations = annotations.filter((annotation) => annotation.page === currentPage);
   const bookmarked = pageAnnotations.some((annotation) => annotation.type === "bookmark");
-  const theme = settings.theme;
 
   return (
-    <div className={`annie-reader annie-theme-${theme} min-h-[calc(100dvh-73px)]`}>
-      <AnniePanel
-        settings={settings}
-        state={annieState}
-        bubble={bubble}
-        activeQuiz={activeQuiz}
-        silenced={silenced}
-        onSettings={(next) => void changeSettings(next)}
-        onDismiss={() => {
-          schedulerRef.current.recordOutcome("dismissed");
-          setBubble(null);
-          if (activeQuiz && revealQuiz) {
-            setActiveQuiz(null);
-            setRevealQuiz(false);
-          }
-        }}
-        onSilence={silence}
-        onQuizNow={startQuiz}
-        onSubmitQuiz={submitQuiz}
-        onRevealQuiz={reveal}
-        onAsk={ask}
-      />
-
-      <div className="z-20 border-b border-[var(--reader-border)] bg-[var(--reader-toolbar)] px-3 py-2 shadow-sm sm:px-5">
+    <div
+      className={`annie-workspace annie-reader annie-theme-${preferences.theme} min-h-[calc(100dvh-65px)] sm:min-h-[calc(100dvh-73px)]`}
+    >
+      <div className="sticky top-[65px] z-30 border-b border-[var(--reader-border)] bg-[var(--reader-toolbar)]/95 px-3 py-2 backdrop-blur sm:top-[73px] sm:px-5">
         <div className="mx-auto flex max-w-[1320px] flex-wrap items-center justify-between gap-2">
           <div className="flex min-w-0 items-center gap-2">
             <button
               type="button"
               onClick={() => void endSession()}
-              className="grid size-9 shrink-0 place-items-center rounded-full hover:bg-black/5"
-              aria-label="End session and return to notes"
+              className="grid size-9 shrink-0 place-items-center rounded-md hover:bg-black/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#7566b7]"
+              aria-label="End session and return to documents"
             >
               <ArrowLeft className="size-4" />
             </button>
             <div className="min-w-0">
-              <h1 className="max-w-48 truncate text-sm font-black sm:max-w-sm">
+              <h1 className="max-w-44 truncate text-sm font-semibold sm:max-w-sm">
                 {payload.document.title}
               </h1>
-              <p
-                className="text-[10px] font-bold text-[var(--reader-muted)]"
-                title="Use the ← and → arrow keys to turn pages"
-              >
+              <p className="text-[11px] text-[var(--reader-muted)]">
                 Page {currentPage} of {pdf.numPages}
               </p>
             </div>
           </div>
-
           <div className="flex flex-wrap items-center justify-end gap-1.5">
             <ControlGroup>
               <IconButton
@@ -492,7 +449,7 @@ export function AnnieReader({ documentId }: { documentId: string }) {
                 max={pdf.numPages}
                 value={currentPage}
                 onChange={(event) => goToPage(Number(event.target.value))}
-                className="h-8 w-12 bg-transparent text-center text-xs font-black outline-none"
+                className="h-8 w-11 bg-transparent text-center text-xs font-semibold outline-none"
                 aria-label="Page number"
               />
               <IconButton
@@ -511,7 +468,7 @@ export function AnnieReader({ documentId }: { documentId: string }) {
               >
                 <Minus />
               </IconButton>
-              <span className="min-w-11 text-center text-[10px] font-black">
+              <span className="min-w-10 text-center text-[10px] font-semibold">
                 {Math.round(scale * 100)}%
               </span>
               <IconButton
@@ -554,7 +511,7 @@ export function AnnieReader({ documentId }: { documentId: string }) {
             </ControlGroup>
             {tool === "highlight" && (
               <div
-                className="flex items-center gap-1 rounded-full bg-[var(--reader-control)] px-2 py-1.5"
+                className="flex items-center gap-1 rounded-lg border border-[var(--reader-border)] bg-[var(--reader-control)] px-2 py-1.5"
                 aria-label="Highlight color"
               >
                 {highlightColors.map((color) => (
@@ -562,7 +519,7 @@ export function AnnieReader({ documentId }: { documentId: string }) {
                     key={color}
                     type="button"
                     onClick={() => setHighlightColor(color)}
-                    className={`size-5 rounded-full ${highlightColor === color ? "ring-2 ring-[#7566b7] ring-offset-1" : ""}`}
+                    className={`size-4 rounded-full ${highlightColor === color ? "ring-2 ring-[#7566b7] ring-offset-1" : ""}`}
                     style={{ backgroundColor: color }}
                     aria-label={`Use ${color} highlight`}
                   />
@@ -570,11 +527,9 @@ export function AnnieReader({ documentId }: { documentId: string }) {
               </div>
             )}
             <select
-              value={theme}
-              onChange={(event) =>
-                void changeSettings({ ...settings, theme: event.target.value as ReaderTheme })
-              }
-              className="h-9 rounded-full bg-[var(--reader-control)] px-3 text-xs font-black outline-none focus:ring-2 focus:ring-[#7566b7]"
+              value={preferences.theme}
+              onChange={(event) => void changeTheme(event.target.value as ReaderTheme)}
+              className="h-9 rounded-lg border border-[var(--reader-border)] bg-[var(--reader-control)] px-2 text-xs font-medium outline-none focus:ring-2 focus:ring-[#7566b7]"
               aria-label="Reader theme"
             >
               <option value="light">Light</option>
@@ -585,7 +540,7 @@ export function AnnieReader({ documentId }: { documentId: string }) {
               type="button"
               onClick={() => void endSession()}
               disabled={ending}
-              className="h-9 rounded-full bg-[#7566b7] px-4 text-xs font-black text-white disabled:opacity-60"
+              className="h-9 rounded-lg bg-[#6757a6] px-3 text-xs font-semibold text-white hover:bg-[#594a96] disabled:opacity-60"
             >
               {ending ? "Ending…" : "End session"}
             </button>
@@ -594,19 +549,29 @@ export function AnnieReader({ documentId }: { documentId: string }) {
       </div>
 
       <main
-        className="overflow-auto bg-[var(--reader-bg)] px-4 py-8 sm:px-8"
+        className="min-h-[calc(100dvh-130px)] overflow-auto bg-[var(--reader-bg)] px-3 py-5 sm:px-8 sm:py-7"
         aria-label="PDF reader"
       >
         <PdfPage
           pdf={pdf}
           pageNumber={currentPage}
           scale={scale}
-          theme={theme}
+          theme={preferences.theme}
           annotations={pageAnnotations}
           tool={tool}
           highlightColor={highlightColor}
-          activeQuiz={activeQuiz}
-          revealQuiz={revealQuiz}
+          activeRecall={assistant.challenge}
+          revealRecall={revealRecall}
+          selection={selection}
+          onSelectionChange={setSelection}
+          onExplainSelection={() => void explainCurrentSelection()}
+          onMaskFailure={() => {
+            setRevealRecall(true);
+            showError(
+              "Recall activity unavailable",
+              "The selected passage could not be aligned with the rendered page.",
+            );
+          }}
           onHighlight={(geometry, selectedText, color) =>
             createAnnotation({
               type: "highlight",
@@ -632,58 +597,23 @@ export function AnnieReader({ documentId }: { documentId: string }) {
         />
       </main>
 
-      {summary && (
-        <div
-          className="fixed inset-0 z-[70] grid place-items-center bg-slate-950/35 p-4 backdrop-blur-sm"
-          role="dialog"
-          aria-modal="true"
-          aria-labelledby="summary-title"
-        >
-          <div className="max-h-[90dvh] w-full max-w-lg overflow-y-auto rounded-[28px] bg-white p-6 shadow-2xl sm:p-8">
-            <button
-              type="button"
-              onClick={() => setSummary(null)}
-              className="ml-auto grid size-9 place-items-center rounded-full hover:bg-slate-100"
-              aria-label="Close summary"
-            >
-              <X className="size-4" />
-            </button>
-            <p className="text-xs font-black uppercase tracking-[0.16em] text-[#6d5fb1]">
-              Session complete
-            </p>
-            <h2 id="summary-title" className="mt-2 text-3xl font-black">
-              {summary.message}
-            </h2>
-            <div className="mt-6 grid grid-cols-3 gap-3 text-center">
-              <SummaryStat value={summary.attempted} label="attempted" />
-              <SummaryStat value={summary.correct} label="correct" />
-              <SummaryStat value={summary.pagesCovered} label="pages" />
-            </div>
-            {summary.revisit.length > 0 && (
-              <div className="mt-6">
-                <h3 className="text-sm font-black">Passages to revisit</h3>
-                <ol className="mt-3 space-y-2">
-                  {summary.revisit.map((text, index) => (
-                    <li
-                      key={text}
-                      className="rounded-2xl bg-[#f7f5ef] p-3 text-sm font-semibold leading-relaxed text-slate-600"
-                    >
-                      <span className="mr-2 font-black text-[#7566b7]">{index + 1}.</span>
-                      {text}
-                    </li>
-                  ))}
-                </ol>
-              </div>
-            )}
-            <Link
-              to="/study-with-annie"
-              className="clay-button mt-7 flex h-12 items-center justify-center rounded-full bg-[#7566b7] text-sm font-black text-white"
-            >
-              Back to my notes
-            </Link>
-          </div>
-        </div>
-      )}
+      <AnniePanel
+        status={assistantBusy ? "thinking" : assistant.status}
+        expanded={assistant.expanded}
+        message={assistant.message}
+        selection={selection}
+        busy={assistantBusy}
+        onToggle={() => dispatch({ type: assistant.expanded ? "collapse" : "expand" })}
+        onDismiss={() => cancelAssistant(Boolean(assistant.challenge))}
+        onOverview={() => void requestOverview()}
+        onExplain={() => void explainCurrentSelection()}
+        onRecall={() => void startRecall()}
+        onSubmitRecall={submitRecall}
+        onClarify={(question) => explainCurrentSelection(question)}
+        onEngagementChange={setAssistantEngaged}
+      />
+
+      {summary && <SessionSummaryDialog summary={summary} onClose={() => setSummary(null)} />}
     </div>
   );
 }
@@ -706,7 +636,7 @@ function IconButton({
       type="button"
       disabled={disabled}
       onClick={onClick}
-      className={`grid size-8 place-items-center rounded-full disabled:opacity-30 ${active ? "bg-[#7566b7] text-white" : "hover:bg-black/5"}`}
+      className={`grid size-8 place-items-center rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#7566b7] disabled:opacity-30 ${active ? "bg-[#6757a6] text-white" : "hover:bg-black/5"}`}
       aria-label={label}
       aria-pressed={active}
     >
@@ -717,17 +647,78 @@ function IconButton({
 
 function ControlGroup({ children }: { children: React.ReactNode }) {
   return (
-    <div className="flex items-center rounded-full bg-[var(--reader-control)] p-0.5 [&_svg]:size-4">
+    <div className="flex items-center rounded-lg border border-[var(--reader-border)] bg-[var(--reader-control)] p-0.5 [&_svg]:size-4">
       {children}
+    </div>
+  );
+}
+
+function SessionSummaryDialog({
+  summary,
+  onClose,
+}: {
+  summary: SessionSummary;
+  onClose: () => void;
+}) {
+  return (
+    <div
+      className="fixed inset-0 z-[70] grid place-items-center bg-slate-950/35 p-4 backdrop-blur-sm"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="summary-title"
+    >
+      <div className="max-h-[90dvh] w-full max-w-lg overflow-y-auto rounded-2xl bg-white p-6 shadow-2xl sm:p-8">
+        <button
+          type="button"
+          onClick={onClose}
+          className="ml-auto grid size-9 place-items-center rounded-md hover:bg-slate-100"
+          aria-label="Close summary"
+        >
+          <X className="size-4" />
+        </button>
+        <p className="text-xs font-semibold uppercase tracking-[0.14em] text-[#6757a6]">
+          Session complete
+        </p>
+        <h2 id="summary-title" className="mt-2 text-2xl font-semibold leading-8 text-slate-950">
+          {summary.message}
+        </h2>
+        <div className="mt-6 grid grid-cols-3 gap-3 text-center">
+          <SummaryStat value={summary.attempted} label="attempted" />
+          <SummaryStat value={summary.correct} label="correct" />
+          <SummaryStat value={summary.pagesCovered} label="pages" />
+        </div>
+        {summary.revisit.length > 0 && (
+          <div className="mt-6">
+            <h3 className="text-sm font-semibold">Passages to revisit</h3>
+            <ol className="mt-3 space-y-2">
+              {summary.revisit.map((text, index) => (
+                <li
+                  key={`${index}-${text}`}
+                  className="rounded-lg bg-slate-50 p-3 text-sm leading-6 text-slate-600"
+                >
+                  <span className="mr-2 font-semibold text-[#6757a6]">{index + 1}.</span>
+                  {text}
+                </li>
+              ))}
+            </ol>
+          </div>
+        )}
+        <Link
+          to="/study-with-annie"
+          className="mt-7 flex h-11 items-center justify-center rounded-lg bg-[#6757a6] text-sm font-semibold text-white"
+        >
+          Back to documents
+        </Link>
+      </div>
     </div>
   );
 }
 
 function SummaryStat({ value, label }: { value: number; label: string }) {
   return (
-    <div className="rounded-2xl bg-[#eeeafd] p-3">
-      <p className="text-2xl font-black text-[#574a98]">{value}</p>
-      <p className="text-[10px] font-black uppercase tracking-wide text-[#7566b7]">{label}</p>
+    <div className="rounded-lg bg-[#f0edfa] p-3">
+      <p className="text-2xl font-semibold text-[#574a98]">{value}</p>
+      <p className="text-[10px] font-semibold uppercase tracking-wide text-[#7566b7]">{label}</p>
     </div>
   );
 }
@@ -735,8 +726,8 @@ function SummaryStat({ value, label }: { value: number; label: string }) {
 function ReaderLoading() {
   return (
     <div className="grid min-h-[70dvh] place-items-center" role="status">
-      <LoaderCircle className="size-8 animate-spin text-[#7566b7]" />
-      <span className="sr-only">Opening your notes</span>
+      <LoaderCircle className="size-7 animate-spin text-[#7566b7]" />
+      <span className="sr-only">Opening your document</span>
     </div>
   );
 }
@@ -745,13 +736,13 @@ function ReaderError({ message }: { message: string }) {
   return (
     <div className="mx-auto grid min-h-[70dvh] max-w-lg place-items-center p-5 text-center">
       <div>
-        <h1 className="text-2xl font-black">These notes couldn’t open</h1>
-        <p className="mt-3 text-sm font-semibold text-slate-500">{message}</p>
+        <h1 className="text-2xl font-semibold">This document couldn’t open</h1>
+        <p className="mt-3 text-sm text-slate-500">{message}</p>
         <Link
           to="/study-with-annie"
-          className="mt-6 inline-flex h-11 items-center rounded-full bg-[#7566b7] px-5 text-sm font-black text-white"
+          className="mt-6 inline-flex h-11 items-center rounded-lg bg-[#6757a6] px-5 text-sm font-semibold text-white"
         >
-          Back to my notes
+          Back to documents
         </Link>
       </div>
     </div>

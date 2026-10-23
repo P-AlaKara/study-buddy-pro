@@ -61,16 +61,15 @@ Study with Annie is a private PDF workspace that turns a student's own notes int
 - Authenticated students can upload text-based PDFs up to 25 MB and see processing, ready, and failure states in their library.
 - A distraction-reduced PDF.js reader provides page navigation, zoom, selectable text, and light, dark, and sepia themes.
 - Highlights in four colours, page-anchored sticky notes, and bookmarks persist per student and document.
-- Annie appears as a collapsible study companion with **Stern**, **Friendly**, and **Cheeky** moods. Mood changes tone, not factual accuracy.
-- Contextual commentary explains why a passage matters, flags a common mistake, offers an analogy, or nudges a student who has stayed on a page for a while.
-- Blot-out quizzes hide an exact passage from the current page and ask the student to recall it. Answers can be graded as correct, partially correct, or incorrect before the source text is revealed.
-- Students can ask Annie a short question about the current page or request a quiz immediately.
-- A rules-based scheduler respects active scrolling, note typing, open interactions, cooldowns, and the pages the student has actually reached.
-- Chattiness controls, per-behaviour toggles, and silence options for ten minutes, the current session, or until manually re-enabled.
-- Session summaries report pages covered, quiz performance, and passages worth revisiting—without adding streaks or XP to note reading.
-- Gemini can generate and phrase grounded study interactions. Deterministic candidates, grading heuristics, and mood-specific fallback lines keep the reader usable when the model is unavailable.
+- Annie appears as a small floating academic assistant and keeps the PDF at a stable size while her anchored bubble opens or closes.
+- Each opened page receives a cached, source-grounded overview of what the student will learn and what is most important to remember.
+- Selecting PDF text reveals an **Explain this** action. Annie uses the selection and its stored page context to provide a concise explanation, terminology, and an optional accurate memory aid.
+- Active recall hides an exact, meaningful passage at the PDF text layer and asks the student to explain it in their own words. Gemini evaluates semantic understanding as correct, partially correct, or incorrect before the source is restored.
+- Annie is intentionally limited to page overviews, selected-text explanations, and active recall; generic chat, unsolicited commentary, mood modes, and quiz dashboards are excluded.
+- Reading position persists per document, and session summaries report pages covered, recall performance, and passages worth revisiting.
+- Gemini responses use validated structured output. If extraction or AI evaluation fails, the reader restores the source and reports the limitation rather than inventing content or a score.
 
-Annie's Version 1 only supports PDFs with extractable text; scanned documents are clearly rejected because OCR is not included. Commentary is grounded in the uploaded notes, and any additional context is labelled **Beyond your notes**. Version 1 intentionally excludes text-to-speech, mnemonics, source recommendations, cross-session spaced repetition, social reading, and multiple companion characters.
+Annie currently supports PDFs with extractable text; scanned documents are clearly rejected because OCR is not included. It intentionally excludes unrestricted chat, multiple-choice quizzes, flashcard generation, document rewriting, scoring dashboards, source recommendations, social reading, and multiple companion characters.
 
 ### Quizzes
 
