@@ -1,4 +1,10 @@
-import type { OsceCard, OsceStation } from "../schema.js";
+import type {
+  OsceCard,
+  OsceClinicalFact,
+  OsceClinicalFactCategory,
+  OsceStation,
+  RapportBand,
+} from "../schema.js";
 
 type CardInput = Omit<
   OsceCard,
@@ -51,6 +57,24 @@ function card(input: CardInput): OsceCard {
   };
 }
 
+function fact(
+  value: string,
+  category: OsceClinicalFactCategory,
+  importance: OsceClinicalFact["importance"] = "routine",
+  disclosure: OsceClinicalFact["disclosure"] = "ask_only",
+  patientWording?: string,
+  minimumRapportBand?: Exclude<RapportBand, "low">,
+): OsceClinicalFact {
+  return {
+    value,
+    category,
+    importance,
+    disclosure,
+    ...(patientWording ? { patientWording } : {}),
+    ...(minimumRapportBand ? { minimumRapportBand } : {}),
+  };
+}
+
 export const CHEST_TIGHTNESS_STATION: OsceStation = {
   id: "osce_hx_001",
   type: "history_taking",
@@ -78,38 +102,176 @@ export const CHEST_TIGHTNESS_STATION: OsceStation = {
     initialExpression: "guarded",
   },
   facts: {
-    presenting_site: "The pressure is in the centre of his chest.",
-    presenting_character: "It feels like a tight, band-like pressure rather than a sharp pain.",
-    presenting_onset_duration: "It began about three weeks ago.",
-    presenting_exertion: "It occurs when climbing stairs or walking uphill.",
-    presenting_relief: "It eases after a few minutes of rest.",
-    presenting_severity: "At its worst it is about 6/10 and makes him stop walking.",
-    presenting_pattern: "Episodes have become a little easier to provoke over three weeks.",
-    presenting_previous: "He had not experienced this before the last three weeks.",
-    presenting_not_pleuritic: "It is not brought on by breathing and is not sharp.",
-    presenting_not_food: "Meals do not bring it on and antacids have not helped.",
-    associated_breathlessness: "He becomes breathless during the exertional episodes.",
-    associated_sweating: "He felt sweaty during one episode.",
-    associated_radiation: "On occasion it spreads to his left arm and jaw.",
-    red_flag_rest_pain:
+    presenting_site: fact(
+      "The pressure is in the centre of his chest.",
+      "presenting_complaint",
+      "key",
+      "may_volunteer",
+      "It's right in the middle of my chest.",
+    ),
+    presenting_character: fact(
+      "It feels like a tight, band-like pressure rather than a sharp pain.",
+      "history_of_presenting_complaint",
+      "key",
+      "may_volunteer",
+      "It feels tight, like a band rather than a sharp pain.",
+    ),
+    presenting_onset_duration: fact(
+      "It began about three weeks ago.",
+      "history_of_presenting_complaint",
+      "key",
+      "may_volunteer",
+    ),
+    presenting_exertion: fact(
+      "It occurs when climbing stairs or walking uphill.",
+      "history_of_presenting_complaint",
+      "key",
+      "may_volunteer",
+    ),
+    presenting_relief: fact(
+      "It eases after a few minutes of rest.",
+      "history_of_presenting_complaint",
+      "key",
+      "may_volunteer",
+    ),
+    presenting_severity: fact(
+      "At its worst it is about 6/10 and makes him stop walking.",
+      "history_of_presenting_complaint",
+      "key",
+    ),
+    presenting_pattern: fact(
+      "Episodes have become a little easier to provoke over three weeks.",
+      "history_of_presenting_complaint",
+      "key",
+    ),
+    presenting_previous: fact(
+      "He had not experienced this before the last three weeks.",
+      "history_of_presenting_complaint",
+    ),
+    presenting_not_pleuritic: fact(
+      "It is not brought on by breathing and is not sharp.",
+      "history_of_presenting_complaint",
+    ),
+    presenting_not_food: fact(
+      "Meals do not bring it on and antacids have not helped.",
+      "history_of_presenting_complaint",
+    ),
+    associated_breathlessness: fact(
+      "He becomes breathless during the exertional episodes.",
+      "associated_symptom",
+      "key",
+    ),
+    associated_sweating: fact("He felt sweaty during one episode.", "associated_symptom", "key"),
+    associated_radiation: fact(
+      "On occasion it spreads to his left arm and jaw.",
+      "associated_symptom",
+      "key",
+    ),
+    red_flag_rest_pain: fact(
       "Two days ago he had the same pressure while sitting at home; it lasted about 15 minutes.",
-    no_syncope_palpitations: "He has not fainted and has not noticed palpitations.",
-    self_treatment_antacids: "He tried antacids without meaningful relief.",
-    self_treatment_ibuprofen: "He occasionally took ibuprofen, also without clear benefit.",
-    pmh_hypertension: "Hypertension was diagnosed several years ago.",
-    pmh_no_diabetes: "He has never been diagnosed with diabetes.",
-    pmh_cholesterol_unknown: "He does not know his cholesterol level.",
-    medication_stopped_amlodipine: "He stopped amlodipine about a year ago because he felt well.",
-    allergy_penicillin: "Penicillin caused an itchy rash; there was no breathing difficulty.",
-    family_father_death: "His father died suddenly at 56, reportedly from a heart problem.",
-    smoking: "He smokes about 20 cigarettes daily and has done so for 30 years.",
-    alcohol: "He drinks two or three beers at weekends.",
-    occupation: "He drives a passenger bus for a living.",
-    wife_worried: "His wife noticed the episodes and strongly encouraged him to attend.",
-    income_worry: "He cannot easily afford time off and worries about losing his income.",
-    ice_ideas: "He thinks stress or indigestion may be causing the symptoms.",
-    ice_concerns: "He fears dying suddenly as his father did and losing his driving licence.",
-    ice_expectations: "He hopes for a tablet so he can return to work quickly.",
+      "red_flag",
+      "red_flag",
+    ),
+    no_syncope_palpitations: fact(
+      "He has not fainted and has not noticed palpitations.",
+      "associated_symptom",
+    ),
+    self_treatment_antacids: fact("He tried antacids without meaningful relief.", "medication"),
+    self_treatment_ibuprofen: fact(
+      "He occasionally took ibuprofen, also without clear benefit.",
+      "medication",
+    ),
+    pmh_hypertension: fact(
+      "Hypertension was diagnosed several years ago.",
+      "past_medical_history",
+      "key",
+    ),
+    pmh_no_diabetes: fact("He has never been diagnosed with diabetes.", "past_medical_history"),
+    pmh_cholesterol_unknown: fact(
+      "He does not know his cholesterol level.",
+      "past_medical_history",
+    ),
+    medication_stopped_amlodipine: fact(
+      "He stopped amlodipine about a year ago because he felt well.",
+      "medication",
+      "key",
+    ),
+    allergy_penicillin: fact(
+      "Penicillin caused an itchy rash; there was no breathing difficulty.",
+      "allergy",
+      "key",
+    ),
+    family_father_death: fact(
+      "His father died suddenly at 56, reportedly from a heart problem.",
+      "family_history",
+      "key",
+      "rapport_gated",
+      "My father died suddenly from his heart when he was 56.",
+      "mid",
+    ),
+    smoking: fact(
+      "He smokes about 20 cigarettes daily and has done so for 30 years.",
+      "social_history",
+      "key",
+    ),
+    alcohol: fact("He drinks two or three beers at weekends.", "social_history"),
+    occupation: fact("He drives a passenger bus for a living.", "social_history"),
+    wife_worried: fact(
+      "His wife noticed the episodes and strongly encouraged him to attend.",
+      "social_history",
+      "routine",
+      "may_volunteer",
+    ),
+    income_worry: fact(
+      "He cannot easily afford time off and worries about losing his income.",
+      "social_history",
+      "key",
+      "rapport_gated",
+      undefined,
+      "mid",
+    ),
+    ice_ideas: fact(
+      "He thinks stress or indigestion may be causing the symptoms.",
+      "ideas_concerns_expectations",
+    ),
+    ice_concerns: fact(
+      "He fears dying suddenly as his father did and losing his driving licence.",
+      "ideas_concerns_expectations",
+      "key",
+      "rapport_gated",
+      undefined,
+      "mid",
+    ),
+    ice_expectations: fact(
+      "He hopes for a tablet so he can return to work quickly.",
+      "ideas_concerns_expectations",
+    ),
+  },
+  clinicalInterpretation: {
+    intendedDiagnosis:
+      "Crescendo angina with a recent episode at rest, concerning for unstable angina or acute coronary syndrome.",
+    differentials: [
+      "Stable angina",
+      "Gastro-oesophageal reflux disease",
+      "Musculoskeletal chest pain",
+      "Pulmonary embolism",
+      "Aortic dissection",
+    ],
+    safetyPriorities: [
+      "Recognise the episode at rest as a red flag.",
+      "Escalate for urgent same-day clinical assessment and cardiac investigations.",
+      "Advise the patient not to drive until assessed.",
+      "Avoid false reassurance or a definitive diagnosis before assessment.",
+    ],
+    unsupportedActions: [
+      "Physical examination findings",
+      "Vital signs",
+      "ECG results",
+      "Laboratory results",
+      "Imaging results",
+      "Medication doses not explicitly present in the station",
+    ],
+    unknownDetailResponse: "That information is not available in this station.",
   },
   cards: [
     card({

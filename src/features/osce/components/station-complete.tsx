@@ -7,6 +7,7 @@ import {
   Check,
   CheckCircle2,
   Clock3,
+  LoaderCircle,
   RotateCcw,
   Share2,
   Sparkles,
@@ -17,6 +18,7 @@ import { DrAmbrose, type AmbroseExpression } from "@/features/case-challenge/com
 import { createOsceDebrief, type ChecklistReviewItem, type TimelineReview } from "../debrief.js";
 import { formatOsceClock, type GlobalRating, type OsceState } from "../engine.js";
 import { OSCE_RATING_LABELS } from "../progress.js";
+import type { OsceAiNarrative } from "../osce-ai.functions.js";
 import type { OsceMode, OsceStation } from "../schema.js";
 
 const MODE_LABELS: Record<OsceMode, string> = {
@@ -29,17 +31,23 @@ export function StationComplete({
   game,
   station,
   onRetry,
+  aiNarrative = null,
+  aiFeedbackStatus = "idle",
+  onRetryAiFeedback,
 }: {
   game: OsceState;
   station: OsceStation;
   onRetry: () => void;
+  aiNarrative?: OsceAiNarrative | null;
+  aiFeedbackStatus?: "idle" | "loading" | "complete" | "failed";
+  onRetryAiFeedback?: () => void;
 }) {
   const [shareStatus, setShareStatus] = useState<"idle" | "shared" | "copied" | "downloaded">(
     "idle",
   );
   const result = game.finalResult;
   if (!result) return null;
-  const debrief = createOsceDebrief(game, station);
+  const debrief = createOsceDebrief(game, station, aiNarrative);
   const outcome = outcomePresentation(result.rating);
   const nextMode: OsceMode | null =
     game.mode === "learn" ? "practice" : game.mode === "practice" ? "exam" : null;
@@ -99,6 +107,12 @@ export function StationComplete({
             {OSCE_RATING_LABELS[result.rating]}
           </h1>
           <p className="mt-3 max-w-2xl font-bold leading-relaxed">{result.ratingReason}</p>
+          {aiNarrative?.ratingReason && (
+            <p className="mt-3 max-w-2xl rounded-2xl bg-white/65 p-3 text-sm font-semibold leading-relaxed">
+              <span className="font-black">AI evidence note: </span>
+              {aiNarrative.ratingReason}
+            </p>
+          )}
           <div className="mt-5 grid grid-cols-2 gap-2 sm:grid-cols-5">
             <Score label="Overall" value={result.score.composite} />
             <Score label="Checklist" value={result.score.checklist} />
@@ -129,6 +143,38 @@ export function StationComplete({
         </div>
       </section>
 
+      {aiFeedbackStatus === "loading" && (
+        <div className="clay-card flex items-center gap-3 bg-lavender-soft p-4" role="status">
+          <LoaderCircle className="size-5 animate-spin text-lavender" aria-hidden="true" />
+          <div>
+            <p className="text-sm font-black">Preparing evidence-based AI feedback</p>
+            <p className="text-xs font-bold text-muted-foreground">
+              Your deterministic scores and full debrief are already available below.
+            </p>
+          </div>
+        </div>
+      )}
+
+      {aiFeedbackStatus === "failed" && (
+        <div className="clay-card flex flex-wrap items-center justify-between gap-3 bg-yellow-soft p-4">
+          <div>
+            <p className="text-sm font-black">AI narrative is temporarily unavailable</p>
+            <p className="text-xs font-bold text-muted-foreground">
+              The scored debrief remains complete and unchanged.
+            </p>
+          </div>
+          {onRetryAiFeedback && (
+            <button
+              type="button"
+              onClick={onRetryAiFeedback}
+              className="clay-button inline-flex items-center gap-2 bg-card px-4 py-2.5 text-xs font-black"
+            >
+              <RotateCcw className="size-4" aria-hidden="true" /> Retry AI feedback
+            </button>
+          )}
+        </div>
+      )}
+
       <section className="clay-card bg-card p-5 md:p-6" aria-labelledby="checklist-title">
         <SectionHeading
           eyebrow="Checklist reveal"
@@ -150,6 +196,11 @@ export function StationComplete({
                   {domain.score}%
                 </span>
               </div>
+              {aiNarrative?.domainComments[domain.domain] && (
+                <p className="mt-3 rounded-2xl bg-card/80 p-3 text-xs font-semibold leading-relaxed text-muted-foreground">
+                  {aiNarrative.domainComments[domain.domain]}
+                </p>
+              )}
               <ul className="mt-3 space-y-2">
                 {domain.items.map((entry) => (
                   <ChecklistRow key={entry.item.id} entry={entry} />
@@ -223,7 +274,7 @@ export function StationComplete({
               id="coaching-title"
             />
             <ol className="mt-4 space-y-3">
-              {debrief.coachingLines.map((line, index) => (
+              {(aiNarrative?.coachingLines ?? debrief.coachingLines).map((line, index) => (
                 <li
                   key={line}
                   className="flex gap-3 rounded-2xl bg-card/80 p-3 text-sm font-bold leading-relaxed"
@@ -309,6 +360,12 @@ export function StationComplete({
                 </div>
                 <p className="mt-2 line-clamp-2 text-[11px] font-bold leading-relaxed">
                   {station.cards.find((card) => card.id === reaction.cardId)?.label ??
+                    (
+                      game.interactions.find(
+                        (interaction) =>
+                          interaction.source !== "nudge" && interaction.id === reaction.actionId,
+                      ) as { studentText?: string } | undefined
+                    )?.studentText ??
                     reaction.cardId}
                 </p>
                 <span

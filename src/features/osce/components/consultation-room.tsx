@@ -1,4 +1,12 @@
-import { Check, ChevronUp, Clock3, Flag, Lightbulb, MessageCircleMore } from "lucide-react";
+import {
+  Check,
+  ChevronDown,
+  ChevronUp,
+  Clock3,
+  Flag,
+  Lightbulb,
+  MessageCircleMore,
+} from "lucide-react";
 import { useState } from "react";
 import {
   Sheet,
@@ -10,19 +18,35 @@ import {
 import { DrAmbrose, type AmbroseExpression } from "@/features/case-challenge/components/dr-ambrose";
 import { PatientAvatar } from "@/features/case-challenge/components/patient-avatar";
 import { formatOsceClock, type OsceState } from "../engine.js";
-import type { OsceCard, OsceCategory, OsceMode, OsceStation } from "../schema.js";
+import type {
+  OsceCard,
+  OsceCategory,
+  OsceInteractionMode,
+  OsceMode,
+  OsceStation,
+} from "../schema.js";
+import { FreeFormPanel } from "./free-form-panel.js";
 import { QuestionMenu } from "./question-menu.js";
 
 export function ConsultationRoom({
   game,
   station,
   mode,
+  interactionMode,
   category,
   pendingCardId,
+  freeFormPending,
+  freeFormDraft,
+  freeFormError,
   examinerExpression,
   examinerMessage,
   onCategoryChange,
+  onInteractionModeChange,
   onChoose,
+  onFreeFormDraftChange,
+  onFreeFormSubmit,
+  onFreeFormRetry,
+  onFreeFormEdit,
   onEnd,
   onNudge,
   onActivity,
@@ -30,18 +54,28 @@ export function ConsultationRoom({
   game: OsceState;
   station: OsceStation;
   mode: OsceMode;
+  interactionMode: OsceInteractionMode;
   category: OsceCategory;
   pendingCardId: string | null;
+  freeFormPending: boolean;
+  freeFormDraft: string;
+  freeFormError: string | null;
   examinerExpression: AmbroseExpression;
   examinerMessage: string | null;
   onCategoryChange: (category: OsceCategory) => void;
+  onInteractionModeChange: (mode: OsceInteractionMode) => void;
   onChoose: (card: OsceCard) => void;
+  onFreeFormDraftChange: (value: string) => void;
+  onFreeFormSubmit: () => void;
+  onFreeFormRetry: () => void;
+  onFreeFormEdit: () => void;
   onEnd: () => void;
   onNudge: () => void;
   onActivity: () => void;
 }) {
   const [menuOpen, setMenuOpen] = useState(false);
   const nextNudge = station.nudges[game.nudgesUsed.length];
+  const busy = pendingCardId !== null || freeFormPending;
   const warning =
     game.remainingSeconds <= 30 ? "final" : game.remainingSeconds <= 120 ? "soon" : null;
 
@@ -87,7 +121,7 @@ export function ConsultationRoom({
         {mode !== "exam" && nextNudge && (
           <button
             type="button"
-            disabled={pendingCardId !== null}
+            disabled={busy}
             onClick={() => {
               onActivity();
               onNudge();
@@ -100,7 +134,7 @@ export function ConsultationRoom({
         )}
         <button
           type="button"
-          disabled={pendingCardId !== null}
+          disabled={busy}
           onClick={onEnd}
           className="rounded-full bg-foreground px-4 py-2.5 text-xs font-black text-background transition-transform active:scale-95 disabled:opacity-50"
         >
@@ -138,7 +172,7 @@ export function ConsultationRoom({
                   <p className="text-[10px] font-black uppercase tracking-[0.16em] text-mint">
                     Patient
                   </p>
-                  {pendingCardId ? (
+                  {busy ? (
                     <div className="flex min-h-20 flex-col items-center justify-center text-center">
                       <span className="flex gap-1.5" aria-label="Patient is answering">
                         {[0, 1, 2].map((index) => (
@@ -150,7 +184,7 @@ export function ConsultationRoom({
                         ))}
                       </span>
                       <span className="mt-3 text-xs font-bold text-muted-foreground">
-                        {station.patient.name} is answering…
+                        {station.patient.name} is listening…
                       </span>
                     </div>
                   ) : (
@@ -185,18 +219,30 @@ export function ConsultationRoom({
             </div>
           </section>
 
+          <ConsultationHistory game={game} />
+
           <div className="hidden lg:block">
-            <QuestionMenu
+            <InteractionPanel
               game={game}
               station={station}
               mode={mode}
+              interactionMode={interactionMode}
               category={category}
-              onCategoryChange={(nextCategory) => {
+              pendingCardId={pendingCardId}
+              busy={busy}
+              freeFormPending={freeFormPending}
+              freeFormDraft={freeFormDraft}
+              freeFormError={freeFormError}
+              onInteractionModeChange={onInteractionModeChange}
+              onCategoryChange={(nextCategory: OsceCategory) => {
                 onActivity();
                 onCategoryChange(nextCategory);
               }}
               onChoose={onChoose}
-              pendingCardId={pendingCardId}
+              onFreeFormDraftChange={onFreeFormDraftChange}
+              onFreeFormSubmit={onFreeFormSubmit}
+              onFreeFormRetry={onFreeFormRetry}
+              onFreeFormEdit={onFreeFormEdit}
             />
           </div>
         </div>
@@ -213,7 +259,8 @@ export function ConsultationRoom({
         className="osce-mobile-launcher clay-button fixed inset-x-3 bottom-[max(0.75rem,env(safe-area-inset-bottom))] z-40 flex items-center justify-between bg-pink px-5 py-3.5 text-primary-foreground shadow-xl lg:hidden"
       >
         <span className="flex items-center gap-2 text-sm font-black">
-          <MessageCircleMore className="size-5" aria-hidden="true" /> Choose what to say or do
+          <MessageCircleMore className="size-5" aria-hidden="true" />
+          {interactionMode === "guided" ? "Choose what to say or do" : "Type what you would say"}
         </span>
         <ChevronUp className="size-5" aria-hidden="true" />
       </button>
@@ -228,17 +275,27 @@ export function ConsultationRoom({
             <SheetDescription>Choose what to say or do next.</SheetDescription>
           </SheetHeader>
           <div className="mx-auto mb-3 h-1.5 w-12 rounded-full bg-muted" />
-          <QuestionMenu
+          <InteractionPanel
             game={game}
             station={station}
             mode={mode}
+            interactionMode={interactionMode}
             category={category}
-            onCategoryChange={(nextCategory) => {
+            pendingCardId={pendingCardId}
+            busy={busy}
+            freeFormPending={freeFormPending}
+            freeFormDraft={freeFormDraft}
+            freeFormError={freeFormError}
+            onInteractionModeChange={onInteractionModeChange}
+            onCategoryChange={(nextCategory: OsceCategory) => {
               onActivity();
               onCategoryChange(nextCategory);
             }}
             onChoose={chooseFromMobile}
-            pendingCardId={pendingCardId}
+            onFreeFormDraftChange={onFreeFormDraftChange}
+            onFreeFormSubmit={onFreeFormSubmit}
+            onFreeFormRetry={onFreeFormRetry}
+            onFreeFormEdit={onFreeFormEdit}
             compact
           />
         </SheetContent>
@@ -248,6 +305,158 @@ export function ConsultationRoom({
         Educational use only, not medical advice
       </p>
     </main>
+  );
+}
+
+function InteractionPanel({
+  game,
+  station,
+  mode,
+  interactionMode,
+  category,
+  pendingCardId,
+  busy,
+  freeFormPending,
+  freeFormDraft,
+  freeFormError,
+  onInteractionModeChange,
+  onCategoryChange,
+  onChoose,
+  onFreeFormDraftChange,
+  onFreeFormSubmit,
+  onFreeFormRetry,
+  onFreeFormEdit,
+  compact = false,
+}: {
+  game: OsceState;
+  station: OsceStation;
+  mode: OsceMode;
+  interactionMode: OsceInteractionMode;
+  category: OsceCategory;
+  pendingCardId: string | null;
+  busy: boolean;
+  freeFormPending: boolean;
+  freeFormDraft: string;
+  freeFormError: string | null;
+  onInteractionModeChange: (mode: OsceInteractionMode) => void;
+  onCategoryChange: (category: OsceCategory) => void;
+  onChoose: (card: OsceCard) => void;
+  onFreeFormDraftChange: (value: string) => void;
+  onFreeFormSubmit: () => void;
+  onFreeFormRetry: () => void;
+  onFreeFormEdit: () => void;
+  compact?: boolean;
+}) {
+  return (
+    <section className={compact ? "" : "space-y-3"} aria-label="Consultation interaction mode">
+      <div
+        className={`flex flex-wrap items-center justify-between gap-3 ${compact ? "mb-3" : "clay-card bg-card p-4"}`}
+      >
+        <p className="flex items-center gap-2 text-xs font-black uppercase tracking-[0.16em] text-pink">
+          <MessageCircleMore className="size-4" aria-hidden="true" /> What will you say or do?
+        </p>
+        <div
+          className="inline-flex rounded-full bg-muted p-1 shadow-inner"
+          role="group"
+          aria-label="Interaction mode"
+        >
+          {(["guided", "free_form"] as const).map((item) => (
+            <button
+              key={item}
+              type="button"
+              disabled={busy}
+              aria-pressed={interactionMode === item}
+              onClick={() => onInteractionModeChange(item)}
+              className={`rounded-full px-4 py-2 text-xs font-black transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pink disabled:opacity-50 ${
+                interactionMode === item
+                  ? "bg-foreground text-background shadow-sm"
+                  : "text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              {item === "guided" ? "Guided" : "Free-form"}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {interactionMode === "guided" ? (
+        <QuestionMenu
+          game={game}
+          station={station}
+          mode={mode}
+          category={category}
+          onCategoryChange={onCategoryChange}
+          onChoose={onChoose}
+          pendingCardId={pendingCardId}
+          compact={compact}
+          showHeading={false}
+        />
+      ) : (
+        <FreeFormPanel
+          value={freeFormDraft}
+          pending={freeFormPending}
+          error={freeFormError}
+          onChange={onFreeFormDraftChange}
+          onSubmit={onFreeFormSubmit}
+          onRetry={onFreeFormRetry}
+          onEdit={onFreeFormEdit}
+          compact={compact}
+        />
+      )}
+    </section>
+  );
+}
+
+function ConsultationHistory({ game }: { game: OsceState }) {
+  if (!game.interactions.length) return null;
+  return (
+    <details className="group clay-card bg-card p-4">
+      <summary className="flex cursor-pointer list-none items-center justify-between gap-3 rounded-2xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-mint">
+        <span>
+          <span className="block text-xs font-black uppercase tracking-[0.16em] text-mint">
+            Consultation history
+          </span>
+          <span className="mt-0.5 block text-xs font-bold text-muted-foreground">
+            {game.interactions.length} recorded interaction
+            {game.interactions.length === 1 ? "" : "s"}
+          </span>
+        </span>
+        <ChevronDown
+          className="size-5 transition-transform group-open:rotate-180"
+          aria-hidden="true"
+        />
+      </summary>
+      <ol className="mt-4 max-h-80 space-y-3 overflow-y-auto pr-1">
+        {game.interactions.map((interaction) => {
+          if (interaction.source === "nudge") {
+            return (
+              <li key={interaction.id} className="rounded-2xl bg-yellow-soft p-3 text-sm">
+                <p className="text-[10px] font-black uppercase tracking-wider text-amber-800">
+                  Coach nudge
+                </p>
+                <p className="mt-1 font-semibold leading-relaxed">{interaction.text}</p>
+              </li>
+            );
+          }
+          return (
+            <li key={interaction.id} className="space-y-2 rounded-2xl bg-muted/65 p-3 text-sm">
+              <div>
+                <p className="text-[10px] font-black uppercase tracking-wider text-pink">
+                  You · {interaction.inputKind.replace("_", " ")}
+                </p>
+                <p className="mt-1 font-bold leading-relaxed">{interaction.studentText}</p>
+              </div>
+              <div className="border-l-2 border-mint pl-3">
+                <p className="text-[10px] font-black uppercase tracking-wider text-mint">Patient</p>
+                <p className="mt-1 font-semibold leading-relaxed text-muted-foreground">
+                  {interaction.patientResponse}
+                </p>
+              </div>
+            </li>
+          );
+        })}
+      </ol>
+    </details>
   );
 }
 

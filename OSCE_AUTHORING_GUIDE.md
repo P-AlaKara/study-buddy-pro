@@ -27,6 +27,12 @@ task and limits. `examinerNote` should clarify anything the candidate must not d
 contains only presentation data and avatar configuration; all discoverable clinical information
 lives in facts and card replies.
 
+Each clinical fact also declares a category, progressive-disclosure policy, importance, patient
+wording, and (when gated) a minimum rapport band. `clinicalInterpretation` is server-only prompt
+context: record the intended diagnosis, defensible differentials, safety priorities, unsupported
+actions and the exact safe response for unavailable information. Never put invented observations,
+test results, examination findings or medication doses in that fallback.
+
 Each card defines:
 
 - `category` and natural student-facing `label`;

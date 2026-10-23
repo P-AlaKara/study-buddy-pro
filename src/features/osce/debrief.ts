@@ -1,6 +1,7 @@
 import type {
   ChecklistDomain,
   ExaminerAnswer,
+  FreeFormConsultationInteraction,
   OsceState,
   OsceTimelineEvent,
   RapportPoint,
@@ -73,6 +74,12 @@ export interface ModelRunReview extends ModelRunStep {
   chosenAtAction: number | null;
 }
 
+export interface OsceAiNarrativeFeedback {
+  ratingReason: string;
+  domainComments: Record<ChecklistDomain, string>;
+  coachingLines: string[];
+}
+
 export interface OsceDebrief {
   checklistDomains: ChecklistDomainReview[];
   timeline: TimelineReview[];
@@ -83,6 +90,7 @@ export interface OsceDebrief {
   coachingLines: string[];
   examinerQuestions: ExaminerQuestionReview[];
   modelRun: ModelRunReview[];
+  aiNarrative: OsceAiNarrativeFeedback | null;
 }
 
 function checklistReview(state: OsceState, item: OsceChecklistItem): ChecklistReviewItem {
@@ -116,7 +124,11 @@ function coachingLines(items: ChecklistReviewItem[]): string[] {
     .slice(0, 3);
 }
 
-export function createOsceDebrief(state: OsceState, station: OsceStation): OsceDebrief {
+export function createOsceDebrief(
+  state: OsceState,
+  station: OsceStation,
+  aiNarrative: OsceAiNarrativeFeedback | null = null,
+): OsceDebrief {
   if (!state.finalResult) throw new Error("The OSCE debrief is only available after scoring.");
 
   const allChecklistItems = station.checklist.map((item) => checklistReview(state, item));
@@ -151,9 +163,19 @@ export function createOsceDebrief(state: OsceState, station: OsceStation): OsceD
             entry.cardId === event.cardId && entry.completedAtSecond === event.elapsedSecond,
         )
       : undefined;
+    const freeFormInteraction = state.interactions.find(
+      (entry): entry is FreeFormConsultationInteraction =>
+        entry.source === "free_form" &&
+        entry.elapsedSecond === event.elapsedSecond &&
+        entry.studentText === event.title,
+    );
     return {
       ...event,
-      wastedSeconds: action?.wasPoorTechnique ? action.timeCostSec : 0,
+      wastedSeconds: action?.wasPoorTechnique
+        ? action.timeCostSec
+        : freeFormInteraction?.interactionRating === "bad"
+          ? freeFormInteraction.timeCostSec
+          : 0,
     };
   });
 
@@ -181,11 +203,16 @@ export function createOsceDebrief(state: OsceState, station: OsceStation): OsceD
     rapportHistory: state.rapportHistory,
     coachingLines: coachingLines(allChecklistItems),
     examinerQuestions,
+    aiNarrative,
     modelRun: station.modelRun.map((step) => ({
       ...step,
       label: station.cards.find((card) => card.id === step.cardId)?.label ?? step.cardId,
       chosenAtAction:
         state.completedActions.find((action) => action.cardId === step.cardId)?.actionNumber ??
+        state.interactions.find(
+          (interaction) =>
+            interaction.source === "free_form" && interaction.matchedCardIds.includes(step.cardId),
+        )?.actionNumber ??
         null,
     })),
   };

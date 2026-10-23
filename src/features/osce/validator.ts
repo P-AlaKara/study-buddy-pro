@@ -66,6 +66,37 @@ export function validateOsceStation(station: OsceStation): OsceValidationIssue[]
     issues.push({ path: "checklist", message: `Duplicate checklist ID: ${id}.` });
   }
 
+  for (const [factId, fact] of Object.entries(station.facts)) {
+    if (!fact.value.trim()) {
+      issues.push({ path: `facts.${factId}`, message: "Clinical fact text cannot be empty." });
+    }
+    if (fact.disclosure === "rapport_gated" && !fact.minimumRapportBand) {
+      issues.push({
+        path: `facts.${factId}.minimumRapportBand`,
+        message: "A rapport-gated fact must declare its minimum rapport band.",
+      });
+    }
+    if (fact.disclosure !== "rapport_gated" && fact.minimumRapportBand) {
+      issues.push({
+        path: `facts.${factId}.minimumRapportBand`,
+        message: "Only rapport-gated facts may declare a minimum rapport band.",
+      });
+    }
+  }
+
+  if (!station.clinicalInterpretation.intendedDiagnosis.trim()) {
+    issues.push({
+      path: "clinicalInterpretation.intendedDiagnosis",
+      message: "The intended clinical interpretation cannot be empty.",
+    });
+  }
+  if (!station.clinicalInterpretation.unknownDetailResponse.trim()) {
+    issues.push({
+      path: "clinicalInterpretation.unknownDetailResponse",
+      message: "A safe response for unavailable details is required.",
+    });
+  }
+
   for (const category of OSCE_CATEGORIES) {
     const count = station.cards.filter((card) => card.category === category).length;
     if (count < 6 || count > 12) {

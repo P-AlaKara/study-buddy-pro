@@ -3,6 +3,15 @@ import type { PatientAvatarConfig } from "../case-challenge/schema.js";
 export const OSCE_MODES = ["learn", "practice", "exam"] as const;
 export type OsceMode = (typeof OSCE_MODES)[number];
 
+export const OSCE_INTERACTION_MODES = ["guided", "free_form"] as const;
+export type OsceInteractionMode = (typeof OSCE_INTERACTION_MODES)[number];
+
+export const OSCE_INPUT_KINDS = ["question", "statement", "clinical_action", "unclear"] as const;
+export type OsceInputKind = (typeof OSCE_INPUT_KINDS)[number];
+
+export const OSCE_INTERACTION_RATINGS = ["good", "neutral", "bad"] as const;
+export type OsceInteractionRating = (typeof OSCE_INTERACTION_RATINGS)[number];
+
 export const OSCE_CATEGORIES = [
   "opening",
   "presenting_complaint",
@@ -53,6 +62,36 @@ export interface OscePatient {
   personality: string;
   openingLine: string;
   initialExpression: PatientExpression;
+}
+
+export type OsceClinicalFactCategory =
+  | "presenting_complaint"
+  | "history_of_presenting_complaint"
+  | "associated_symptom"
+  | "red_flag"
+  | "past_medical_history"
+  | "medication"
+  | "allergy"
+  | "family_history"
+  | "social_history"
+  | "ideas_concerns_expectations"
+  | "examination";
+
+export interface OsceClinicalFact {
+  value: string;
+  category: OsceClinicalFactCategory;
+  disclosure: "may_volunteer" | "ask_only" | "rapport_gated";
+  importance: "routine" | "key" | "red_flag";
+  patientWording?: string;
+  minimumRapportBand?: Exclude<RapportBand, "low">;
+}
+
+export interface OsceClinicalInterpretation {
+  intendedDiagnosis: string;
+  differentials: string[];
+  safetyPriorities: string[];
+  unsupportedActions: string[];
+  unknownDetailResponse: string;
 }
 
 export interface OsceCard {
@@ -177,7 +216,8 @@ export interface OsceStation {
   candidateInstructions: string;
   examinerNote: string;
   patient: OscePatient;
-  facts: Record<string, string>;
+  facts: Record<string, OsceClinicalFact>;
+  clinicalInterpretation: OsceClinicalInterpretation;
   cards: OsceCard[];
   cues: OsceCue[];
   curveball: OsceCurveball;

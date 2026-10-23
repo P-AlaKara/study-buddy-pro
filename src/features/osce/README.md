@@ -8,12 +8,23 @@ and Exam card shuffling can be replayed exactly in the debrief.
 
 1. `createInitialOsceState(station, mode, seed)` creates the 60-second door state.
 2. `advanceReadingCountdown` or `skipReading` updates reading time; `enterRoom` rings the bell.
-3. Render `getAvailableCards`, then pass a chosen ID to `selectOsceCard`.
+3. Render `getAvailableCards`, then pass a chosen ID to `selectOsceCard`, or apply a server-validated
+   AI effect with `applyFreeFormInteraction`.
 4. Call `advanceIdleTime` from a UI timer and `markStudentActive` for non-card interaction.
 5. The final bell or `endConsultation` moves to `examiner_questions`.
 6. `answerExaminerQuestion` moves to `debrief` after the final keyed answer and attaches the result.
 
 All transitions return a new state. The input state is not mutated.
+
+Guided and Free-form are interaction modes within the same state machine; Learn, Practice and Exam
+remain scoring/timing modes. A unified ordered interaction history prevents a semantically matched
+Free-form turn from earning duplicate Guided credit. Free-form dialogue costs
+`clamp(ceil(totalWords / 2.5), 8, 35)` simulated seconds, and the application applies every score,
+rapport delta, cue, critical fail and timing effect after validating model-produced IDs.
+
+Selecting Free-form creates an authenticated, owner-scoped Supabase session. Server mutations use
+optimistic revisions and idempotent request IDs, and persist a pending input before Gemini is called.
+The deterministic result never depends on final AI narrative feedback.
 
 The debrief builder turns the final engine state into checklist-domain, cue, timeline, rapport,
 examiner-question and model-run reviews. The UI also replays every seeded examiner reaction and

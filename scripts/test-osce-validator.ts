@@ -70,6 +70,25 @@ assert(
 
 {
   const station = cloneStation();
+  station.facts.presenting_exertion!.value = "";
+  expectIssue(station, "Clinical fact text cannot be empty");
+}
+
+{
+  const station = cloneStation();
+  station.facts.ice_concerns!.disclosure = "rapport_gated";
+  delete station.facts.ice_concerns!.minimumRapportBand;
+  expectIssue(station, "rapport-gated fact must declare");
+}
+
+{
+  const station = cloneStation();
+  station.clinicalInterpretation.intendedDiagnosis = "";
+  expectIssue(station, "clinical interpretation cannot be empty");
+}
+
+{
+  const station = cloneStation();
   station.cards[0]!.unlockedBy.push("missing_card");
   expectIssue(station, "Unknown unlock ID");
 }

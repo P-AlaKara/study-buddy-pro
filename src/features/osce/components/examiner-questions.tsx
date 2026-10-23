@@ -1,4 +1,4 @@
-import { Check, ClipboardCheck, Send } from "lucide-react";
+import { Check, ClipboardCheck, LoaderCircle, Send } from "lucide-react";
 import { useEffect, useState } from "react";
 import { DrAmbrose } from "@/features/case-challenge/components/dr-ambrose";
 import type { OsceState } from "../engine.js";
@@ -7,10 +7,14 @@ import type { OsceStation } from "../schema.js";
 export function ExaminerQuestions({
   game,
   station,
+  pending = false,
+  error = null,
   onAnswer,
 }: {
   game: OsceState;
   station: OsceStation;
+  pending?: boolean;
+  error?: string | null;
   onAnswer: (questionId: string, selectedOptionIds: string[]) => void;
 }) {
   const question = station.examinerQuestions[game.examinerAnswers.length];
@@ -85,6 +89,7 @@ export function ExaminerQuestions({
                   type="button"
                   role={question.type === "single" ? "radio" : "checkbox"}
                   aria-checked={active}
+                  disabled={pending}
                   onClick={() => toggle(option.id)}
                   className={`flex items-start gap-3 rounded-[20px] border p-4 text-left transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pink ${
                     active
@@ -108,12 +113,25 @@ export function ExaminerQuestions({
 
           <button
             type="button"
-            disabled={!selected.length}
+            disabled={!selected.length || pending}
             onClick={() => onAnswer(question.id, selected)}
             className="clay-button mt-6 inline-flex items-center gap-2 bg-pink px-6 py-3 font-black text-primary-foreground disabled:cursor-not-allowed disabled:opacity-40"
           >
-            Submit answer <Send className="size-4" aria-hidden="true" />
+            {pending ? "Saving answer" : "Submit answer"}
+            {pending ? (
+              <LoaderCircle className="size-4 animate-spin" aria-hidden="true" />
+            ) : (
+              <Send className="size-4" aria-hidden="true" />
+            )}
           </button>
+          {error && (
+            <p
+              className="mt-3 rounded-2xl bg-red-50 p-3 text-sm font-bold text-red-900"
+              role="alert"
+            >
+              {error} Your selection is still here; submit it again to retry.
+            </p>
+          )}
         </section>
       </div>
 

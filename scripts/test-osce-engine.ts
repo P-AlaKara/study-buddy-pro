@@ -3,11 +3,13 @@ import { createOsceDebrief } from "../src/features/osce/debrief.js";
 import {
   advanceIdleTime,
   advanceReadingCountdown,
+  applyFreeFormInteraction,
   answerExaminerQuestion,
   calculateOsceResult,
   createInitialOsceState,
   endConsultation,
   enterRoom,
+  estimateFreeFormTimeCost,
   formatOsceClock,
   getAvailableCards,
   getRapportBand,
@@ -16,6 +18,7 @@ import {
   selectOsceCard,
   skipReading,
   type OsceState,
+  type FreeFormInteractionEffect,
 } from "../src/features/osce/engine.js";
 import { resolveExaminerReaction } from "../src/features/osce/reaction-config.js";
 import {
@@ -41,6 +44,26 @@ function room(mode: OsceMode = "practice", seed = 1234): OsceState {
 
 function available(state: OsceState, cardId: string): boolean {
   return getAvailableCards(state, station).some((card) => card.id === cardId);
+}
+
+function freeFormEffect(
+  overrides: Partial<FreeFormInteractionEffect> = {},
+): FreeFormInteractionEffect {
+  return {
+    interactionId: "freeform:test-1",
+    studentInput: "Could you tell me more about the chest tightness?",
+    patientResponse: "It comes on when I climb stairs and settles when I rest.",
+    inputKind: "question",
+    interactionRating: "good",
+    avatarExpression: "neutral",
+    matchedCardIds: ["pc_open_story"],
+    factsDisclosed: ["presenting_exertion", "presenting_relief"],
+    objectivesSatisfied: ["hx_open_story", "hx_exacerbating_relief"],
+    objectivesPenalised: [],
+    cuePickups: [],
+    curveballResponseCardId: null,
+    ...overrides,
+  };
 }
 
 function answerAllCorrect(state: OsceState): OsceState {
@@ -115,6 +138,89 @@ test("locks follow-ups until prerequisites are completed and removes one-use car
     true,
     "repeatable facilitation remains available",
   );
+});
+
+test("applies validated Free-form evidence to the same consultation state", () => {
+  const initial = room();
+  const state = applyFreeFormInteraction(initial, station, freeFormEffect());
+  assert.equal(initial.interactions.length, 0, "Free-form transitions must not mutate input");
+  assert.equal(state.interactions[0]?.source, "free_form");
+  assert.equal(state.revealedFactIds.includes("presenting_exertion"), true);
+  assert.equal(state.checklistAchievements.hx_open_story?.actionNumber, 1);
+  assert.equal(state.rapport, 54);
+  assert.equal(available(state, "pc_open_story"), false);
+  assert.equal(available(state, "symptom_open_detail"), true);
+  assert.equal(state.cueStates[0]?.cueId, "cue_wife_worried");
+});
+
+test("makes Free-form interaction IDs idempotent and rejects unknown evidence IDs", () => {
+  const first = applyFreeFormInteraction(room(), station, freeFormEffect());
+  const duplicate = applyFreeFormInteraction(first, station, freeFormEffect());
+  assert.equal(duplicate, first);
+  assert.throws(
+    () =>
+      applyFreeFormInteraction(
+        room(),
+        station,
+        freeFormEffect({ interactionId: "freeform:bad", factsDisclosed: ["invented_fact"] }),
+      ),
+    /Unknown fact ID/,
+  );
+});
+
+test("uses deterministic Free-form dialogue timing and rating-driven rapport", () => {
+  assert.equal(estimateFreeFormTimeCost("One", "Two"), 8);
+  assert.equal(estimateFreeFormTimeCost("word ".repeat(100), "reply ".repeat(100)), 35);
+  const state = applyFreeFormInteraction(
+    room(),
+    station,
+    freeFormEffect({
+      interactionId: "freeform:bad",
+      interactionRating: "bad",
+      avatarExpression: "neutral",
+      matchedCardIds: [],
+      factsDisclosed: [],
+      objectivesSatisfied: [],
+      objectivesPenalised: ["comm_empathy"],
+    }),
+  );
+  assert.equal(state.rapport, 42);
+  assert.equal(state.patientExpression, "irritated");
+  assert.equal(state.checklistPenalties[0]?.checklistItemId, "comm_empathy");
+  const restrained = applyFreeFormInteraction(
+    room(),
+    station,
+    freeFormEffect({
+      interactionId: "freeform:restrained-expression",
+      avatarExpression: "relieved",
+    }),
+  );
+  assert.equal(
+    restrained.patientExpression,
+    "neutral",
+    "an immediate positive signal must not override a non-high rapport baseline",
+  );
+});
+
+test("resolves an authored curveball through a semantically matched Free-form response", () => {
+  const pending = room();
+  pending.curveball.status = "pending";
+  pending.curveball.triggeredAtSecond = 10;
+  pending.curveball.triggeredBy = "clock";
+  const state = applyFreeFormInteraction(
+    pending,
+    station,
+    freeFormEffect({
+      interactionId: "freeform:curveball",
+      studentInput: "It could be your heart, so I need the clinical team to assess you today.",
+      patientResponse: "Thank you for being honest with me.",
+      matchedCardIds: ["curve_honest_empathic"],
+      objectivesSatisfied: ["comm_curveball", "comm_empathy", "closing_next_step"],
+      curveballResponseCardId: "curve_honest_empathic",
+    }),
+  );
+  assert.equal(state.curveball.status, "responded");
+  assert.equal(state.curveball.responseCardId, "curve_honest_empathic");
 });
 
 test("keeps a cue card available for three actions and logs a missed cue with rapport loss", () => {

@@ -28,6 +28,7 @@ export function QuestionMenu({
   onChoose,
   pendingCardId,
   compact = false,
+  showHeading = true,
 }: {
   game: OsceState;
   station: OsceStation;
@@ -37,10 +38,16 @@ export function QuestionMenu({
   onChoose: (card: OsceCard) => void;
   pendingCardId: string | null;
   compact?: boolean;
+  showHeading?: boolean;
 }) {
   const availableCards = getAvailableCards(game, station);
   const availableIds = new Set(availableCards.map((card) => card.id));
-  const usedIds = new Set(game.completedActions.map((action) => action.cardId));
+  const usedIds = new Set([
+    ...game.completedActions.map((action) => action.cardId),
+    ...game.interactions.flatMap((interaction) =>
+      interaction.source === "free_form" ? interaction.matchedCardIds : [],
+    ),
+  ]);
   const curveballPending = game.curveball.status === "pending";
   const visibleCategories = curveballPending ? (["communicate"] as const) : OSCE_CATEGORIES;
 
@@ -53,18 +60,20 @@ export function QuestionMenu({
 
   return (
     <section className={compact ? "" : "clay-card bg-card p-4 md:p-5"} aria-label="Question menu">
-      <div className="flex items-center justify-between gap-3">
-        <div>
-          <p className="flex items-center gap-2 text-xs font-black uppercase tracking-[0.16em] text-pink">
-            <MessageCircleMore className="size-4" aria-hidden="true" /> What will you say or do?
-          </p>
-          {curveballPending && (
-            <p className="mt-1 text-sm font-bold text-muted-foreground">
-              The patient is waiting for your answer.
+      {showHeading && (
+        <div className="flex items-center justify-between gap-3">
+          <div>
+            <p className="flex items-center gap-2 text-xs font-black uppercase tracking-[0.16em] text-pink">
+              <MessageCircleMore className="size-4" aria-hidden="true" /> What will you say or do?
             </p>
-          )}
+            {curveballPending && (
+              <p className="mt-1 text-sm font-bold text-muted-foreground">
+                The patient is waiting for your answer.
+              </p>
+            )}
+          </div>
         </div>
-      </div>
+      )}
 
       {!curveballPending && (
         <div

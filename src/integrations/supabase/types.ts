@@ -991,6 +991,184 @@ export type Database = {
           },
         ]
       }
+      osce_ai_interactions: {
+        Row: {
+          avatar_expression: string | null
+          client_request_id: string
+          created_at: string
+          cue_pickups: string[]
+          curveball_response_card_id: string | null
+          elapsed_second: number
+          error_code: string | null
+          evaluation_reason: string | null
+          facts_disclosed: string[]
+          id: string
+          input_kind: string | null
+          interaction_rating: string | null
+          matched_card_ids: string[]
+          objectives_penalised: string[]
+          objectives_satisfied: string[]
+          patient_response: string
+          sequence: number
+          session_id: string
+          source_mode: string
+          status: string
+          student_text: string
+          time_cost_seconds: number
+          updated_at: string
+        }
+        Insert: {
+          avatar_expression?: string | null
+          client_request_id: string
+          created_at?: string
+          cue_pickups?: string[]
+          curveball_response_card_id?: string | null
+          elapsed_second?: number
+          error_code?: string | null
+          evaluation_reason?: string | null
+          facts_disclosed?: string[]
+          id?: string
+          input_kind?: string | null
+          interaction_rating?: string | null
+          matched_card_ids?: string[]
+          objectives_penalised?: string[]
+          objectives_satisfied?: string[]
+          patient_response?: string
+          sequence: number
+          session_id: string
+          source_mode: string
+          status?: string
+          student_text?: string
+          time_cost_seconds?: number
+          updated_at?: string
+        }
+        Update: {
+          avatar_expression?: string | null
+          client_request_id?: string
+          created_at?: string
+          cue_pickups?: string[]
+          curveball_response_card_id?: string | null
+          elapsed_second?: number
+          error_code?: string | null
+          evaluation_reason?: string | null
+          facts_disclosed?: string[]
+          id?: string
+          input_kind?: string | null
+          interaction_rating?: string | null
+          matched_card_ids?: string[]
+          objectives_penalised?: string[]
+          objectives_satisfied?: string[]
+          patient_response?: string
+          sequence?: number
+          session_id?: string
+          source_mode?: string
+          status?: string
+          student_text?: string
+          time_cost_seconds?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "osce_ai_interactions_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "osce_ai_sessions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      osce_ai_sessions: {
+        Row: {
+          ai_feedback: Json | null
+          ai_feedback_status: string
+          ai_used: boolean
+          ended_at: string | null
+          engine_state: Json
+          final_result: Json | null
+          id: string
+          inflight_request_id: string | null
+          llm_call_count: number
+          osce_mode: string
+          revision: number
+          session_seed: number
+          started_at: string
+          station_id: string
+          status: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          ai_feedback?: Json | null
+          ai_feedback_status?: string
+          ai_used?: boolean
+          ended_at?: string | null
+          engine_state: Json
+          final_result?: Json | null
+          id?: string
+          inflight_request_id?: string | null
+          llm_call_count?: number
+          osce_mode: string
+          revision?: number
+          session_seed: number
+          started_at?: string
+          station_id: string
+          status?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          ai_feedback?: Json | null
+          ai_feedback_status?: string
+          ai_used?: boolean
+          ended_at?: string | null
+          engine_state?: Json
+          final_result?: Json | null
+          id?: string
+          inflight_request_id?: string | null
+          llm_call_count?: number
+          osce_mode?: string
+          revision?: number
+          session_seed?: number
+          started_at?: string
+          station_id?: string
+          status?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      osce_ai_usage: {
+        Row: {
+          call_kind: string
+          created_at: string
+          id: number
+          session_id: string
+          user_id: string
+        }
+        Insert: {
+          call_kind: string
+          created_at?: string
+          id?: never
+          session_id: string
+          user_id: string
+        }
+        Update: {
+          call_kind?: string
+          created_at?: string
+          id?: never
+          session_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "osce_ai_usage_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "osce_ai_sessions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       osce_attempts: {
         Row: {
           checklist_results: Json
@@ -1693,7 +1871,37 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      acquire_osce_ai_request: {
+        Args: {
+          p_expected_revision: number
+          p_request_id: string
+          p_session_id: string
+          p_user_id: string
+        }
+        Returns: boolean
+      }
+      commit_osce_ai_state: {
+        Args: {
+          p_ai_used?: boolean
+          p_complete?: boolean
+          p_engine_state: Json
+          p_expected_revision: number
+          p_final_result?: Json
+          p_interaction: Json
+          p_request_id: string
+          p_session_id: string
+          p_user_id: string
+        }
+        Returns: number
+      }
+      reserve_osce_ai_call: {
+        Args: {
+          p_call_kind: string
+          p_session_id: string
+          p_user_id: string
+        }
+        Returns: number
+      }
     }
     Enums: {
       [_ in never]: never

@@ -4,6 +4,8 @@ import {
   type ExaminerQuestion,
   type OsceCard,
   type OsceCategory,
+  type OsceInputKind,
+  type OsceInteractionRating,
   type OsceChecklistItem,
   type OsceMode,
   type OsceStation,
@@ -67,6 +69,61 @@ export interface CompletedOsceAction {
   rapportAfter: number;
   examinerSignal: OsceCard["examinerReaction"];
   wasPoorTechnique: boolean;
+}
+
+export interface GuidedConsultationInteraction {
+  id: string;
+  source: "guided";
+  actionNumber: number;
+  inputKind: "question" | "statement" | "clinical_action";
+  studentText: string;
+  patientResponse: string;
+  cardId: string;
+  elapsedSecond: number;
+}
+
+export interface FreeFormConsultationInteraction {
+  id: string;
+  source: "free_form";
+  actionNumber: number;
+  inputKind: OsceInputKind;
+  studentText: string;
+  patientResponse: string;
+  interactionRating: OsceInteractionRating;
+  avatarExpression: PatientExpression;
+  matchedCardIds: string[];
+  revealedFactIds: string[];
+  satisfiedChecklistItemIds: string[];
+  penalisedChecklistItemIds: string[];
+  cuePickupIds: string[];
+  timeCostSec: number;
+  elapsedSecond: number;
+}
+
+export interface NudgeConsultationInteraction {
+  id: string;
+  source: "nudge";
+  actionNumber: number;
+  text: string;
+  elapsedSecond: number;
+}
+
+export type OsceConsultationInteraction =
+  GuidedConsultationInteraction | FreeFormConsultationInteraction | NudgeConsultationInteraction;
+
+export interface FreeFormInteractionEffect {
+  interactionId: string;
+  studentInput: string;
+  patientResponse: string;
+  inputKind: OsceInputKind;
+  interactionRating: OsceInteractionRating;
+  avatarExpression: PatientExpression;
+  matchedCardIds: string[];
+  factsDisclosed: string[];
+  objectivesSatisfied: string[];
+  objectivesPenalised: string[];
+  cuePickups: string[];
+  curveballResponseCardId: string | null;
 }
 
 export interface ExaminerReactionLog {
@@ -153,7 +210,7 @@ export interface OsceResult {
 }
 
 export interface OsceState {
-  version: 1;
+  version: 2;
   stationId: string;
   mode: OsceMode;
   sessionSeed: number;
@@ -167,6 +224,7 @@ export interface OsceState {
   patientExpression: PatientExpression;
   latestPatientLine: string;
   completedActions: CompletedOsceAction[];
+  interactions: OsceConsultationInteraction[];
   examinerReactions: ExaminerReactionLog[];
   revealedFactIds: string[];
   checklistAchievements: Record<string, ChecklistAchievement>;
@@ -283,7 +341,16 @@ function appendTimeline(state: OsceState, event: Omit<OsceTimelineEvent, "id">):
 }
 
 function completedCardIds(state: OsceState): Set<string> {
-  return new Set(state.completedActions.map((action) => action.cardId));
+  return new Set([
+    ...state.completedActions.map((action) => action.cardId),
+    ...state.interactions.flatMap((interaction) =>
+      interaction.source === "free_form" ? interaction.matchedCardIds : [],
+    ),
+  ]);
+}
+
+function studentInteractionCount(state: OsceState): number {
+  return state.interactions.filter((interaction) => interaction.source !== "nudge").length;
 }
 
 function rapportBandRank(band: RapportBand): number {
@@ -315,7 +382,7 @@ export function createInitialOsceState(
   }
 
   return {
-    version: 1,
+    version: 2,
     stationId: station.id,
     mode,
     sessionSeed,
@@ -329,6 +396,7 @@ export function createInitialOsceState(
     patientExpression: station.patient.initialExpression,
     latestPatientLine: "",
     completedActions: [],
+    interactions: [],
     examinerReactions: [],
     revealedFactIds: [],
     checklistAchievements: {},
@@ -577,7 +645,7 @@ function addRapportPoint(
   if (state.rapport === before) return;
   state.rapportHistory.push({
     elapsedSecond: elapsedSecond(state, station),
-    actionNumber: state.completedActions.length,
+    actionNumber: studentInteractionCount(state),
     value: state.rapport,
     delta: state.rapport - before,
     reason,
@@ -586,7 +654,7 @@ function addRapportPoint(
 }
 
 function progressCueWindows(state: OsceState, station: OsceStation, card: OsceCard): void {
-  const actionNumber = state.completedActions.length;
+  const actionNumber = studentInteractionCount(state);
   for (const cueState of state.cueStates) {
     if (cueState.status !== "active") continue;
     const cue = station.cues.find((entry) => entry.id === cueState.cueId);
@@ -640,7 +708,7 @@ function triggerAuthoredCue(state: OsceState, station: OsceStation, card: OsceCa
   state.cueStates.push({
     cueId: cue.id,
     status: "active",
-    triggeredAtAction: state.completedActions.length,
+    triggeredAtAction: studentInteractionCount(state),
     triggeredAtSecond: elapsedSecond(state, station),
     actionsRemaining: cue.windowActions,
     resolvedAtAction: null,
@@ -668,6 +736,263 @@ function determineExpression(state: OsceState, card: OsceCard): PatientExpressio
   return state.rapport > 65 ? "relieved" : "neutral";
 }
 
+export function estimateFreeFormTimeCost(studentInput: string, patientResponse: string): number {
+  const words = `${studentInput} ${patientResponse}`.trim().split(/\s+/).filter(Boolean).length;
+  return clamp(Math.ceil(words / 2.5), 8, 35);
+}
+
+function validateEffectIds(
+  values: readonly string[],
+  allowed: ReadonlySet<string>,
+  field: string,
+): string[] {
+  const unique = [...new Set(values)];
+  const unknown = unique.find((value) => !allowed.has(value));
+  if (unknown) throw new OsceEngineError(`Unknown ${field} ID: ${unknown}.`);
+  return unique;
+}
+
+function progressFreeFormCueWindows(
+  state: OsceState,
+  station: OsceStation,
+  pickedCueIds: ReadonlySet<string>,
+): void {
+  const actionNumber = studentInteractionCount(state);
+  for (const cueState of state.cueStates) {
+    if (cueState.status !== "active") continue;
+    const cue = station.cues.find((entry) => entry.id === cueState.cueId);
+    if (!cue) continue;
+    if (pickedCueIds.has(cue.id)) {
+      cueState.status = "picked";
+      cueState.resolvedAtAction = actionNumber;
+      cueState.resolvedAtSecond = elapsedSecond(state, station);
+      appendTimeline(state, {
+        elapsedSecond: elapsedSecond(state, station),
+        type: "cue_picked",
+        title: "Patient cue picked up",
+        detail: cue.patientLine,
+        cueId: cue.id,
+      });
+      continue;
+    }
+    cueState.actionsRemaining -= 1;
+    if (cueState.actionsRemaining > 0) continue;
+    cueState.status = "missed";
+    cueState.resolvedAtAction = actionNumber;
+    cueState.resolvedAtSecond = elapsedSecond(state, station);
+    state.rapport = clamp(state.rapport - cue.missedRapportPenalty, 0, 100);
+    appendTimeline(state, {
+      elapsedSecond: elapsedSecond(state, station),
+      type: "cue_missed",
+      title: "Patient cue missed",
+      detail: cue.patientLine,
+      cueId: cue.id,
+    });
+  }
+}
+
+function freeFormExpression(
+  rating: OsceInteractionRating,
+  suggested: PatientExpression,
+  rapport: number,
+): PatientExpression {
+  if (rating === "bad" && (suggested === "relieved" || suggested === "neutral")) {
+    return "irritated";
+  }
+  if (rating === "good" && suggested === "irritated") return rapport < 35 ? "guarded" : "neutral";
+  if (rapport < 35 && (suggested === "relieved" || suggested === "neutral")) return "guarded";
+  if (rapport <= 65 && suggested === "relieved") return "neutral";
+  return suggested;
+}
+
+export function applyFreeFormInteraction(
+  state: OsceState,
+  station: OsceStation,
+  effect: FreeFormInteractionEffect,
+): OsceState {
+  assertState(state, station);
+  assertRoomActive(state);
+  if (state.interactions.some((interaction) => interaction.id === effect.interactionId)) {
+    return state;
+  }
+  const studentInput = effect.studentInput.trim();
+  const patientResponse = effect.patientResponse.trim();
+  if (!studentInput || studentInput.length > 1200) {
+    throw new OsceEngineError("Free-form input must contain 1-1200 characters.");
+  }
+  if (!patientResponse) throw new OsceEngineError("The patient response cannot be empty.");
+
+  const cardIds = new Set(station.cards.map((card) => card.id));
+  const factIds = new Set(Object.keys(station.facts));
+  const checklistIds = new Set(station.checklist.map((item) => item.id));
+  const cueIds = new Set(station.cues.map((cue) => cue.id));
+  const matchedCardIds = validateEffectIds(effect.matchedCardIds, cardIds, "card");
+  const factsDisclosed = validateEffectIds(effect.factsDisclosed, factIds, "fact");
+  const objectivesSatisfied = validateEffectIds(
+    effect.objectivesSatisfied,
+    checklistIds,
+    "checklist",
+  );
+  const objectivesPenalised = validateEffectIds(
+    effect.objectivesPenalised,
+    checklistIds,
+    "checklist",
+  );
+  const cuePickups = validateEffectIds(effect.cuePickups, cueIds, "cue");
+  if (
+    effect.curveballResponseCardId !== null &&
+    !station.curveball.responseCardIds.includes(effect.curveballResponseCardId)
+  ) {
+    throw new OsceEngineError("Unknown curveball response card ID.");
+  }
+
+  const next = cloneState(state);
+  const actionNumber = studentInteractionCount(next) + 1;
+  const startedAtSecond = elapsedSecond(next, station);
+  const previousRemaining = next.remainingSeconds;
+  const timeCostSec = estimateFreeFormTimeCost(studentInput, patientResponse);
+  next.remainingSeconds = Math.max(0, next.remainingSeconds - timeCostSec);
+  const completedAtSecond = elapsedSecond(next, station);
+  const rapportBefore = next.rapport;
+  const rapportDelta =
+    effect.interactionRating === "good" ? 4 : effect.interactionRating === "bad" ? -8 : 0;
+  next.rapport = clamp(next.rapport + rapportDelta, 0, 100);
+  next.revealedFactIds = [...new Set([...next.revealedFactIds, ...factsDisclosed])];
+
+  const evidenceId = `freeform:${effect.interactionId}`;
+  for (const checklistItemId of objectivesSatisfied) {
+    if (!next.checklistAchievements[checklistItemId]) {
+      next.checklistAchievements[checklistItemId] = {
+        checklistItemId,
+        cardId: evidenceId,
+        actionNumber,
+        elapsedSecond: completedAtSecond,
+      };
+    }
+  }
+  for (const checklistItemId of objectivesPenalised) {
+    next.checklistPenalties.push({
+      checklistItemId,
+      cardId: evidenceId,
+      actionNumber,
+      elapsedSecond: completedAtSecond,
+    });
+  }
+
+  next.interactions.push({
+    id: effect.interactionId,
+    source: "free_form",
+    actionNumber,
+    inputKind: effect.inputKind,
+    studentText: studentInput,
+    patientResponse,
+    interactionRating: effect.interactionRating,
+    avatarExpression: effect.avatarExpression,
+    matchedCardIds,
+    revealedFactIds: factsDisclosed,
+    satisfiedChecklistItemIds: objectivesSatisfied,
+    penalisedChecklistItemIds: objectivesPenalised,
+    cuePickupIds: cuePickups,
+    timeCostSec,
+    elapsedSecond: completedAtSecond,
+  });
+  next.latestPatientLine = patientResponse;
+  next.idleRealSeconds = 0;
+
+  appendTimeline(next, {
+    elapsedSecond: completedAtSecond,
+    type: "action",
+    title: studentInput,
+    detail: patientResponse,
+    checklistItemIds: objectivesSatisfied,
+  });
+
+  progressFreeFormCueWindows(next, station, new Set(cuePickups));
+  const triggeredCueLines: string[] = [];
+  for (const cardId of matchedCardIds) {
+    const card = station.cards.find((entry) => entry.id === cardId);
+    if (!card) continue;
+    const cueLine = triggerAuthoredCue(next, station, card);
+    if (cueLine && !patientResponse.includes(cueLine)) triggeredCueLines.push(cueLine);
+  }
+  if (triggeredCueLines.length) {
+    next.latestPatientLine = [patientResponse, ...triggeredCueLines].join("\n\n");
+  }
+
+  const curveballResponseId = effect.curveballResponseCardId;
+  if (
+    state.curveball.status === "pending" &&
+    curveballResponseId &&
+    station.curveball.responseCardIds.includes(curveballResponseId)
+  ) {
+    next.curveball.status = "responded";
+    next.curveball.responseCardId = curveballResponseId;
+  } else if (
+    matchedCardIds.some((id) => station.cards.find((card) => card.id === id)?.triggersCurveball)
+  ) {
+    activateCurveball(next, station, "card");
+  }
+
+  for (const failure of station.criticalFails) {
+    if (
+      failure.trigger === "action" &&
+      matchedCardIds.some((cardId) => failure.triggeredBy.includes(cardId))
+    ) {
+      addCriticalFail(next, station, failure.id);
+    }
+  }
+
+  const representativeCard = matchedCardIds[0] ?? evidenceId;
+  const reaction = resolveExaminerReaction({
+    sessionSeed: next.sessionSeed,
+    actionNumber,
+    mode: next.mode,
+    cardStyle:
+      effect.interactionRating === "good"
+        ? "empathic"
+        : effect.interactionRating === "bad"
+          ? "dismissive"
+          : "closed",
+    authoredSignal:
+      effect.interactionRating === "good"
+        ? "impressed"
+        : effect.interactionRating === "bad"
+          ? "slight_frown"
+          : "none",
+    satisfiedCount: objectivesSatisfied.length,
+    penalisedCount: objectivesPenalised.length,
+    remainingPercent: (next.remainingSeconds / station.clockSeconds) * 100,
+    recentProgress: objectivesSatisfied.length > 0,
+    missedCue: next.cueStates.some(
+      (cue) => cue.status === "missed" && cue.resolvedAtAction === actionNumber,
+    ),
+    triggeredCriticalFail: next.criticalFailIds.length > state.criticalFailIds.length,
+    coachingLine: null,
+  });
+  next.examinerReactions.push({
+    id: `osce_reaction_${actionNumber}`,
+    actionId: effect.interactionId,
+    actionNumber,
+    cardId: representativeCard,
+    expression: reaction.expression,
+    cause: reaction.cause,
+    causeLabel: reaction.causeLabel,
+    isNoise: reaction.isNoise,
+    delayMs: reaction.delayMs,
+    triggeredAtSecond: completedAtSecond,
+    coachLine: reaction.coachLine,
+  });
+
+  addRapportPoint(next, station, rapportBefore, studentInput, evidenceId);
+  next.patientExpression = freeFormExpression(
+    effect.interactionRating,
+    effect.avatarExpression,
+    next.rapport,
+  );
+  processClockTransitions(next, station, previousRemaining);
+  return next;
+}
+
 export function selectOsceCard(state: OsceState, station: OsceStation, cardId: string): OsceState {
   assertState(state, station);
   assertRoomActive(state);
@@ -678,7 +1003,7 @@ export function selectOsceCard(state: OsceState, station: OsceStation, cardId: s
   }
 
   const next = cloneState(state);
-  const actionNumber = next.completedActions.length + 1;
+  const actionNumber = studentInteractionCount(next) + 1;
   const missedCueCountBefore = next.cueStates.filter((cue) => cue.status === "missed").length;
   const criticalFailCountBefore = next.criticalFailIds.length;
   const startedAtSecond = elapsedSecond(next, station);
@@ -738,6 +1063,21 @@ export function selectOsceCard(state: OsceState, station: OsceStation, cardId: s
     wasPoorTechnique: poorStyles.has(card.style),
   };
   next.completedActions.push(completedAction);
+  next.interactions.push({
+    id: `guided:${card.id}:${actionNumber}`,
+    source: "guided",
+    actionNumber,
+    inputKind:
+      card.id === "opening_hand_hygiene"
+        ? "clinical_action"
+        : card.label.trim().endsWith("?")
+          ? "question"
+          : "statement",
+    studentText: card.label,
+    patientResponse: reply,
+    cardId: card.id,
+    elapsedSecond: completedAtSecond,
+  });
   next.latestPatientLine = reply;
   next.idleRealSeconds = 0;
 
@@ -864,6 +1204,29 @@ export function advanceIdleTime(
   return next;
 }
 
+export function synchronizeElapsedSecond(
+  state: OsceState,
+  station: OsceStation,
+  targetElapsedSecond: number,
+): OsceState {
+  assertState(state, station);
+  if (!Number.isFinite(targetElapsedSecond)) {
+    throw new OsceEngineError("Elapsed station time must be a finite number.");
+  }
+  if (state.phase !== "room" || state.status !== "active") return state;
+  const targetRemaining = clamp(
+    station.clockSeconds - Math.floor(targetElapsedSecond),
+    0,
+    state.remainingSeconds,
+  );
+  if (targetRemaining === state.remainingSeconds) return state;
+  const next = cloneState(state);
+  const previousRemaining = next.remainingSeconds;
+  next.remainingSeconds = targetRemaining;
+  processClockTransitions(next, station, previousRemaining);
+  return next;
+}
+
 export function endConsultation(state: OsceState, station: OsceStation): OsceState {
   assertState(state, station);
   assertRoomActive(state);
@@ -886,12 +1249,36 @@ export function requestNudge(state: OsceState, station: OsceStation): OsceState 
     text: nudge.text,
     elapsedSecond: elapsedSecond(next, station),
   });
+  next.interactions.push({
+    id: `nudge:${nudge.tier}:${next.nudgesUsed.length}`,
+    source: "nudge",
+    actionNumber: studentInteractionCount(next),
+    text: nudge.text,
+    elapsedSecond: elapsedSecond(next, station),
+  });
   appendTimeline(next, {
     elapsedSecond: elapsedSecond(next, station),
     type: "nudge",
     title: `Nudge ${nudge.tier}`,
     detail: nudge.text,
   });
+  return next;
+}
+
+export function requestContextualNudge(
+  state: OsceState,
+  station: OsceStation,
+  text: string,
+): OsceState {
+  const trimmed = text.trim();
+  if (!trimmed) return requestNudge(state, station);
+  const next = requestNudge(state, station);
+  const nudge = next.nudgesUsed.at(-1);
+  const interaction = next.interactions.at(-1);
+  const timeline = next.timeline.at(-1);
+  if (nudge) nudge.text = trimmed;
+  if (interaction?.source === "nudge") interaction.text = trimmed;
+  if (timeline?.type === "nudge") timeline.detail = trimmed;
   return next;
 }
 
@@ -966,7 +1353,14 @@ export function calculateOsceResult(state: OsceState, station: OsceStation): Osc
   const wastedSeconds = state.completedActions
     .filter((action) => action.wasPoorTechnique)
     .reduce((sum, action) => sum + action.timeCostSec, 0);
-  const efficiency = clamp(100 - (wastedSeconds / station.clockSeconds) * 200, 0, 100);
+  const freeFormWastedSeconds = state.interactions
+    .filter(
+      (interaction): interaction is FreeFormConsultationInteraction =>
+        interaction.source === "free_form" && interaction.interactionRating === "bad",
+    )
+    .reduce((sum, interaction) => sum + interaction.timeCostSec, 0);
+  const totalWastedSeconds = wastedSeconds + freeFormWastedSeconds;
+  const efficiency = clamp(100 - (totalWastedSeconds / station.clockSeconds) * 200, 0, 100);
   const timeManagement = Math.round(keyCompletion * 0.7 + efficiency * 0.3);
 
   const examinerQuestions = station.examinerQuestions.length
@@ -1031,7 +1425,7 @@ export function calculateOsceResult(state: OsceState, station: OsceStation): Osc
       composite,
       checklistEarnedWeight,
       checklistTotalWeight,
-      wastedSeconds,
+      wastedSeconds: totalWastedSeconds,
       domainScores,
     },
   };

@@ -1110,6 +1110,22 @@
 .osce-patient-bubble {
   border: 1px solid rgb(255 255 255 / 0.85);
 }
+.osce-room .patient-avatar,
+.osce-room .patient-avatar svg,
+.osce-room .patient-avatar svg :is(path, ellipse, circle, g) {
+  transition:
+    transform 220ms ease,
+    opacity 220ms ease,
+    fill 220ms ease,
+    stroke 220ms ease;
+}
+.osce-room .patient-avatar[data-expression="relieved"] {
+  transform: translateY(-1px);
+}
+.osce-room .patient-avatar[data-expression="guarded"],
+.osce-room .patient-avatar[data-expression="irritated"] {
+  transform: translateY(1px) scale(0.995);
+}
 .osce-examiner-bubble {
   position: relative;
 }
