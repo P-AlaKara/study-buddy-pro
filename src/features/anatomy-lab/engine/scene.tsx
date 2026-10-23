@@ -104,43 +104,8 @@ export default function AnatomyScene({ atlas, state, onSelect, onProgress, onErr
     const fill = new T.DirectionalLight(0xf3f0ff, 0.6);
     fill.position.set(0, 1.2, 4);
     scene.add(fill);
-    const ground = new T.Mesh(
-      new T.CircleGeometry(30, 96),
-      new T.MeshStandardMaterial({ color: 0x3c3f45, roughness: 1 }),
-    );
-    ground.rotation.x = -Math.PI / 2;
-    ground.position.y = -0.019;
-    scene.add(ground);
-    const platform = new T.Mesh(
-      new T.CylinderGeometry(0.68, 0.7, 0.028, 100),
-      new T.MeshStandardMaterial({ color: 0x4b4f57, metalness: 0.1, roughness: 0.7 }),
-    );
-    platform.position.y = -0.016;
-    scene.add(platform);
-    const ring = new T.Mesh(
-      new T.RingGeometry(0.63, 0.632, 128),
-      new T.MeshBasicMaterial({
-        color: 0x9aa4af,
-        transparent: true,
-        opacity: 0.34,
-        side: T.DoubleSide,
-      }),
-    );
-    ring.rotation.x = -Math.PI / 2;
-    ring.position.y = 0.001;
-    scene.add(ring);
-    const innerRing = new T.Mesh(
-      new T.RingGeometry(0.55, 0.551, 128),
-      new T.MeshBasicMaterial({
-        color: 0x8d97a2,
-        transparent: true,
-        opacity: 0.13,
-        side: T.DoubleSide,
-      }),
-    );
-    innerRing.rotation.x = -Math.PI / 2;
-    innerRing.position.y = 0.001;
-    scene.add(innerRing);
+    // No ground plane or platform: the model floats on the gradient backdrop so the underside
+    // of every structure stays visible from any orbit angle.
     const width = T.MathUtils.ceilPowerOfTwo(atlas.parts.length),
       data = new Float32Array(width * 4),
       partTexture = new T.DataTexture(data, width, 1, T.RGBAFormat, T.FloatType);
@@ -561,14 +526,26 @@ export default function AnatomyScene({ atlas, state, onSelect, onProgress, onErr
       }
       if (moving && !s.isolate)
         fit(amount > 0.5 ? "front" : s.view, Math.max(0, (amount - 0.3) / 0.7));
-      const isolateKey = s.isolate
-        ? s.isolateSet.join(",") + ":" + s.reset + ":" + s.inspectorOpen + ":" + camera.aspect
+      // Focus = isolation, OR a plain selection while assembled. Both frame the camera so the
+      // chosen structure appears centred and enlarged, instead of sitting small at its
+      // anatomical position. Only isolation additionally hides the surrounding anatomy.
+      const focusing = s.isolate || (s.selected.length > 0 && amount < 0.05);
+      const focusIds = s.isolate ? s.isolateSet : s.selected;
+      const focusKey = focusing
+        ? (s.isolate ? "i:" : "s:") +
+          focusIds.join(",") +
+          ":" +
+          s.reset +
+          ":" +
+          s.inspectorOpen +
+          ":" +
+          camera.aspect
         : "";
-      if (isolateKey !== lastIsolate || (s.isolate && moving)) {
-        if (s.isolate) {
+      if (focusKey !== lastIsolate || (s.isolate && moving)) {
+        if (focusing) {
           const box = new T.Box3();
           atlas.parts.forEach((p, i) => {
-            if (s.isolateSet.includes(p.id))
+            if (focusIds.includes(p.id))
               box.union(
                 bounds[i]!.clone().translate(
                   new T.Vector3(data[i * 4], data[i * 4 + 1], data[i * 4 + 2]),
@@ -633,16 +610,11 @@ export default function AnatomyScene({ atlas, state, onSelect, onProgress, onErr
           camera.clearViewOffset();
           fit(s.view, amount);
         }
-        lastIsolate = isolateKey;
+        lastIsolate = focusKey;
       }
       controls.enableRotate = amount < 0.8;
       controls.mouseButtons.LEFT = amount < 0.8 ? T.MOUSE.ROTATE : T.MOUSE.PAN;
       controls.touches.ONE = amount < 0.8 ? T.TOUCH.ROTATE : T.TOUCH.PAN;
-      ground.visible =
-        platform.visible =
-        ring.visible =
-        innerRing.visible =
-          amount < 0.5 && !s.isolate;
       markers.visible = amount > 0.75;
       controls.autoRotate = s.rotate && !s.isolate && amount < 0.4;
       controls.autoRotateSpeed = 0.65;

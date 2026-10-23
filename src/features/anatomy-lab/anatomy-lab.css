@@ -174,6 +174,8 @@
   flex-direction: column;
   padding: 16px 14px 0;
   max-height: min(760px, calc(100dvh - 180px));
+  /* Clip children to the rounded card so no row or toggle bleeds past its edge. */
+  overflow: hidden;
 }
 .anatomy-lab .al-panel-head {
   display: flex;
@@ -235,7 +237,7 @@
 }
 .anatomy-lab .al-results {
   margin-top: 8px;
-  max-height: 196px;
+  max-height: 168px;
   overflow-y: auto;
   overscroll-behavior: contain;
   scrollbar-width: thin;
@@ -315,10 +317,10 @@
    instead of collapsing to a clipped sliver. */
 .anatomy-lab .al-systems {
   flex: 1 1 auto;
-  min-height: 132px;
+  min-height: 96px;
   overflow-y: auto;
   overscroll-behavior: contain;
-  padding: 4px 0;
+  padding: 4px 2px 8px 0;
   scrollbar-width: thin;
 }
 .anatomy-lab .al-system {
