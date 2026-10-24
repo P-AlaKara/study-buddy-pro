@@ -215,18 +215,20 @@ export default function AnatomyScene({ atlas, state, onSelect, onProgress, onErr
           "#include <clipping_planes_fragment>",
           "#include <clipping_planes_fragment>\nif (partVisible < 0.5) discard;",
         );
-        // Every structure keeps its anatomical colour in all views (full-body, system,
-        // isolated and exploded). A small per-part lightness shift separates neighbouring
-        // pieces of the same system so a multi-part organ never reads as one flat blob.
-        // Selection adds only a light-blue sheen plus a soft glow, so the underlying
-        // anatomical colour still reads through — isolating no longer turns things blue.
+        // Every structure keeps its full anatomical colour in all views (full-body, system,
+        // isolated and exploded) and in both selected and unselected states — the fill is
+        // never repainted. A small per-part lightness shift separates neighbouring pieces of
+        // the same system so a multi-part organ never reads as one flat blob.
         shader.fragmentShader = shader.fragmentShader.replace(
           "#include <color_fragment>",
-          "#include <color_fragment>\ndiffuseColor.rgb *= mix(0.84, 1.08, partShade);\ndiffuseColor.rgb = mix(diffuseColor.rgb, vec3(0.44, 0.78, 0.95), partSelected * 0.30);",
+          "#include <color_fragment>\ndiffuseColor.rgb *= mix(0.84, 1.08, partShade);",
         );
+        // Selection highlight = a light-blue edge rim only (a fresnel glow on the silhouette),
+        // so arteries stay red, veins blue, bone ivory, etc. while still clearly reading as
+        // selected. Nothing tints the surface, so isolating never turns a structure blue.
         shader.fragmentShader = shader.fragmentShader.replace(
           "#include <emissivemap_fragment>",
-          "#include <emissivemap_fragment>\ntotalEmissiveRadiance += vec3(0.08, 0.26, 0.40) * partSelected;",
+          "#include <emissivemap_fragment>\nfloat selRim = pow(1.0 - abs(dot(normalize(normal), normalize(vViewPosition))), 2.2);\ntotalEmissiveRadiance += vec3(0.32, 0.64, 1.0) * selRim * partSelected * 1.1;",
         );
       };
       materials.push(m);
@@ -442,6 +444,11 @@ export default function AnatomyScene({ atlas, state, onSelect, onProgress, onErr
         amount = T.MathUtils.damp(amount, s.explode, 8, dt);
         dirty = true;
       }
+      // Focus = isolation, OR a plain selection. A focused structure keeps the camera on it in
+      // EVERY state — including while disassembling — so it never snaps back to the small,
+      // full-body framing. The generic/explode fits below are skipped whenever we're focused.
+      const focusing = s.isolate || s.selected.length > 0;
+      const focusIds = s.isolate ? s.isolateSet : s.selected;
       if (changed || moving || lastExtent < 0) {
         const visible = new Set(s.visible),
           selection = new Set(s.selected),
@@ -453,7 +460,7 @@ export default function AnatomyScene({ atlas, state, onSelect, onProgress, onErr
           s.isolate ? isolateSet.has(p.id) : visible.has(p.system) || selection.has(p.id),
         );
         const nowHasVisible = visibleParts.length > 0;
-        if (nowHasVisible && !hadVisible && !s.isolate) fit(s.view, amount);
+        if (nowHasVisible && !hadVisible && !focusing) fit(s.view, amount);
         hadVisible = nowHasVisible;
         const nextLayoutKey =
           visibleParts.map((p) => p.id).join(",") + ":" + camera.aspect.toFixed(3);
@@ -466,7 +473,7 @@ export default function AnatomyScene({ atlas, state, onSelect, onProgress, onErr
             offsets[i] = cell ? new T.Vector3(cell.x, cell.y + 0.85, 0) : centers[i]!.clone();
           });
           layoutKey = nextLayoutKey;
-          if (amount > 0.05 && !s.isolate) fit(s.view, Math.max(0, (amount - 0.3) / 0.7));
+          if (amount > 0.05 && !focusing) fit(s.view, Math.max(0, (amount - 0.3) / 0.7));
         }
 
         atlas.parts.forEach((p, i) => {
@@ -524,13 +531,10 @@ export default function AnatomyScene({ atlas, state, onSelect, onProgress, onErr
         lastView = s.view;
         lastReset = s.reset;
       }
-      if (moving && !s.isolate)
+      if (moving && !focusing)
         fit(amount > 0.5 ? "front" : s.view, Math.max(0, (amount - 0.3) / 0.7));
-      // Focus = isolation, OR a plain selection while assembled. Both frame the camera so the
-      // chosen structure appears centred and enlarged, instead of sitting small at its
-      // anatomical position. Only isolation additionally hides the surrounding anatomy.
-      const focusing = s.isolate || (s.selected.length > 0 && amount < 0.05);
-      const focusIds = s.isolate ? s.isolateSet : s.selected;
+      // While focused, re-frame on the focus box every frame it moves (explode included) so the
+      // structure stays centred and fills the view — the box already follows exploded offsets.
       const focusKey = focusing
         ? (s.isolate ? "i:" : "s:") +
           focusIds.join(",") +
@@ -541,7 +545,7 @@ export default function AnatomyScene({ atlas, state, onSelect, onProgress, onErr
           ":" +
           camera.aspect
         : "";
-      if (focusKey !== lastIsolate || (s.isolate && moving)) {
+      if (focusKey !== lastIsolate || (focusing && moving)) {
         if (focusing) {
           const box = new T.Box3();
           atlas.parts.forEach((p, i) => {
