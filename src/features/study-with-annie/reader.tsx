@@ -28,6 +28,7 @@ import {
   saveReadingProgress,
   skipRecallChallenge,
 } from "./annie.functions";
+import { logProblem } from "@/lib/log-problem";
 import { AnniePanel } from "./annie-panel";
 import { assistantReducer, initialAssistantView } from "./assistant-state";
 import { OVERVIEW_DISMISS_MS } from "./config";
@@ -91,11 +92,12 @@ export function AnnieReader({ documentId }: { documentId: string }) {
         if (cancelled) return void document.destroy();
         setPdf(document);
       })
-      .catch((loadError) =>
+      .catch((loadError) => {
+        logProblem("Annie open document", loadError, { documentId });
         setError(
           loadError instanceof Error ? loadError.message : "The reader could not be opened.",
-        ),
-      )
+        );
+      })
       .finally(() => setLoading(false));
     return () => {
       cancelled = true;
@@ -131,6 +133,7 @@ export function AnnieReader({ documentId }: { documentId: string }) {
       dispatch({ type: "show", message: { kind: "overview", overview } });
     } catch (overviewError) {
       if (version !== requestVersion.current) return;
+      logProblem("Annie page overview", overviewError, { documentId, page });
       showError(
         "Page overview unavailable",
         overviewError instanceof Error
@@ -223,7 +226,8 @@ export function AnnieReader({ documentId }: { documentId: string }) {
     setPreferences({ theme });
     try {
       setPreferences(await saveReaderPreferences({ data: { theme } }));
-    } catch {
+    } catch (preferenceError) {
+      logProblem("Annie save reader preferences", preferenceError);
       setPreferences(previous);
     }
   }
@@ -307,6 +311,7 @@ export function AnnieReader({ documentId }: { documentId: string }) {
           message: { kind: "explanation", explanation, selection: sourceSelection },
         });
       } catch (explanationError) {
+        logProblem("Annie explain selection", explanationError, { documentId });
         if (version === requestVersion.current)
           showError(
             "Explanation unavailable",
@@ -347,6 +352,7 @@ export function AnnieReader({ documentId }: { documentId: string }) {
       if (version !== requestVersion.current) return;
       dispatch({ type: "start_recall", challenge });
     } catch (recallError) {
+      logProblem("Annie recall challenge", recallError, { documentId, page: currentPage });
       if (version === requestVersion.current)
         showError(
           "Recall activity unavailable",
@@ -371,6 +377,7 @@ export function AnnieReader({ documentId }: { documentId: string }) {
       sessionResults.current.push({ candidateId: challenge.id, result: evaluation.verdict });
       dispatch({ type: "feedback", message: { kind: "feedback", evaluation } });
     } catch (evaluationError) {
+      logProblem("Annie evaluate recall answer", evaluationError, { documentId });
       setRevealRecall(true);
       showError(
         "Answer not evaluated",

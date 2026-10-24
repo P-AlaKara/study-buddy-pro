@@ -16,6 +16,7 @@ import {
   uploadAnnieDocument,
 } from "./annie.functions";
 import { AnnieAvatar } from "./annie-avatar";
+import { logProblem } from "@/lib/log-problem";
 import type { AnnieDocument } from "./types";
 
 const MAX_BYTES = 25 * 1024 * 1024;
@@ -32,6 +33,7 @@ export function AnnieLibrary() {
       setDocuments(await listAnnieDocuments());
       setError("");
     } catch (loadError) {
+      logProblem("Annie document library", loadError);
       setError(
         loadError instanceof Error ? loadError.message : "Your documents could not be loaded.",
       );
@@ -60,6 +62,7 @@ export function AnnieLibrary() {
       setDocuments((current) => [document, ...current]);
       void processAnnieDocument({ data: { documentId: document.id } }).finally(load);
     } catch (uploadError) {
+      logProblem("Annie upload document", uploadError);
       setError(uploadError instanceof Error ? uploadError.message : "The upload failed.");
     } finally {
       setUploading(false);

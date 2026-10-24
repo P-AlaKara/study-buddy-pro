@@ -243,6 +243,12 @@ async function reserveLlmCall(db: any, session: any, userId: string, kind: strin
         `The ${USER_HOURLY_CALL_LIMIT}-call hourly AI limit has been reached. Please try again later.`,
       );
     }
+    console.error("[OSCE] reserve_osce_ai_call RPC failed", {
+      sessionId: session.id,
+      kind,
+      code: error.code,
+      message: error.message,
+    });
     throw new Error("The AI usage limit could not be checked.");
   }
   session.llm_call_count = data;
@@ -268,6 +274,12 @@ async function acquireRequestLock(
     p_request_id: requestId,
   });
   if (error || !data) {
+    if (error)
+      console.error("[OSCE] acquire_osce_ai_request RPC failed", {
+        sessionId: session.id,
+        code: error.code,
+        message: error.message,
+      });
     throw new Error("The consultation changed or another interaction is already being saved.");
   }
 }
@@ -323,6 +335,12 @@ async function commitState(
     p_final_result: options.complete ? state.finalResult : null,
   });
   if (error || typeof data !== "number") {
+    if (error)
+      console.error("[OSCE] commit_osce_ai_state RPC failed", {
+        sessionId: session.id,
+        code: error.code,
+        message: error.message,
+      });
     throw new Error("The consultation changed before it could be saved.");
   }
   return data;

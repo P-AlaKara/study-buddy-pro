@@ -28,6 +28,7 @@ import {
   X,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import { logProblem } from "@/lib/log-problem";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { Button } from "@/components/ui/button";
 import type { Database } from "@/integrations/supabase/types";
@@ -171,9 +172,10 @@ export function StudyApp({ view, children }: { view: View; children?: ReactNode 
       .order("created_at", { ascending: true })
       .then(({ data, error }) => {
         if (!active) return;
-        if (error)
+        if (error) {
+          logProblem("Student directory", error);
           setLoadError("Student profiles couldn't be loaded. Please refresh to try again.");
-        else setStudents((data ?? []) as Student[]);
+        } else setStudents((data ?? []) as Student[]);
         const saved = window.localStorage.getItem("medley-demo-student");
         if (saved) setSelectedId(saved);
         setLoading(false);

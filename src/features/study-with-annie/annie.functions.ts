@@ -347,8 +347,13 @@ async function geminiJson<T>(
   retryMalformed = true,
 ): Promise<T | null> {
   const key = process.env["GEMINI_API_KEY"];
-  if (!key) return null;
-  const model = process.env["GEMINI_MODEL"] || "gemini-3.8-flash";
+  if (!key) {
+    console.error("[Annie] GEMINI_API_KEY is not set; AI generation is disabled.");
+    return null;
+  }
+  // "gemini-flash-latest" is a served alias that tracks the current stable Flash
+  // model, so a hardcoded version string can never drift to a 404 again.
+  const model = process.env["GEMINI_MODEL"] || "gemini-flash-latest";
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), 18_000);
   try {
@@ -369,10 +374,19 @@ async function geminiJson<T>(
         }),
       },
     );
-    if (!response.ok) return null;
+    if (!response.ok) {
+      console.error(
+        `[Annie] Gemini request failed: ${response.status} ${response.statusText} (model ${model})`,
+        (await response.text().catch(() => "")).slice(0, 500),
+      );
+      return null;
+    }
     const payload = (await response.json()) as GeminiResponse;
     const text = payload.candidates?.[0]?.content?.parts?.[0]?.text;
-    if (!text) return null;
+    if (!text) {
+      console.error("[Annie] Gemini returned no text candidate", { model });
+      return null;
+    }
     let json: unknown;
     try {
       json = JSON.parse(extractJson(text));
@@ -382,8 +396,10 @@ async function geminiJson<T>(
     const parsed = parser.safeParse(json);
     if (parsed.success) return parsed.data;
     if (retryMalformed) return geminiJson(prompt, parser, false);
+    console.error("[Annie] Gemini output did not match the expected schema", parsed.error.issues);
     return null;
-  } catch {
+  } catch (geminiError) {
+    console.error("[Annie] Gemini request threw", geminiError);
     return null;
   } finally {
     clearTimeout(timeout);

@@ -43,7 +43,9 @@ export async function generateGeminiJson<T>({
   if (!key) {
     throw new GeminiGenerationError("AI interactions are not configured.", "unconfigured");
   }
-  const model = process.env["GEMINI_MODEL"] || "gemini-3.8-flash";
+  // "gemini-flash-latest" is a served alias that tracks the current stable Flash
+  // model, so a hardcoded version string can never drift to a 404 again.
+  const model = process.env["GEMINI_MODEL"] || "gemini-flash-latest";
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), timeoutMs);
   try {
@@ -81,6 +83,10 @@ export async function generateGeminiJson<T>({
           retry: false,
         });
       }
+      console.error(
+        `[Gemini] request failed: ${response.status} ${response.statusText} (model ${model})`,
+        (await response.text().catch(() => "")).slice(0, 500),
+      );
       throw new GeminiGenerationError("The AI service is temporarily unavailable.", "provider");
     }
     const payload = (await response.json()) as GeminiResponse;

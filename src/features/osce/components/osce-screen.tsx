@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useId, useRef, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { logProblem } from "@/lib/log-problem";
 import type { AmbroseExpression } from "@/features/case-challenge/components/dr-ambrose";
 import {
   advanceIdleTime,
@@ -145,6 +146,7 @@ export function OsceScreen({ station, mode }: { station: OsceStation; mode: Osce
       setAuthDialogOpen(false);
       return session;
     } catch (error) {
+      logProblem("OSCE start AI session", error, { stationId: station.id });
       setFreeFormError(errorMessage(error));
       setInteractionMode("guided");
       return null;
@@ -165,6 +167,7 @@ export function OsceScreen({ station, mode }: { station: OsceStation; mode: Osce
       setAuthDialogOpen(false);
       return true;
     } catch (error) {
+      logProblem("OSCE resume AI session", error, { sessionId });
       setAiSession(null);
       setInteractionMode("guided");
       setFreeFormError(errorMessage(error));
@@ -186,7 +189,8 @@ export function OsceScreen({ station, mode }: { station: OsceStation; mode: Osce
       setAiNarrative(narrative);
       setAiFeedbackStatus(narrative ? "complete" : "idle");
       feedbackRequestIdRef.current = null;
-    } catch {
+    } catch (error) {
+      logProblem("OSCE feedback", error, { sessionId: aiSession.id });
       setAiFeedbackStatus("failed");
     }
   }, [aiSession, game.interactions]);
@@ -361,6 +365,7 @@ export function OsceScreen({ station, mode }: { station: OsceStation; mode: Osce
         setAiSession({ id: result.sessionId, revision: result.revision });
         guidedRequestIdsRef.current.delete(card.id);
       } catch (error) {
+        logProblem("OSCE guided action", error, { cardId: card.id, sessionId: aiSession.id });
         setNudgeMessage(`That action was not saved. ${errorMessage(error)}`);
       } finally {
         setPendingCardId(null);
@@ -421,6 +426,7 @@ export function OsceScreen({ station, mode }: { station: OsceStation; mode: Osce
       setFreeFormDraft("");
       setFreeFormRequestId(null);
     } catch (error) {
+      logProblem("OSCE free-form interaction", error, { sessionId: aiSession.id });
       setFreeFormError(errorMessage(error));
     } finally {
       setFreeFormPending(false);
@@ -448,6 +454,7 @@ export function OsceScreen({ station, mode }: { station: OsceStation; mode: Osce
         setNudgeMessage(result.state.nudgesUsed.at(-1)?.text ?? nudge.text);
         nudgeRequestIdRef.current = null;
       } catch (error) {
+        logProblem("OSCE nudge", error, { sessionId: aiSession.id });
         setNudgeMessage(`A nudge is unavailable. ${errorMessage(error)}`);
       } finally {
         setServerPending(false);
@@ -483,6 +490,7 @@ export function OsceScreen({ station, mode }: { station: OsceStation; mode: Osce
       setAiSession({ id: result.sessionId, revision: result.revision });
       serverEndSyncedRef.current = true;
     } catch (error) {
+      logProblem("OSCE end consultation", error, { sessionId: aiSession.id });
       setNudgeMessage(`The consultation could not end. ${errorMessage(error)}`);
     } finally {
       setServerPending(false);
@@ -513,6 +521,7 @@ export function OsceScreen({ station, mode }: { station: OsceStation; mode: Osce
       setAiSession({ id: result.sessionId, revision: result.revision });
       examinerRequestIdsRef.current.delete(questionId);
     } catch (error) {
+      logProblem("OSCE examiner question", error, { sessionId: aiSession.id });
       setExaminerError(errorMessage(error));
     } finally {
       setServerPending(false);
