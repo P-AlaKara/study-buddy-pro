@@ -10,9 +10,12 @@ export function logProblem(
   error: unknown,
   context?: Record<string, unknown>,
 ): void {
-  if (context && Object.keys(context).length > 0) {
-    console.error(`[Medley] ${scope}:`, error, context);
-  } else {
-    console.error(`[Medley] ${scope}:`, error);
-  }
+  // Server functions attach the real, technical reason on `error.cause` while
+  // keeping `error.message` friendly for the UI. Surface it here so the console
+  // shows what actually went wrong without leaking it into the interface.
+  const cause = error instanceof Error && error.cause != null ? error.cause : undefined;
+  const extras: unknown[] = [];
+  if (cause !== undefined) extras.push("\n  cause:", cause);
+  if (context && Object.keys(context).length > 0) extras.push("\n  context:", context);
+  console.error(`[Medley] ${scope}:`, error, ...extras);
 }

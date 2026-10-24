@@ -341,16 +341,23 @@ function extractJson(text: string): string {
   return start >= 0 && end > start ? body.slice(start, end + 1) : body;
 }
 
+// `diag` lets a caller recover the concrete failure reason even though this
+// returns null on failure. The caller puts that reason on the user-facing
+// error's `cause`, so it reaches the browser console (seroval preserves it)
+// while the UI keeps showing a friendly message.
 async function geminiJson<T>(
   prompt: string,
   parser: z.ZodType<T>,
   retryMalformed = true,
+  diag?: { reason?: string },
 ): Promise<T | null> {
-  const key = process.env["GEMINI_API_KEY"];
-  if (!key) {
-    console.error("[Annie] GEMINI_API_KEY is not set; AI generation is disabled.");
+  const fail = (reason: string): null => {
+    console.error(`[Annie] Gemini: ${reason}`);
+    if (diag) diag.reason = reason;
     return null;
-  }
+  };
+  const key = process.env["GEMINI_API_KEY"];
+  if (!key) return fail("GEMINI_API_KEY is not set; AI generation is disabled.");
   // "gemini-flash-latest" is a served alias that tracks the current stable Flash
   // model, so a hardcoded version string can never drift to a 404 again.
   const model = process.env["GEMINI_MODEL"] || "gemini-flash-latest";
@@ -375,35 +382,38 @@ async function geminiJson<T>(
       },
     );
     if (!response.ok) {
-      console.error(
-        `[Annie] Gemini request failed: ${response.status} ${response.statusText} (model ${model})`,
-        (await response.text().catch(() => "")).slice(0, 500),
-      );
-      return null;
+      const body = (await response.text().catch(() => "")).slice(0, 300);
+      return fail(`HTTP ${response.status} ${response.statusText} for model "${model}". ${body}`);
     }
     const payload = (await response.json()) as GeminiResponse;
     const text = payload.candidates?.[0]?.content?.parts?.[0]?.text;
-    if (!text) {
-      console.error("[Annie] Gemini returned no text candidate", { model });
-      return null;
-    }
+    if (!text) return fail(`no text candidate returned for model "${model}".`);
     let json: unknown;
     try {
       json = JSON.parse(extractJson(text));
     } catch {
-      return retryMalformed ? geminiJson(prompt, parser, false) : null;
+      return retryMalformed ? geminiJson(prompt, parser, false, diag) : fail("output was not valid JSON.");
     }
     const parsed = parser.safeParse(json);
     if (parsed.success) return parsed.data;
-    if (retryMalformed) return geminiJson(prompt, parser, false);
-    console.error("[Annie] Gemini output did not match the expected schema", parsed.error.issues);
-    return null;
+    if (retryMalformed) return geminiJson(prompt, parser, false, diag);
+    return fail(`output did not match the expected schema: ${parsed.error.issues[0]?.message ?? "unknown"}`);
   } catch (geminiError) {
-    console.error("[Annie] Gemini request threw", geminiError);
-    return null;
+    const aborted = geminiError instanceof Error && geminiError.name === "AbortError";
+    return fail(
+      aborted
+        ? "request timed out after 18s."
+        : `request threw: ${geminiError instanceof Error ? geminiError.message : String(geminiError)}`,
+    );
   } finally {
     clearTimeout(timeout);
   }
+}
+
+// Builds a user-facing error whose friendly message is shown in the UI while the
+// real diagnostic rides along on `cause` for the browser console / server logs.
+function annieAiError(message: string, reason?: string): Error {
+  return reason ? new Error(message, { cause: `Annie AI: ${reason}` }) : new Error(message);
 }
 
 async function generateCandidates(pages: Array<{ page: number; text: string }>) {
@@ -802,13 +812,20 @@ async function pageTextForOwner(db: any, documentId: string, page: number, userI
   return { text: data.text as string, title: document.title as string };
 }
 
-async function createOverview(text: string, title: string, page: number) {
+async function createOverview(
+  text: string,
+  title: string,
+  page: number,
+  diag?: { reason?: string },
+) {
   const chunks = chunkPageText(text);
   const partials: z.infer<typeof overviewSchema>[] = [];
   for (const chunk of chunks) {
     const overview = await geminiJson(
       `${ANNIE_SYSTEM_PROMPT}\nCreate a quick orientation for page ${page} of “${title}”. State what the student will learn and the concepts worth remembering. Be concise and use only the supplied page text.\n\nRespond as JSON: {"summary":<string>,"learning_objectives":[<string>],"key_concepts":[<string>]}.\n\nPAGE TEXT:\n${chunk}`,
       overviewSchema,
+      true,
+      diag,
     );
     if (!overview) return null;
     partials.push(overview);
@@ -817,6 +834,8 @@ async function createOverview(text: string, title: string, page: number) {
   return geminiJson(
     `${ANNIE_SYSTEM_PROMPT}\nCombine these grounded partial page overviews into one concise orientation without adding facts. Respond as JSON: {"summary":<string>,"learning_objectives":[<string>],"key_concepts":[<string>]}.\n\nPARTIAL OVERVIEWS:\n${JSON.stringify(partials)}`,
     overviewSchema,
+    true,
+    diag,
   );
 }
 
@@ -851,8 +870,13 @@ export const generatePageOverview = createServerFn({ method: "POST" })
     const source = await pageTextForOwner(db, data.documentId, data.page, context.userId);
     if (!(await spendLlmCall(db, data.sessionId, context.userId)))
       throw new Error("Annie has reached the AI limit for this study session.");
-    const overview = await createOverview(source.text, source.title, data.page);
-    if (!overview) throw new Error("An accurate page overview could not be generated right now.");
+    const diag: { reason?: string } = {};
+    const overview = await createOverview(source.text, source.title, data.page, diag);
+    if (!overview)
+      throw annieAiError(
+        "An accurate page overview could not be generated right now.",
+        diag.reason,
+      );
     const { error } = await db.from("annie_page_overviews").upsert({
       document_id: data.documentId,
       page: data.page,
@@ -895,11 +919,15 @@ export const explainSelection = createServerFn({ method: "POST" })
     if (!(await spendLlmCall(db, data.sessionId, context.userId)))
       throw new Error("Annie has reached the AI limit for this study session.");
     const followUp = data.followUpQuestion ? `\nFOLLOW-UP QUESTION:\n${data.followUpQuestion}` : "";
+    const diag: { reason?: string } = {};
     const response = await geminiJson(
       `${ANNIE_SYSTEM_PROMPT}\nExplain the selected material so it is intuitive without oversimplifying it. Define unfamiliar terms. Add a memory aid only when it is accurate and genuinely useful. Answer a follow-up only in relation to this selection.\n\nRespond as JSON: {"explanation":<string>,"terms":[{"term":<string>,"definition":<string>}],"memory_aid":<string|null>}.\n\nSELECTED TEXT:\n${data.selectedText}\n\nSURROUNDING PAGE CONTEXT:\n${surrounding}${followUp}`,
       explanationSchema,
+      true,
+      diag,
     );
-    if (!response) throw new Error("An accurate explanation could not be generated right now.");
+    if (!response)
+      throw annieAiError("An accurate explanation could not be generated right now.", diag.reason);
     return {
       explanation: response.explanation,
       terms: response.terms,
@@ -962,12 +990,15 @@ export const generateRecallChallenge = createServerFn({ method: "POST" })
         data.selectedText && contextAroundSelection(source.text, data.selectedText)
           ? data.selectedText
           : source.text.slice(0, 12_000);
+      const diag: { reason?: string } = {};
       const generated = await geminiJson(
         `${ANNIE_SYSTEM_PROMPT}\nChoose one meaningful definition, mechanism, relationship, or explanation for active recall. target_text must be an exact substring of the supplied text and should be reasonable to recall. Respond as JSON: {"target_text":<exact substring>,"question":<concise conceptual prompt>}.\n\nTEXT:\n${focus}`,
         recallGenerationSchema,
+        true,
+        diag,
       );
       if (!generated || !source.text.includes(generated.target_text))
-        throw new Error("No suitable recall passage could be found on this page.");
+        throw annieAiError("No suitable recall passage could be found on this page.", diag.reason);
       const { data: inserted, error } = await db
         .from("annie_quiz_candidates")
         .upsert(
@@ -1016,13 +1047,17 @@ export const evaluateRecallAnswer = createServerFn({ method: "POST" })
     if (error || !candidate) throw new Error("Recall passage not found.");
     if (!(await spendLlmCall(db, data.sessionId, context.userId)))
       throw new Error("Annie has reached the AI limit for this study session.");
+    const diag: { reason?: string } = {};
     const evaluation = await geminiJson(
       `${ANNIE_SYSTEM_PROMPT}\nEvaluate conceptual understanding against only the source passage. Accept accurate paraphrases and tolerate typos. Do not require exact wording. A correct verdict requires the essential meaning; partial means a key point is missing; incorrect means the central meaning is wrong.\n\nRespond as JSON: {"verdict":"correct"|"partially_correct"|"incorrect","feedback":<concise specific feedback>,"correct_explanation":<concise grounded explanation>}.\n\nSOURCE PASSAGE:\n${candidate.text}\n\nSTUDENT ANSWER:\n${data.studentAnswer}`,
       evaluationSchema,
+      true,
+      diag,
     );
     if (!evaluation)
-      throw new Error(
+      throw annieAiError(
         "Annie could not evaluate that answer. The original passage has been restored.",
+        diag.reason,
       );
     const { error: attemptError } = await db.from("annie_quiz_attempts").insert({
       user_id: context.userId,

@@ -8,8 +8,9 @@ export class GeminiGenerationError extends Error {
   constructor(
     message: string,
     readonly code: "unconfigured" | "timeout" | "provider" | "invalid_output",
+    options?: { cause?: unknown },
   ) {
-    super(message);
+    super(message, options);
     this.name = "GeminiGenerationError";
   }
 }
@@ -83,11 +84,14 @@ export async function generateGeminiJson<T>({
           retry: false,
         });
       }
+      const body = (await response.text().catch(() => "")).slice(0, 300);
       console.error(
         `[Gemini] request failed: ${response.status} ${response.statusText} (model ${model})`,
-        (await response.text().catch(() => "")).slice(0, 500),
+        body,
       );
-      throw new GeminiGenerationError("The AI service is temporarily unavailable.", "provider");
+      throw new GeminiGenerationError("The AI service is temporarily unavailable.", "provider", {
+        cause: `Gemini HTTP ${response.status} ${response.statusText} for model "${model}". ${body}`,
+      });
     }
     const payload = (await response.json()) as GeminiResponse;
     const text = payload.candidates?.[0]?.content?.parts?.[0]?.text;
