@@ -14,6 +14,7 @@ import {
   requestNudge,
   selectOsceCard,
   skipReading,
+  type OscePhase,
   type OsceState,
 } from "../engine.js";
 import { saveOsceResult } from "../progress.js";
@@ -52,6 +53,13 @@ function seedFromText(value: string): number {
 
 function errorMessage(error: unknown): string {
   return error instanceof Error ? error.message : "Something went wrong. Please try again.";
+}
+
+// The consultation end is already recorded on the server once the engine has
+// moved past the room, so a resumed/reconciled state in these phases must not
+// re-fire the end-sync server call.
+function isConsultationEnded(phase: OscePhase | undefined): boolean {
+  return phase === "examiner_questions" || phase === "debrief";
 }
 
 export function OsceScreen({ station, mode }: { station: OsceStation; mode: OsceMode }) {
@@ -122,7 +130,7 @@ export function OsceScreen({ station, mode }: { station: OsceStation; mode: Osce
   const displayedReactionIdRef = useRef<string | null>(null);
   const savedCompletionKeyRef = useRef<string | null>(null);
   const resumeCheckedRef = useRef(false);
-  const serverEndSyncedRef = useRef(false);
+  const serverEndSyncedRef = useRef(isConsultationEnded(restored?.state.phase));
   const startingAiSessionRef = useRef(false);
   const guidedRequestIdsRef = useRef(new Map<string, string>());
   const nudgeRequestIdRef = useRef<string | null>(null);
@@ -140,6 +148,7 @@ export function OsceScreen({ station, mode }: { station: OsceStation; mode: Osce
     try {
       const result = await createOsceAiSession({ data: { stationId: station.id, state: game } });
       const session = { id: result.sessionId, revision: result.revision };
+      serverEndSyncedRef.current = isConsultationEnded(result.state.phase);
       setAiSession(session);
       setGame(result.state);
       setInteractionMode("free_form");
@@ -161,6 +170,7 @@ export function OsceScreen({ station, mode }: { station: OsceStation; mode: Osce
     setFreeFormError(null);
     try {
       const result = await resumeOsceAiSession({ data: { sessionId } });
+      serverEndSyncedRef.current = isConsultationEnded(result.state.phase);
       setGame(result.state);
       setAiSession({ id: result.sessionId, revision: result.revision });
       setInteractionMode("free_form");
@@ -334,8 +344,11 @@ export function OsceScreen({ station, mode }: { station: OsceStation; mode: Osce
         setGame(result.state);
         setAiSession({ id: result.sessionId, revision: result.revision });
       })
-      .catch(() => {
-        serverEndSyncedRef.current = false;
+      .catch((error) => {
+        // Keep serverEndSyncedRef `true` so this effect does not re-fire in a
+        // loop. The local engine already shows the examiner questions; the end
+        // is a best-effort server sync and must not thrash on failure.
+        logProblem("OSCE end consultation sync", error, { sessionId: aiSession.id });
       })
       .finally(() => setServerPending(false));
   }, [aiSession, game.phase, game.remainingSeconds, serverPending, station.clockSeconds]);
