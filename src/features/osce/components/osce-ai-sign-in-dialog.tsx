@@ -1,5 +1,5 @@
 import { LoaderCircle, LockKeyhole, Mail } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   Dialog,
   DialogContent,
@@ -24,14 +24,28 @@ export function OsceAiSignInDialog({
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState("");
 
+  // Keep the latest props in refs so the auth subscription below can be created
+  // once (stable, empty deps). The parent passes fresh inline callbacks every
+  // render; depending on them here would re-subscribe on every render, and each
+  // re-subscription replays the current session, which — when already signed in
+  // — re-fires onAuthenticated in a tight loop (the screen flickers).
+  const openRef = useRef(open);
+  const onOpenChangeRef = useRef(onOpenChange);
+  const onAuthenticatedRef = useRef(onAuthenticated);
+  openRef.current = open;
+  onOpenChangeRef.current = onOpenChange;
+  onAuthenticatedRef.current = onAuthenticated;
+
   useEffect(() => {
-    const { data } = supabase.auth.onAuthStateChange((_event, session) => {
-      if (!session?.user) return;
-      onOpenChange(false);
-      onAuthenticated();
+    const { data } = supabase.auth.onAuthStateChange((event, session) => {
+      // Only act on a real sign-in completed from this dialog while it is open.
+      // Ignore INITIAL_SESSION / token refreshes replayed to the listener.
+      if (event !== "SIGNED_IN" || !session?.user || !openRef.current) return;
+      onOpenChangeRef.current(false);
+      onAuthenticatedRef.current();
     });
     return () => data.subscription.unsubscribe();
-  }, [onAuthenticated, onOpenChange]);
+  }, []);
 
   async function sendCode(event: React.FormEvent) {
     event.preventDefault();

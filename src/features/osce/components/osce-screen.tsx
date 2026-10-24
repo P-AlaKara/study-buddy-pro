@@ -132,6 +132,7 @@ export function OsceScreen({ station, mode }: { station: OsceStation; mode: Osce
   const resumeCheckedRef = useRef(false);
   const serverEndSyncedRef = useRef(isConsultationEnded(restored?.state.phase));
   const startingAiSessionRef = useRef(false);
+  const resumingAiSessionRef = useRef(false);
   const guidedRequestIdsRef = useRef(new Map<string, string>());
   const nudgeRequestIdRef = useRef<string | null>(null);
   const endRequestIdRef = useRef<string | null>(null);
@@ -166,6 +167,8 @@ export function OsceScreen({ station, mode }: { station: OsceStation; mode: Osce
   }, [aiSession, game, station.id]);
 
   const resumeAiSession = useCallback(async (sessionId: string) => {
+    if (resumingAiSessionRef.current) return false;
+    resumingAiSessionRef.current = true;
     setServerPending(true);
     setFreeFormError(null);
     try {
@@ -183,6 +186,7 @@ export function OsceScreen({ station, mode }: { station: OsceStation; mode: Osce
       setFreeFormError(errorMessage(error));
       return false;
     } finally {
+      resumingAiSessionRef.current = false;
       setServerPending(false);
     }
   }, []);
