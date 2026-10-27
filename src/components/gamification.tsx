@@ -30,7 +30,23 @@ import {
   Users,
   X,
 } from "lucide-react";
-import { supabase } from "@/integrations/supabase/client";
+import {
+  getUnreadNotificationCount,
+  getNotifications,
+  markNotificationRead,
+  updateNotificationPrefs,
+  getEarnedAchievements,
+  getHomeGamification,
+  getHomeMastery,
+  addNote,
+  setNoteShared,
+  getSavedState,
+  toggleSavedItem,
+  getDashboard,
+  toggleLeaderboardOptOut,
+  getLeaderboardData,
+  searchLibrary,
+} from "@/components/gamification.functions";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import type { ActingStudent } from "@/components/study-app";
@@ -129,12 +145,7 @@ export function StudentUtilities({ student }: { student?: ActingStudent | undefi
   const [unread, setUnread] = useState(0);
   useEffect(() => {
     if (!student) return;
-    supabase
-      .from("notifications")
-      .select("id", { count: "exact", head: true })
-      .eq("student_id", student.id)
-      .eq("is_read", false)
-      .then(({ count }) => setUnread(count ?? 0));
+    getUnreadNotificationCount().then(setUnread);
   }, [student?.id, notificationsOpen]);
   return (
     <>
@@ -220,7 +231,6 @@ function SearchCenter({ onClose }: { onClose: () => void }) {
     const timer = window.setTimeout(async () => {
       setLoading(true);
       const searchText = query.trim().toLowerCase();
-      const term = `%${searchText}%`;
       const matchingStations = OSCE_STATIONS.filter((station) =>
         [
           station.title,
@@ -229,33 +239,12 @@ function SearchCenter({ onClose }: { onClose: () => void }) {
           station.patient.name,
         ].some((value) => value.toLowerCase().includes(searchText)),
       ).slice(0, 6);
-      const [cases, questions, decks, studyGroups, resources] = await Promise.all([
-        supabase
-          .from("cases")
-          .select("id,title,specialty,topic")
-          .or(`title.ilike.${term},topic.ilike.${term},specialty.ilike.${term}`)
-          .limit(6),
-        supabase
-          .from("quiz_questions")
-          .select("id,question_text,subject,topic")
-          .or(`question_text.ilike.${term},topic.ilike.${term},subject.ilike.${term}`)
-          .limit(6),
-        supabase
-          .from("flashcard_decks")
-          .select("id,title,subject,topic")
-          .or(`title.ilike.${term},topic.ilike.${term},subject.ilike.${term}`)
-          .limit(6),
-        supabase
-          .from("groups")
-          .select("id,name,description")
-          .or(`name.ilike.${term},description.ilike.${term}`)
-          .limit(6),
-        supabase
-          .from("group_shared_resources")
-          .select("id,title,resource_type,resource_ref")
-          .ilike("title", term)
-          .limit(6),
-      ]);
+      const result = await searchLibrary({ data: { term: searchText } });
+      const cases = { data: result.cases };
+      const questions = { data: result.questions };
+      const decks = { data: result.decks };
+      const studyGroups = { data: result.groups };
+      const resources = { data: result.resources };
       setGroups(
         [
           {
@@ -425,22 +414,16 @@ function NotificationsCenter({
         : {}
     ) as Record<string, boolean>;
     setSettings(Object.fromEntries(notificationSettings.map(([key]) => [key, prefs[key] ?? true])));
-    supabase
-      .from("notifications")
-      .select("*")
-      .eq("student_id", student.id)
-      .order("created_at", { ascending: false })
-      .limit(40)
-      .then(({ data }) => setItems(data ?? []));
+    getNotifications().then((data) => setItems(data ?? []));
   }, [student.id]);
   async function read(id: string) {
     setItems((v) => v.map((n) => (n.id === id ? { ...n, is_read: true } : n)));
-    await supabase.from("notifications").update({ is_read: true }).eq("id", id);
+    await markNotificationRead({ data: { id } });
   }
   async function toggle(key: string, value: boolean) {
     const next = { ...settings, [key]: value };
     setSettings(next);
-    await supabase.from("students").update({ notification_prefs: next }).eq("id", student.id);
+    await updateNotificationPrefs({ data: { prefs: next } });
   }
   return (
     <Modal label="Notifications" onClose={onClose}>
@@ -523,13 +506,9 @@ export function CelebrationLayer({ student }: { student?: ActingStudent | undefi
     if (!student) return;
     let first = true;
     const check = async () => {
-      const [{ data: earned }, { data: all }] = await Promise.all([
-        supabase.from("student_achievements").select("achievement_id").eq("student_id", student.id),
-        supabase.from("achievements").select("*"),
-      ]);
-      const ids = (earned ?? [])
-        .map((x) => x.achievement_id)
-        .filter((x): x is string => Boolean(x));
+      const earnedResult = await getEarnedAchievements();
+      const ids = earnedResult.earnedIds as string[];
+      const all = earnedResult.all as Achievement[];
       const key = `medley-earned-${student.id}`;
       const known = JSON.parse(localStorage.getItem(key) ?? "[]") as string[];
       if (!first) {
@@ -600,30 +579,10 @@ export function HomeGamification({ student }: { student?: ActingStudent | undefi
   useEffect(() => {
     if (!student) return;
     (async () => {
-      const start = new Date();
-      start.setHours(0, 0, 0, 0);
-      const [reviews, xp, earned] = await Promise.all([
-        supabase
-          .from("flashcard_reviews")
-          .select("id", { count: "exact", head: true })
-          .eq("student_id", student.id)
-          .lte("due_date", new Date().toISOString()),
-        supabase
-          .from("xp_events")
-          .select("xp_amount")
-          .eq("student_id", student.id)
-          .gte("created_at", start.toISOString()),
-        supabase
-          .from("student_achievements")
-          .select("earned_at,achievements(*)")
-          .eq("student_id", student.id)
-          .order("earned_at", { ascending: false })
-          .limit(1),
-      ]);
-      setDue(reviews.count ?? 0);
-      setTodayXp((xp.data ?? []).reduce((n, x) => n + x.xp_amount, 0));
-      const row = earned.data?.[0] as unknown as { achievements: Achievement | null } | undefined;
-      setAchievement(row?.achievements ?? null);
+      const { due: dueCount, todayXp: xpToday, achievement: latest } = await getHomeGamification();
+      setDue(dueCount);
+      setTodayXp(xpToday);
+      setAchievement((latest as Achievement | null) ?? null);
     })();
   }, [student?.id]);
   return (
@@ -696,13 +655,7 @@ export function HomeMasteryPreview({ student }: { student?: ActingStudent | unde
   const [rows, setRows] = useState<Mastery[]>([]);
   useEffect(() => {
     if (!student) return;
-    supabase
-      .from("mastery_scores")
-      .select("*")
-      .eq("student_id", student.id)
-      .order("numeric_score")
-      .limit(3)
-      .then(({ data }) => setRows(data ?? []));
+    getHomeMastery().then((data) => setRows((data ?? []) as Mastery[]));
   }, [student?.id]);
   return (
     <div className="clay-card bg-card p-5 md:p-6">
@@ -749,16 +702,19 @@ export function NoteButton({
   const [saved, setSaved] = useState(false);
   async function save() {
     if (!studentId || !text.trim()) return;
-    const { error } = await supabase.from("notes").insert({
-      student_id: studentId,
-      content_type: contentType,
-      content_id: contentId,
-      note_text: text.trim(),
-      is_shared: shared,
-    });
-    if (!error) {
+    try {
+      await addNote({
+        data: {
+          contentType,
+          contentId,
+          noteText: text.trim(),
+          isShared: shared,
+        },
+      });
       setSaved(true);
       setTimeout(() => setOpen(false), 500);
+    } catch {
+      /* keep the modal open so the student can retry */
     }
   }
   return (
@@ -819,33 +775,15 @@ export function SaveItemButton({
   const [saved, setSaved] = useState(false);
   useEffect(() => {
     if (!studentId) return;
-    supabase
-      .from("saved_items")
-      .select("id")
-      .eq("student_id", studentId)
-      .eq("content_type", contentType)
-      .eq("content_id", contentId)
-      .maybeSingle()
-      .then(({ data }) => setSaved(Boolean(data)));
+    getSavedState({ data: { contentType, contentId } }).then(setSaved);
   }, [studentId, contentType, contentId]);
   async function toggle() {
     if (!studentId) return;
-    if (saved)
-      await supabase
-        .from("saved_items")
-        .delete()
-        .eq("student_id", studentId)
-        .eq("content_type", contentType)
-        .eq("content_id", contentId);
-    else
-      await supabase.from("saved_items").insert({
-        student_id: studentId,
-        content_type: contentType,
-        content_id: contentId,
-        title,
-        related_link: href,
-      });
-    setSaved(!saved);
+    const willSave = !saved;
+    setSaved(willSave);
+    await toggleSavedItem({
+      data: { contentType, contentId, title, href, save: willSave },
+    });
   }
   return (
     <Button variant="secondary" size="sm" onClick={toggle}>
@@ -909,95 +847,23 @@ export function ProgressDashboard({ student }: { student?: ActingStudent | undef
     if (!student) return;
     (async () => {
       const osces = listOsceProgress(loadOsceProgress());
-      const [
-        xp,
-        cases,
-        quizzes,
-        reviews,
-        mastery,
-        achievements,
-        earned,
-        challenges,
-        notes,
-        saved,
-        questions,
-        decks,
-        optout,
-      ] = await Promise.all([
-        supabase
-          .from("xp_events")
-          .select("xp_amount,source_type,created_at")
-          .eq("student_id", student.id),
-        supabase
-          .from("case_attempts")
-          .select("id,total_score,completed_at,started_at")
-          .eq("student_id", student.id)
-          .eq("status", "completed"),
-        supabase
-          .from("quiz_sessions")
-          .select("id,score,started_at,completed_at")
-          .eq("student_id", student.id)
-          .not("completed_at", "is", null),
-        supabase
-          .from("flashcard_reviews")
-          .select("id,created_at,last_reviewed_at")
-          .eq("student_id", student.id),
-        supabase
-          .from("mastery_scores")
-          .select("*")
-          .eq("student_id", student.id)
-          .order("subject_or_system"),
-        supabase.from("achievements").select("*").order("name"),
-        supabase
-          .from("student_achievements")
-          .select("achievement_id,earned_at")
-          .eq("student_id", student.id),
-        supabase
-          .from("challenge_participants")
-          .select("id,score,rank,created_at")
-          .eq("student_id", student.id),
-        supabase
-          .from("notes")
-          .select("id,content_type,note_text,is_shared,created_at")
-          .eq("student_id", student.id)
-          .order("created_at", { ascending: false }),
-        supabase
-          .from("saved_items")
-          .select("id,content_type,title,related_link,created_at")
-          .eq("student_id", student.id),
-        supabase
-          .from("bookmarked_questions")
-          .select("id,quiz_questions(question_text)")
-          .eq("student_id", student.id),
-        supabase
-          .from("saved_decks")
-          .select("id,flashcard_decks(title)")
-          .eq("student_id", student.id),
-        supabase
-          .from("leaderboard_opt_outs")
-          .select("student_id")
-          .eq("student_id", student.id)
-          .maybeSingle(),
-      ]);
+      const d = await getDashboard();
       setData({
-        xp: xp.data ?? [],
-        cases: cases.data ?? [],
-        quizzes: quizzes.data ?? [],
+        xp: d.xp,
+        cases: d.cases,
+        quizzes: d.quizzes,
         osces,
-        reviews: reviews.data ?? [],
-        mastery: mastery.data ?? [],
-        achievements: achievements.data ?? [],
-        earned: (earned.data ?? []).map((e) => ({
-          achievement_id: e.achievement_id ?? "",
-          earned_at: e.earned_at,
-        })),
-        challenges: challenges.data ?? [],
-        notes: notes.data ?? [],
-        saved: (saved.data ?? []).map((s) => ({ ...s, related_link: s.related_link ?? "" })),
-        questions: (questions.data ?? []) as DashboardData["questions"],
-        decks: (decks.data ?? []) as DashboardData["decks"],
+        reviews: d.reviews,
+        mastery: d.mastery as Mastery[],
+        achievements: d.achievements as Achievement[],
+        earned: d.earned as Earned[],
+        challenges: d.challenges,
+        notes: d.notes,
+        saved: d.saved,
+        questions: d.questions as DashboardData["questions"],
+        decks: d.decks as DashboardData["decks"],
       });
-      setOptedOut(Boolean(optout.data));
+      setOptedOut(d.optedOut);
     })();
   }, [student?.id]);
   const since = range === "all" ? 0 : Date.now() - (range === "week" ? 7 : 30) * 86400000;
@@ -1032,8 +898,7 @@ export function ProgressDashboard({ student }: { student?: ActingStudent | undef
   async function toggleOptOut(v: boolean) {
     if (!student) return;
     setOptedOut(v);
-    if (v) await supabase.from("leaderboard_opt_outs").insert({ student_id: student.id });
-    else await supabase.from("leaderboard_opt_outs").delete().eq("student_id", student.id);
+    await toggleLeaderboardOptOut({ data: { optOut: v } });
   }
   if (!student || !data)
     return (
@@ -1340,7 +1205,7 @@ function NotesLibrary({
   setData: Dispatch<SetStateAction<DashboardData | null>>;
 }) {
   async function share(id: string, v: boolean) {
-    await supabase.from("notes").update({ is_shared: v }).eq("id", id);
+    await setNoteShared({ data: { id, shared: v } });
     setData((d) =>
       d ? { ...d, notes: d.notes.map((n) => (n.id === id ? { ...n, is_shared: v } : n)) } : d,
     );
@@ -1393,20 +1258,13 @@ export function Leaderboards({ student }: { student?: ActingStudent | undefined 
     if (!student) return;
     (async () => {
       setLoading(true);
-      const [students, xp, optouts, attempts, members, participants] = await Promise.all([
-        supabase.from("students").select("id,name,university,year_of_study,xp"),
-        supabase.from("xp_events").select("student_id,xp_amount,created_at"),
-        supabase.from("leaderboard_opt_outs").select("student_id"),
-        supabase
-          .from("case_attempts")
-          .select("student_id,total_score,completed_at")
-          .eq("status", "completed"),
-        supabase.from("group_members").select("group_id,student_id"),
-        supabase
-          .from("challenge_participants")
-          .select("id,student_id,display_name,team_name,mode,score,rank"),
-      ]);
-      const excluded = new Set((optouts.data ?? []).map((x) => x.student_id));
+      const board = await getLeaderboardData();
+      const students = { data: board.students };
+      const xp = { data: board.xp };
+      const attempts = { data: board.attempts };
+      const members = { data: board.members };
+      const participants = { data: board.participants };
+      const excluded = new Set((board.optouts ?? []).map((x) => x.student_id));
       const people = (students.data ?? []).filter((s) => !excluded.has(s.id));
       let rows: Array<{ id: string; name: string; detail: string; score: number; self?: boolean }> =
         [];

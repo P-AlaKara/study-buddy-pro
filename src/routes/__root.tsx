@@ -3,6 +3,7 @@ import {
   Outlet,
   Link,
   createRootRouteWithContext,
+  redirect,
   useRouter,
   HeadContent,
   Scripts,
@@ -12,6 +13,10 @@ import { useEffect, type ReactNode } from "react";
 import appCss from "../styles.css?url";
 import { reportLovableError } from "../lib/lovable-error-reporting";
 import { FeedbackWidget } from "../components/feedback-widget";
+import { AuthProvider } from "@/features/auth/auth-context";
+import { getSession } from "@/features/auth/auth.functions";
+
+const PUBLIC_PATHS = new Set(["/login", "/register"]);
 
 function NotFoundComponent() {
   return (
@@ -74,6 +79,25 @@ function ErrorComponent({ error, reset }: import("@tanstack/react-router").Error
 }
 
 export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()({
+  // Single gate for the whole app: sign in once, access everything. Public
+  // routes (login/register) are reachable while signed out; every other route
+  // redirects to /login. Signed-in users are bounced away from the auth pages.
+  beforeLoad: async ({ location }) => {
+    const isPublic = PUBLIC_PATHS.has(location.pathname);
+    let user: Awaited<ReturnType<typeof getSession>> = null;
+    try {
+      user = await getSession();
+    } catch {
+      user = null;
+    }
+    if (!user && !isPublic) {
+      throw redirect({ to: "/login" });
+    }
+    if (user && isPublic) {
+      throw redirect({ to: "/" });
+    }
+    return { user };
+  },
   head: () => ({
     meta: [
       { charSet: "utf-8" },
@@ -127,9 +151,11 @@ function RootComponent() {
 
   return (
     <QueryClientProvider client={queryClient}>
-      {/* Required: nested routes render here. Removing <Outlet /> breaks all child routes. */}
-      <Outlet />
-      <FeedbackWidget />
+      <AuthProvider>
+        {/* Required: nested routes render here. Removing <Outlet /> breaks all child routes. */}
+        <Outlet />
+        <FeedbackWidget />
+      </AuthProvider>
     </QueryClientProvider>
   );
 }

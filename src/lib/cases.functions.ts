@@ -1,5 +1,35 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
+import { requireAuth } from "@/features/auth/middleware";
+import { CASE_COLUMNS, type CaseRow } from "./cases";
+
+// Cases are shared content, but all DB access is backend-mediated: the browser
+// can no longer read tables directly. Auth is required (the whole app is gated).
+export const listCases = createServerFn({ method: "GET" })
+  .middleware([requireAuth])
+  .handler(async (): Promise<CaseRow[]> => {
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { data, error } = await supabaseAdmin
+      .from("cases")
+      .select(CASE_COLUMNS)
+      .order("is_weekly_challenge", { ascending: false });
+    if (error) throw new Error(error.message);
+    return (data ?? []) as unknown as CaseRow[];
+  });
+
+export const getCase = createServerFn({ method: "GET" })
+  .middleware([requireAuth])
+  .inputValidator((d) => z.object({ id: z.string().uuid() }).parse(d))
+  .handler(async ({ data }): Promise<CaseRow> => {
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { data: row, error } = await supabaseAdmin
+      .from("cases")
+      .select(CASE_COLUMNS)
+      .eq("id", data.id)
+      .single();
+    if (error) throw new Error(error.message);
+    return row as unknown as CaseRow;
+  });
 
 type Key = {
   key_history: string[];

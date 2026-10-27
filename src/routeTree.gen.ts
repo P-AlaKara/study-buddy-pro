@@ -15,10 +15,12 @@ import { Route as CasesRouteImport } from './routes/cases'
 import { Route as FlashcardsRouteImport } from './routes/flashcards'
 import { Route as GroupsRouteImport } from './routes/groups'
 import { Route as LeaderboardsRouteImport } from './routes/leaderboards'
+import { Route as LoginRouteImport } from './routes/login'
 import { Route as OsceRouteImport } from './routes/osce'
 import { Route as PracticeRouteImport } from './routes/practice'
 import { Route as ProfileRouteImport } from './routes/profile'
 import { Route as QuizRouteImport } from './routes/quiz'
+import { Route as RegisterRouteImport } from './routes/register'
 import { Route as CasesIndexRouteImport } from './routes/cases.index'
 import { Route as CasesCaseIdRouteImport } from './routes/cases.$caseId'
 import { Route as FlashcardsIndexRouteImport } from './routes/flashcards.index'
@@ -63,6 +65,11 @@ const LeaderboardsRoute = LeaderboardsRouteImport.update({
   path: '/leaderboards',
   getParentRoute: () => rootRouteImport,
 } as any)
+const LoginRoute = LoginRouteImport.update({
+  id: '/login',
+  path: '/login',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const OsceRoute = OsceRouteImport.update({
   id: '/osce',
   path: '/osce',
@@ -81,6 +88,11 @@ const ProfileRoute = ProfileRouteImport.update({
 const QuizRoute = QuizRouteImport.update({
   id: '/quiz',
   path: '/quiz',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const RegisterRoute = RegisterRouteImport.update({
+  id: '/register',
+  path: '/register',
   getParentRoute: () => rootRouteImport,
 } as any)
 const CasesIndexRoute = CasesIndexRouteImport.update({
@@ -157,10 +169,12 @@ export interface FileRoutesByFullPath {
   '/flashcards': typeof FlashcardsRouteWithChildren
   '/groups': typeof GroupsRouteWithChildren
   '/leaderboards': typeof LeaderboardsRoute
+  '/login': typeof LoginRoute
   '/osce': typeof OsceRouteWithChildren
   '/practice': typeof PracticeRoute
   '/profile': typeof ProfileRoute
   '/quiz': typeof QuizRouteWithChildren
+  '/register': typeof RegisterRoute
   '/cases/$caseId': typeof CasesCaseIdRoute
   '/flashcards/$deckId': typeof FlashcardsDeckIdRoute
   '/flashcards/review': typeof FlashcardsReviewRoute
@@ -179,8 +193,10 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/anatomy': typeof AnatomyRoute
   '/leaderboards': typeof LeaderboardsRoute
+  '/login': typeof LoginRoute
   '/practice': typeof PracticeRoute
   '/profile': typeof ProfileRoute
+  '/register': typeof RegisterRoute
   '/cases/$caseId': typeof CasesCaseIdRoute
   '/flashcards/$deckId': typeof FlashcardsDeckIdRoute
   '/flashcards/review': typeof FlashcardsReviewRoute
@@ -203,10 +219,12 @@ export interface FileRoutesById {
   '/flashcards': typeof FlashcardsRouteWithChildren
   '/groups': typeof GroupsRouteWithChildren
   '/leaderboards': typeof LeaderboardsRoute
+  '/login': typeof LoginRoute
   '/osce': typeof OsceRouteWithChildren
   '/practice': typeof PracticeRoute
   '/profile': typeof ProfileRoute
   '/quiz': typeof QuizRouteWithChildren
+  '/register': typeof RegisterRoute
   '/cases/$caseId': typeof CasesCaseIdRoute
   '/flashcards/$deckId': typeof FlashcardsDeckIdRoute
   '/flashcards/review': typeof FlashcardsReviewRoute
@@ -230,10 +248,12 @@ export interface FileRouteTypes {
     | '/flashcards'
     | '/groups'
     | '/leaderboards'
+    | '/login'
     | '/osce'
     | '/practice'
     | '/profile'
     | '/quiz'
+    | '/register'
     | '/cases/$caseId'
     | '/flashcards/$deckId'
     | '/flashcards/review'
@@ -252,8 +272,10 @@ export interface FileRouteTypes {
     | '/'
     | '/anatomy'
     | '/leaderboards'
+    | '/login'
     | '/practice'
     | '/profile'
+    | '/register'
     | '/cases/$caseId'
     | '/flashcards/$deckId'
     | '/flashcards/review'
@@ -275,10 +297,12 @@ export interface FileRouteTypes {
     | '/flashcards'
     | '/groups'
     | '/leaderboards'
+    | '/login'
     | '/osce'
     | '/practice'
     | '/profile'
     | '/quiz'
+    | '/register'
     | '/cases/$caseId'
     | '/flashcards/$deckId'
     | '/flashcards/review'
@@ -301,10 +325,12 @@ export interface RootRouteChildren {
   FlashcardsRoute: typeof FlashcardsRouteWithChildren
   GroupsRoute: typeof GroupsRouteWithChildren
   LeaderboardsRoute: typeof LeaderboardsRoute
+  LoginRoute: typeof LoginRoute
   OsceRoute: typeof OsceRouteWithChildren
   PracticeRoute: typeof PracticeRoute
   ProfileRoute: typeof ProfileRoute
   QuizRoute: typeof QuizRouteWithChildren
+  RegisterRoute: typeof RegisterRoute
   StudyWithAnnieDocumentIdRoute: typeof StudyWithAnnieDocumentIdRoute
   StudyWithAnnieIndexRoute: typeof StudyWithAnnieIndexRoute
 }
@@ -353,6 +379,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof LeaderboardsRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/login': {
+      id: '/login'
+      path: '/login'
+      fullPath: '/login'
+      preLoaderRoute: typeof LoginRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/osce': {
       id: '/osce'
       path: '/osce'
@@ -379,6 +412,13 @@ declare module '@tanstack/react-router' {
       path: '/quiz'
       fullPath: '/quiz'
       preLoaderRoute: typeof QuizRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/register': {
+      id: '/register'
+      path: '/register'
+      fullPath: '/register'
+      preLoaderRoute: typeof RegisterRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/cases/': {
@@ -547,10 +587,12 @@ const rootRouteChildren: RootRouteChildren = {
   FlashcardsRoute: FlashcardsRouteWithChildren,
   GroupsRoute: GroupsRouteWithChildren,
   LeaderboardsRoute: LeaderboardsRoute,
+  LoginRoute: LoginRoute,
   OsceRoute: OsceRouteWithChildren,
   PracticeRoute: PracticeRoute,
   ProfileRoute: ProfileRoute,
   QuizRoute: QuizRouteWithChildren,
+  RegisterRoute: RegisterRoute,
   StudyWithAnnieDocumentIdRoute: StudyWithAnnieDocumentIdRoute,
   StudyWithAnnieIndexRoute: StudyWithAnnieIndexRoute,
 }

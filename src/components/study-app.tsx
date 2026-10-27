@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
+import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
 import { useNavigate } from "@tanstack/react-router";
 import { Link } from "@tanstack/react-router";
 import {
@@ -17,9 +17,9 @@ import {
   HeartPulse,
   Home,
   Layers3,
+  LogOut,
   Medal,
   PersonStanding,
-  Plus,
   Sparkles,
   Stethoscope,
   Target,
@@ -27,11 +27,10 @@ import {
   Users,
   X,
 } from "lucide-react";
-import { supabase } from "@/integrations/supabase/client";
-import { logProblem } from "@/lib/log-problem";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { Button } from "@/components/ui/button";
 import type { Database } from "@/integrations/supabase/types";
+import { useAuth } from "@/features/auth/auth-context";
 import {
   CelebrationLayer,
   HomeGamification,
@@ -48,6 +47,7 @@ type Student = Pick<
   Database["public"]["Tables"]["students"]["Row"],
   | "id"
   | "name"
+  | "email"
   | "university"
   | "country"
   | "year_of_study"
@@ -68,8 +68,6 @@ type Student = Pick<
 >;
 type View = "home" | "cases" | "practice" | "groups" | "profile" | "leaderboards";
 type PracticeTab = "OSCE" | "Quizzes" | "Flashcards";
-const columns =
-  "id,name,university,country,year_of_study,medical_program,current_level,subjects_studying,current_rotation,specialty_interests,weak_areas,study_goal,daily_study_target_minutes,notification_prefs,xp,level,streak_days,longest_streak,created_at";
 const nav = [
   { label: "Home", to: "/", icon: Home },
   ...(STUDY_WITH_ANNIE_ENABLED
@@ -151,64 +149,30 @@ export const useActingStudent = () => useContext(StudentContext);
 export function StudyApp({ view, children }: { view: View; children?: ReactNode }) {
   const navigate = useNavigate();
   const isMobile = useIsMobile();
-  const [students, setStudents] = useState<Student[]>([]);
-  const [selectedId, setSelectedId] = useState<string | null>(null);
-  const [switcherOpen, setSwitcherOpen] = useState(false);
-  const [onboarding, setOnboarding] = useState(false);
-  const [loading, setLoading] = useState(true);
-  const [loadError, setLoadError] = useState("");
+  const { profile, isLoading: loading, signOut, refresh } = useAuth();
+  const [menuOpen, setMenuOpen] = useState(false);
   const [practiceTab, setPracticeTab] = useState<PracticeTab>("OSCE");
   const [activity, setActivity] = useState<string | null>(null);
-  const student = useMemo(
-    () => students.find((item) => item.id === selectedId) ?? students[0],
-    [students, selectedId],
-  );
+  // Each account owns exactly one profile; it comes from the auth context.
+  const student = profile as Student | undefined;
 
+  // Keep XP / streak fresh when the tab regains focus.
   useEffect(() => {
-    let active = true;
-    supabase
-      .from("students")
-      .select(columns)
-      .order("created_at", { ascending: true })
-      .then(({ data, error }) => {
-        if (!active) return;
-        if (error) {
-          logProblem("Student directory", error);
-          setLoadError("Student profiles couldn't be loaded. Please refresh to try again.");
-        } else setStudents((data ?? []) as Student[]);
-        const saved = window.localStorage.getItem("medley-demo-student");
-        if (saved) setSelectedId(saved);
-        setLoading(false);
-      });
-    return () => {
-      active = false;
+    const onFocus = () => {
+      void refresh();
     };
-  }, []);
-  useEffect(() => {
-    if (!student?.id) return;
-    const refresh = () =>
-      supabase
-        .from("students")
-        .select(columns)
-        .eq("id", student.id)
-        .single()
-        .then(({ data }) => {
-          if (data)
-            setStudents((current) =>
-              current.map((item) => (item.id === data.id ? (data as Student) : item)),
-            );
-        });
-    const timer = window.setInterval(refresh, 10000);
-    window.addEventListener("focus", refresh);
+    window.addEventListener("focus", onFocus);
+    const timer = window.setInterval(onFocus, 30000);
     return () => {
+      window.removeEventListener("focus", onFocus);
       window.clearInterval(timer);
-      window.removeEventListener("focus", refresh);
     };
-  }, [student?.id]);
-  const selectStudent = (id: string) => {
-    setSelectedId(id);
-    window.localStorage.setItem("medley-demo-student", id);
-    setSwitcherOpen(false);
+  }, [refresh]);
+
+  const handleSignOut = async () => {
+    setMenuOpen(false);
+    await signOut();
+    await navigate({ to: "/login" });
   };
   const personalizedSubjects = student?.subjects_studying.length
     ? student.subjects_studying
@@ -284,9 +248,9 @@ export function StudyApp({ view, children }: { view: View; children?: ReactNode 
             <div className="relative min-w-0">
               <Button
                 variant="secondary"
-                onClick={() => setSwitcherOpen(!switcherOpen)}
-                aria-expanded={switcherOpen}
-                aria-label="Choose acting as student"
+                onClick={() => setMenuOpen(!menuOpen)}
+                aria-expanded={menuOpen}
+                aria-label="Account menu"
                 className="h-11 max-w-[190px] gap-2 bg-card px-2 pr-3 shadow-sm hover:bg-card md:max-w-none"
               >
                 <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-mint text-xs font-black">
@@ -294,74 +258,65 @@ export function StudyApp({ view, children }: { view: View; children?: ReactNode 
                 </span>
                 <span className="min-w-0 truncate text-left text-xs md:text-sm">
                   <span className="block text-[10px] font-bold leading-none text-muted-foreground">
-                    ACTING AS
+                    SIGNED IN
                   </span>
                   {loading ? "Loading..." : firstName(student?.name)}
                 </span>
                 <ChevronDown size={15} className="shrink-0" />
               </Button>
-              {switcherOpen &&
+              {menuOpen &&
                 (() => {
-                  const switcherContent = (
+                  const menuContent = (
                     <>
-                      <p className="px-3 pb-2 pt-2 text-xs font-extrabold uppercase text-muted-foreground">
-                        Switch student
-                      </p>
-                      {students.map((item) => (
-                        <Button
-                          key={item.id}
-                          variant="ghost"
-                          onClick={() => selectStudent(item.id)}
-                          className={`h-auto w-full justify-start gap-3 whitespace-normal rounded-2xl px-3 py-3 text-left md:py-2 ${item.id === student?.id ? "bg-mint-soft" : ""}`}
-                        >
-                          <span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-lavender-soft text-xs">
-                            {initials(item.name)}
-                          </span>
-                          <span className="min-w-0">
-                            <span className="block truncate text-sm font-extrabold">
-                              {item.name}
-                            </span>
-                            <span className="block truncate text-xs font-medium text-muted-foreground">
-                              Year {item.year_of_study} · {item.university}
-                            </span>
-                          </span>
-                        </Button>
-                      ))}
+                      <div className="px-3 pb-2 pt-2">
+                        <p className="truncate text-sm font-extrabold">{student?.name}</p>
+                        <p className="truncate text-xs font-medium text-muted-foreground">
+                          {student?.email}
+                        </p>
+                      </div>
                       <div className="my-1 h-px bg-border" />
                       <Button
                         variant="ghost"
                         onClick={() => {
-                          setSwitcherOpen(false);
-                          setOnboarding(true);
+                          setMenuOpen(false);
+                          void navigate({ to: "/profile" });
                         }}
                         className="w-full justify-start gap-3 rounded-2xl px-3 py-3 text-sm md:py-2"
                       >
-                        <Plus size={18} />
-                        Create demo profile
+                        <Activity size={18} />
+                        Your profile
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        onClick={handleSignOut}
+                        className="w-full justify-start gap-3 rounded-2xl px-3 py-3 text-sm text-red-600 md:py-2"
+                      >
+                        <LogOut size={18} />
+                        Sign out
                       </Button>
                     </>
                   );
                   return isMobile ? (
                     <div
                       className="sheet-scrim fixed inset-0 z-50 flex items-end bg-foreground/30 backdrop-blur-sm"
-                      onClick={() => setSwitcherOpen(false)}
+                      onClick={() => setMenuOpen(false)}
                     >
                       <div
                         role="dialog"
                         aria-modal="true"
-                        aria-label="Switch student"
+                        aria-label="Account menu"
                         className="mobile-sheet max-h-[75dvh] w-full overflow-y-auto rounded-t-[28px] bg-card p-3 pt-2 shadow-2xl"
                         onClick={(e) => e.stopPropagation()}
                       >
                         <div className="mx-auto mb-2 mt-1 h-1.5 w-10 rounded-full bg-border" />
-                        {switcherContent}
+                        {menuContent}
                       </div>
                     </div>
                   ) : (
                     <>
-                      <div className="fixed inset-0 z-30" onClick={() => setSwitcherOpen(false)} />
+                      <div className="fixed inset-0 z-30" onClick={() => setMenuOpen(false)} />
                       <div className="absolute right-0 top-14 z-40 w-[min(85vw,290px)] rounded-[22px] bg-card p-2 shadow-xl">
-                        {switcherContent}
+                        {menuContent}
                       </div>
                     </>
                   );
@@ -371,9 +326,6 @@ export function StudyApp({ view, children }: { view: View; children?: ReactNode 
         </div>
       </header>
       <main className="app-container pt-6 md:pt-8">
-        {loadError && (
-          <div className="mb-5 rounded-2xl bg-pink-soft p-4 text-sm font-bold">{loadError}</div>
-        )}
         {view === "home" && (
           <>
             <div className="mb-8 flex flex-wrap items-end justify-between gap-3">
@@ -959,16 +911,6 @@ export function StudyApp({ view, children }: { view: View; children?: ReactNode 
           </div>
         </div>
       )}
-      {onboarding && (
-        <Onboarding
-          onClose={() => setOnboarding(false)}
-          onCreated={(created) => {
-            setStudents((prev) => [...prev, created]);
-            selectStudent(created.id);
-            setOnboarding(false);
-          }}
-        />
-      )}
       <CelebrationLayer student={student} />
     </div>
   );
@@ -1003,317 +945,6 @@ function InfoRow({ label, value }: { label: string; value: string }) {
     <div className="flex justify-between gap-4 border-b border-border pb-3 last:border-0">
       <span className="text-muted-foreground">{label}</span>
       <span className="max-w-[60%] text-right font-bold">{value}</span>
-    </div>
-  );
-}
-
-type Form = {
-  name: string;
-  email: string;
-  university: string;
-  country: string;
-  year: string;
-  program: string;
-  subjects: string[];
-  rotation: string;
-  interests: string;
-  weak: string;
-  goal: string;
-  target: string;
-  reminders: boolean;
-  digest: boolean;
-};
-const initialForm: Form = {
-  name: "",
-  email: "",
-  university: "",
-  country: "Rwanda",
-  year: "",
-  program: "MBBS",
-  subjects: [],
-  rotation: "",
-  interests: "",
-  weak: "",
-  goal: "",
-  target: "30",
-  reminders: true,
-  digest: false,
-};
-function Onboarding({
-  onClose,
-  onCreated,
-}: {
-  onClose: () => void;
-  onCreated: (student: Student) => void;
-}) {
-  const [step, setStep] = useState(0);
-  const [form, setForm] = useState<Form>(initialForm);
-  const [error, setError] = useState("");
-  const [saving, setSaving] = useState(false);
-  const titles = [
-    "Let's start with you",
-    "Where are you studying?",
-    "What's on your study list?",
-    "Shape your study space",
-  ];
-  const descriptions = [
-    "Just the basics for your demo profile.",
-    "Tell us about your medical journey.",
-    "Pick the subjects you're working on right now.",
-    "These are optional — you can leave them blank.",
-  ];
-  const coachNotes = [
-    "Welcome. I’ll help tailor Medley to the way you learn.",
-    "Your training stage helps me set the right level of challenge.",
-    "Choose what matters now; you can change this list later.",
-    "One last check, then your study space is ready.",
-  ];
-  const coachExpressions = ["encouraging", "thinking", "thinking", "proud"] as const;
-  const update = (key: keyof Form, value: Form[keyof Form]) =>
-    setForm((prev) => ({ ...prev, [key]: value }));
-  const input = (
-    label: string,
-    key: keyof Form,
-    placeholder: string,
-    type = "text",
-    required = false,
-  ) => (
-    <label className="block text-sm font-extrabold">
-      {label}
-      <input
-        type={type}
-        value={String(form[key])}
-        onChange={(e) => update(key, e.target.value)}
-        placeholder={placeholder}
-        required={required}
-        className="mt-2 block h-12 w-full rounded-2xl bg-muted px-4 font-medium outline-none ring-primary focus:ring-2"
-      />
-    </label>
-  );
-  async function next() {
-    setError("");
-    if (
-      step === 0 &&
-      (!form.name.trim() || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email.trim()))
-    ) {
-      setError("Please enter your name and a valid email address.");
-      return;
-    }
-    if (
-      step === 1 &&
-      (!form.university.trim() || !form.country.trim() || !form.year || !form.program.trim())
-    ) {
-      setError("Please complete your school, country, year and program.");
-      return;
-    }
-    if (step === 2 && form.subjects.length === 0) {
-      setError("Choose at least one subject you're studying.");
-      return;
-    }
-    if (step < 3) {
-      setStep(step + 1);
-      return;
-    }
-    const target = Number(form.target);
-    if (!Number.isInteger(target) || target < 5 || target > 480) {
-      setError("Choose a daily target between 5 and 480 minutes.");
-      return;
-    }
-    setSaving(true);
-    const values = {
-      name: form.name.trim(),
-      email: form.email.trim(),
-      university: form.university.trim(),
-      country: form.country.trim(),
-      year_of_study: Number(form.year),
-      medical_program: form.program.trim(),
-      current_level: Number(form.year) <= 2 ? "Pre-clinical" : "Clinical years",
-      subjects_studying: form.subjects,
-      current_rotation: form.rotation.trim() || null,
-      specialty_interests: form.interests
-        .split(",")
-        .map((x) => x.trim())
-        .filter(Boolean),
-      weak_areas: form.weak
-        .split(",")
-        .map((x) => x.trim())
-        .filter(Boolean),
-      study_goal: form.goal.trim() || null,
-      daily_study_target_minutes: target,
-      notification_prefs: { study_reminders: form.reminders, weekly_digest: form.digest },
-    };
-    const { error: insertError } = await supabase.from("students").insert(values);
-    if (insertError) {
-      setError("We couldn't create your demo profile. Please try again.");
-      setSaving(false);
-      return;
-    }
-    const { data: directory } = await supabase
-      .from("students")
-      .select(columns)
-      .order("created_at", { ascending: false })
-      .limit(30);
-    const created = (directory as Student[] | null)?.find(
-      (item) => item.name === form.name.trim() && item.university === form.university.trim(),
-    );
-    if (created) {
-      onCreated(created);
-      return;
-    }
-    setError(
-      "Profile created, but it couldn't be selected. Refresh to find it in the student switcher.",
-    );
-    setSaving(false);
-  }
-  return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto bg-foreground/25 p-4"
-      role="dialog"
-      aria-modal="true"
-      aria-label="Create demo profile"
-    >
-      <div className="clay-card my-auto w-full max-w-lg bg-card p-6 md:p-8">
-        <div className="flex items-center justify-between">
-          <span className="text-xs font-black uppercase text-muted-foreground">
-            Create demo profile · {step + 1} of 4
-          </span>
-          <Button variant="ghost" size="icon" aria-label="Close" onClick={onClose}>
-            <X />
-          </Button>
-        </div>
-        <div className="mt-4 flex gap-2">
-          {titles.map((_, i) => (
-            <div
-              key={i}
-              className={`h-2 flex-1 rounded-full ${i <= step ? "bg-lavender" : "bg-muted"}`}
-            />
-          ))}
-        </div>
-        <h2 className="mt-7 font-display text-2xl font-black md:text-3xl">{titles[step]}</h2>
-        <p className="mt-1 text-sm text-muted-foreground">{descriptions[step]}</p>
-        <div className="mt-5 grid grid-cols-[72px_1fr] items-center gap-3 rounded-[22px] bg-[#fff8df] p-3">
-          <DrAmbrose
-            expression={coachExpressions[step] ?? "neutral"}
-            variant="logo"
-            className="w-[72px]"
-          />
-          <div>
-            <p className="text-[10px] font-black uppercase tracking-wider text-amber-800">
-              {DR_AMBROSE.name} · {DR_AMBROSE.role}
-            </p>
-            <p className="mt-1 text-xs font-bold leading-relaxed text-slate-700">
-              {coachNotes[step]}
-            </p>
-          </div>
-        </div>
-        <div className="mt-7 max-h-[48vh] space-y-4 overflow-y-auto pr-1">
-          {step === 0 && (
-            <>
-              {input("Your name", "name", "e.g. Aline Uwimana", "text", true)}
-              {input("Email address", "email", "you@example.com", "email", true)}
-            </>
-          )}
-          {step === 1 && (
-            <>
-              {input("University", "university", "e.g. University of Rwanda", "text", true)}
-              {input("Country", "country", "Rwanda", "text", true)}
-              <label className="block text-sm font-extrabold">
-                Year of study
-                <select
-                  value={form.year}
-                  onChange={(e) => update("year", e.target.value)}
-                  className="mt-2 block h-12 w-full rounded-2xl bg-muted px-4 font-medium outline-none ring-primary focus:ring-2"
-                >
-                  <option value="">Select year</option>
-                  {Array.from({ length: 8 }, (_, i) => (
-                    <option key={i} value={i + 1}>
-                      Year {i + 1}
-                    </option>
-                  ))}
-                </select>
-              </label>
-              {input("Medical program", "program", "e.g. MBBS", "text", true)}
-            </>
-          )}
-          {step === 2 && (
-            <div className="flex flex-wrap gap-2">
-              {subjects.map((subject) => {
-                const chosen = form.subjects.includes(subject);
-                return (
-                  <Button
-                    key={subject}
-                    variant={chosen ? "lavender" : "secondary"}
-                    onClick={() =>
-                      update(
-                        "subjects",
-                        chosen
-                          ? form.subjects.filter((item) => item !== subject)
-                          : [...form.subjects, subject],
-                      )
-                    }
-                    className="h-10 text-xs"
-                  >
-                    {chosen && <CircleCheck size={15} />}
-                    {subject}
-                  </Button>
-                );
-              })}
-            </div>
-          )}
-          {step === 3 && (
-            <>
-              {input("Current rotation", "rotation", "e.g. Paediatrics")}
-              {input("Specialty interests", "interests", "e.g. Cardiology, Emergency Medicine")}
-              {input("Areas to work on", "weak", "e.g. Pharmacology, Anatomy")}
-              {input("Study goal", "goal", "What would you like to achieve?")}
-              {input("Daily study target (minutes)", "target", "30", "number")}
-              <div className="rounded-2xl bg-muted p-4">
-                <p className="mb-3 text-sm font-extrabold">Notifications</p>
-                <label className="flex items-center justify-between gap-3 py-1 text-sm">
-                  Study reminders
-                  <input
-                    type="checkbox"
-                    checked={form.reminders}
-                    onChange={(e) => update("reminders", e.target.checked)}
-                    className="size-5 accent-primary"
-                  />
-                </label>
-                <label className="flex items-center justify-between gap-3 py-1 text-sm">
-                  Weekly digest
-                  <input
-                    type="checkbox"
-                    checked={form.digest}
-                    onChange={(e) => update("digest", e.target.checked)}
-                    className="size-5 accent-primary"
-                  />
-                </label>
-              </div>
-            </>
-          )}
-        </div>
-        {error && (
-          <p role="alert" className="mt-4 text-sm font-bold text-pink">
-            {error}
-          </p>
-        )}
-        <div className="mt-7 flex gap-3">
-          {step > 0 && (
-            <Button
-              variant="secondary"
-              onClick={() => {
-                setError("");
-                setStep(step - 1);
-              }}
-            >
-              <ArrowLeft /> Back
-            </Button>
-          )}
-          <Button className="flex-1" disabled={saving} onClick={next}>
-            {saving ? "Creating..." : step === 3 ? "Create profile" : "Continue"}
-            <ArrowRight />
-          </Button>
-        </div>
-      </div>
     </div>
   );
 }

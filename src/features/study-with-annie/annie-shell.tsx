@@ -1,6 +1,6 @@
-import { Link } from "@tanstack/react-router";
+import { Link, useNavigate } from "@tanstack/react-router";
 import { BookOpenText, HeartPulse, LogOut } from "lucide-react";
-import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/features/auth/auth-context";
 
 export function AnnieShell({
   children,
@@ -9,6 +9,12 @@ export function AnnieShell({
   children: React.ReactNode;
   compact?: boolean;
 }) {
+  const { signOut } = useAuth();
+  const navigate = useNavigate();
+  const handleSignOut = async () => {
+    await signOut();
+    await navigate({ to: "/login" });
+  };
   return (
     <div className="annie-workspace min-h-screen bg-[#fafafa] text-slate-900">
       <header className="sticky top-0 z-40 border-b border-slate-200 bg-white/95 backdrop-blur">
@@ -34,7 +40,7 @@ export function AnnieShell({
           </Link>
           <button
             type="button"
-            onClick={() => void supabase.auth.signOut()}
+            onClick={() => void handleSignOut()}
             className="inline-flex items-center gap-2 rounded-lg px-3 py-2 text-xs font-medium text-slate-500 hover:bg-slate-100 hover:text-slate-900"
           >
             <LogOut className="size-4" />

@@ -4,17 +4,16 @@ import { z } from "zod";
 import { ArrowLeft, Pause, Play, PartyPopper } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useActingStudent } from "@/components/study-app";
-import { supabase } from "@/integrations/supabase/client";
 import {
   clozeBack,
   clozeFront,
   previewInterval,
-  schedule,
   CARD_TYPE_LABEL,
   type Card,
   type Rating,
   type Review,
 } from "@/lib/flashcards";
+import { getReviewQueue, recordReview } from "@/lib/flashcards.functions";
 import { NoteButton } from "@/components/gamification";
 
 export const Route = createFileRoute("/flashcards/review")({
@@ -56,33 +55,8 @@ function ReviewSession() {
     if (!student) return;
     setPaused(localStorage.getItem(pauseKey) === "1");
     (async () => {
-      let deckIds: string[];
-      if (deck) deckIds = [deck];
-      else {
-        const [{ data: d }, { data: s }] = await Promise.all([
-          supabase.from("flashcard_decks").select("id,is_official,owner_student_id"),
-          supabase.from("saved_decks").select("deck_id").eq("student_id", student.id),
-        ]);
-        const saved = new Set((s ?? []).map((x) => x.deck_id));
-        deckIds = (d ?? [])
-          .filter((x) => x.is_official || x.owner_student_id === student.id || saved.has(x.id))
-          .map((x) => x.id);
-      }
-      const [{ data: cards }, { data: reviews }] = await Promise.all([
-        supabase.from("flashcards").select("*").in("deck_id", deckIds).order("position"),
-        supabase.from("flashcard_reviews").select("*").eq("student_id", student.id),
-      ]);
-      const byCard = new Map((reviews ?? []).map((r) => [r.flashcard_id, r as unknown as Review]));
-      const now = Date.now();
-      const items = ((cards ?? []) as unknown as Card[]).map((card) => ({
-        card,
-        review: byCard.get(card.id) ?? null,
-      }));
-      const dueItems = items.filter(
-        (i) => i.review && new Date(i.review.due_date).getTime() <= now,
-      );
-      const newItems = items.filter((i) => !i.review).slice(0, 10);
-      setQueue([...dueItems, ...newItems]);
+      const items = await getReviewQueue({ data: { deck: deck ?? undefined } });
+      setQueue(items as Item[]);
     })();
   }, [student?.id, deck]); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -97,19 +71,7 @@ function ReviewSession() {
     if (!queue || !student) return;
     const [cur, ...rest] = queue;
     if (!cur) return;
-    const next = schedule(cur.review, r);
-    const row = {
-      student_id: student.id,
-      flashcard_id: cur.card.id,
-      ...next,
-      last_rating: r,
-      last_reviewed_at: new Date().toISOString(),
-    };
-    const { data } = await supabase
-      .from("flashcard_reviews")
-      .upsert(row, { onConflict: "student_id,flashcard_id" })
-      .select("*")
-      .single();
+    const data = await recordReview({ data: { flashcardId: cur.card.id, rating: r } });
     setShown(false);
     setDoneCount((c) => c + 1);
     // "Again" puts the card back near the end of this session.

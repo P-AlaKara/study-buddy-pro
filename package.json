@@ -15,7 +15,8 @@
     "test:osce-validator": "tsc --outDir /tmp/study-buddy-osce-validator-tests --noEmit false --allowImportingTsExtensions false --module CommonJS --moduleResolution Node --target ES2022 --skipLibCheck --strict scripts/test-osce-validator.ts && node /tmp/study-buddy-osce-validator-tests/scripts/test-osce-validator.js",
     "test:osce-engine": "tsc --outDir /tmp/study-buddy-osce-engine-tests --noEmit false --allowImportingTsExtensions false --module CommonJS --moduleResolution Node --target ES2022 --skipLibCheck --strict scripts/test-osce-engine.ts && node /tmp/study-buddy-osce-engine-tests/scripts/test-osce-engine.js",
     "test:annie": "tsc --outDir /tmp/study-buddy-annie-tests --noEmit false --allowImportingTsExtensions false --module CommonJS --moduleResolution Node --target ES2022 --skipLibCheck --strict scripts/test-annie.ts && node /tmp/study-buddy-annie-tests/scripts/test-annie.js",
-    "test": "npm run validate:cases && npm run test:case-engine && npm run validate:osce && npm run test:osce-validator && npm run test:osce-engine && npm run test:annie",
+    "test:auth": "tsc --outDir /tmp/study-buddy-auth-tests --noEmit false --allowImportingTsExtensions false --module CommonJS --moduleResolution Node --target ES2022 --skipLibCheck --strict scripts/test-auth.ts && NODE_PATH=\"$PWD/node_modules\" node /tmp/study-buddy-auth-tests/scripts/test-auth.js",
+    "test": "npm run validate:cases && npm run test:case-engine && npm run validate:osce && npm run test:osce-validator && npm run test:osce-engine && npm run test:annie && npm run test:auth",
     "lint": "eslint .",
     "format": "prettier --write ."
   },
@@ -27,6 +28,7 @@
   },
   "dependencies": {
     "@hookform/resolvers": "^5.2.2",
+    "@node-rs/argon2": "^2.2.2",
     "@radix-ui/react-accordion": "^1.2.12",
     "@radix-ui/react-alert-dialog": "^1.1.15",
     "@radix-ui/react-aspect-ratio": "^1.1.8",
@@ -67,6 +69,7 @@
     "date-fns": "^4.1.0",
     "embla-carousel-react": "^8.6.0",
     "input-otp": "^1.4.2",
+    "jose": "^6.2.13",
     "lucide-react": "^0.575.0",
     "pdfjs-dist": "5.6.205",
     "react": "^19.2.0",

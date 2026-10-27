@@ -1,5 +1,4 @@
 import { useCallback, useEffect, useId, useRef, useState } from "react";
-import { supabase } from "@/integrations/supabase/client";
 import { logProblem } from "@/lib/log-problem";
 import type { AmbroseExpression } from "@/features/case-challenge/components/dr-ambrose";
 import {
@@ -40,7 +39,6 @@ import { ConsultationRoom } from "./consultation-room.js";
 import { DoorScreen } from "./door-screen.js";
 import { ExaminerQuestions } from "./examiner-questions.js";
 import { StationComplete } from "./station-complete.js";
-import { OsceAiSignInDialog } from "./osce-ai-sign-in-dialog.js";
 
 function seedFromText(value: string): number {
   let hash = 2166136261;
@@ -225,18 +223,12 @@ export function OsceScreen({ station, mode }: { station: OsceStation; mode: Osce
   useEffect(() => {
     if (resumeCheckedRef.current || restored?.interactionMode !== "free_form") return;
     resumeCheckedRef.current = true;
-    void supabase.auth.getSession().then(({ data }) => {
-      if (!data.session?.user) {
-        setAiSession(null);
-        setAuthDialogOpen(true);
-        return;
-      }
-      if (restored.sessionId) {
-        void resumeAiSession(restored.sessionId);
-        return;
-      }
+    // The whole app is authenticated, so resume or start the AI session directly.
+    if (restored.sessionId) {
+      void resumeAiSession(restored.sessionId);
+    } else {
       void startAiSession();
-    });
+    }
   }, [restored, resumeAiSession, startAiSession]);
 
   useEffect(
@@ -413,12 +405,7 @@ export function OsceScreen({ station, mode }: { station: OsceStation; mode: Osce
     }
     setInteractionMode("free_form");
     if (aiSession) return;
-    const { data } = await supabase.auth.getSession();
-    if (data.session?.user) {
-      await startAiSession();
-      return;
-    }
-    setAuthDialogOpen(true);
+    await startAiSession();
   }
 
   async function submitFreeForm() {
@@ -617,16 +604,6 @@ export function OsceScreen({ station, mode }: { station: OsceStation; mode: Osce
           onEnd={() => void finishConsultation()}
           onNudge={() => void handleNudge()}
           onActivity={noteActivity}
-        />
-        <OsceAiSignInDialog
-          open={authDialogOpen}
-          onOpenChange={(open) => {
-            setAuthDialogOpen(open);
-            if (!open && !aiSession) setInteractionMode("guided");
-          }}
-          onAuthenticated={() =>
-            void (restored?.sessionId ? resumeAiSession(restored.sessionId) : startAiSession())
-          }
         />
       </>
     );

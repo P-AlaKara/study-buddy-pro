@@ -113,13 +113,6 @@ async function adminDb() {
   return supabaseAdmin as any;
 }
 
-async function assertVerifiedEmail(authClient: any) {
-  const { data, error } = await authClient.auth.getUser();
-  if (error || !data.user?.email || !data.user.email_confirmed_at) {
-    throw new Error("Verify your email before starting a Free-form consultation.");
-  }
-}
-
 function stationForId(stationId: string): OsceStation {
   const station = OSCE_STATIONS.find((candidate) => candidate.id === stationId);
   if (!station) throw new Error("OSCE station not found.");
@@ -508,7 +501,8 @@ export const createOsceAiSession = createServerFn({ method: "POST" })
     z.object({ stationId: z.string().min(1).max(120), state: z.unknown() }).parse(input),
   )
   .handler(async ({ data, context }): Promise<OsceAiMutationResult> => {
-    await assertVerifiedEmail(context.supabase);
+    // Email verification is deferred (no email infrastructure yet); a signed-in
+    // account is sufficient to start a Free-form consultation.
     const station = stationForId(data.stationId);
     const state = replayImportedGuidedState(data.state, station);
     const db = await adminDb();

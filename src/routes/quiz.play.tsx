@@ -19,7 +19,12 @@ import {
 import { Button } from "@/components/ui/button";
 import { useActingStudent } from "@/components/study-app";
 import { SuggestionPrompt } from "@/components/suggestion-prompt";
-import { supabase } from "@/integrations/supabase/client";
+import {
+  getQuizHistory,
+  createQuizSession,
+  finishQuizSession,
+  toggleBookmark as toggleBookmarkFn,
+} from "@/lib/quiz.functions";
 import { createSuggestion } from "@/lib/flashcards";
 import {
   adaptivePick,
@@ -86,18 +91,8 @@ function Runner() {
     started.current = true;
     (async () => {
       const all = await fetchQuestions();
-      const [{ data: hist }, { data: bms }] = await Promise.all([
-        supabase
-          .from("quiz_sessions")
-          .select("answers")
-          .eq("student_id", student.id)
-          .not("completed_at", "is", null),
-        supabase.from("bookmarked_questions").select("question_id").eq("student_id", student.id),
-      ]);
-      const history = (hist ?? []) as unknown as {
-        answers: Record<string, { correct: boolean }>;
-      }[];
-      const bm = new Set((bms ?? []).map((b) => b.question_id));
+      const { history, bookmarkedIds } = await getQuizHistory();
+      const bm = new Set(bookmarkedIds);
       setBookmarks(bm);
       let picked: Question[];
       if (mode === "topic") picked = shuffle(all.filter((q) => q.subject === subject)).slice(0, 10);
@@ -116,16 +111,13 @@ function Runner() {
       else picked = shuffle(all).slice(0, 10);
       setQuestions(picked);
       if (mode === "timed") setLeft(picked.length * 60);
-      const { data } = await supabase
-        .from("quiz_sessions")
-        .insert({
-          student_id: student.id,
+      const data = await createQuizSession({
+        data: {
           mode,
-          group_id: mode === "group" ? (group ?? null) : null,
-          question_ids: picked.map((q) => q.id),
-        })
-        .select("id")
-        .single();
+          groupId: mode === "group" ? (group ?? null) : null,
+          questionIds: picked.map((q) => q.id),
+        },
+      });
       if (data) setSessionId(data.id);
     })();
   }, [student, mode, subject, group]);
@@ -166,15 +158,8 @@ function Runner() {
       (Object.values(recs).filter((r) => r.correct).length / Math.max(1, questions.length)) * 100,
     );
     if (sessionId)
-      await supabase
-        .from("quiz_sessions")
-        .update({ answers: recs, score, completed_at: new Date().toISOString() })
-        .eq("id", sessionId);
-    if (group && student)
-      await supabase.from("group_messages").insert({
-        group_id: group,
-        student_id: student.id,
-        message: `Finished today's group quiz with ${score}%`,
+      await finishQuizSession({
+        data: { sessionId, answers: recs, score, groupId: group ?? null },
       });
   }
   function next() {
@@ -190,20 +175,11 @@ function Runner() {
   async function toggleBookmark() {
     if (!q || !student) return;
     const s = new Set(bookmarks);
-    if (s.has(q.id)) {
-      s.delete(q.id);
-      await supabase
-        .from("bookmarked_questions")
-        .delete()
-        .eq("student_id", student.id)
-        .eq("question_id", q.id);
-    } else {
-      s.add(q.id);
-      await supabase
-        .from("bookmarked_questions")
-        .insert({ student_id: student.id, question_id: q.id });
-    }
+    const willBookmark = !s.has(q.id);
+    if (willBookmark) s.add(q.id);
+    else s.delete(q.id);
     setBookmarks(s);
+    await toggleBookmarkFn({ data: { questionId: q.id, bookmark: willBookmark } });
   }
 
   const back = group ? (

@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { Loader2, MessageSquarePlus, Send, Sparkles, ThumbsDown, ThumbsUp, X } from "lucide-react";
-import { supabase } from "@/integrations/supabase/client";
+import { submitFeedback } from "@/features/feedback/feedback.functions";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { Button } from "@/components/ui/button";
 
@@ -9,7 +9,6 @@ type Source = "button" | "prompt";
 
 const SUBMITTED_KEY = "medley-feedback-submitted";
 const PROMPT_SEEN_KEY = "medley-feedback-prompt-seen";
-const STUDENT_KEY = "medley-demo-student";
 // How long someone should be actively using the app before we gently ask.
 const PROMPT_AFTER_SECONDS = 150;
 
@@ -30,7 +29,10 @@ export function FeedbackWidget() {
   // Gentle, one-time nudge after a few minutes of active use.
   useEffect(() => {
     if (typeof window === "undefined") return;
-    if (window.localStorage.getItem(SUBMITTED_KEY) || window.localStorage.getItem(PROMPT_SEEN_KEY)) {
+    if (
+      window.localStorage.getItem(SUBMITTED_KEY) ||
+      window.localStorage.getItem(PROMPT_SEEN_KEY)
+    ) {
       return;
     }
     const tick = () => {
@@ -66,8 +68,6 @@ export function FeedbackWidget() {
     if (!hasContent || submitting) return;
     setSubmitting(true);
     setError("");
-    const studentId =
-      typeof window !== "undefined" ? window.localStorage.getItem(STUDENT_KEY) : null;
     const payload = {
       sentiment,
       source,
@@ -77,17 +77,9 @@ export function FeedbackWidget() {
       page: typeof window !== "undefined" ? window.location.pathname.slice(0, 300) : null,
       user_agent: typeof navigator !== "undefined" ? navigator.userAgent.slice(0, 500) : null,
     };
-    let { error: insertError } = await supabase
-      .from("feedback")
-      .insert({ ...payload, student_id: studentId || null });
-    // A stale/invalid demo student id would trip the foreign key — never lose
-    // the feedback over it, just drop the association and retry once.
-    if (insertError && studentId) {
-      ({ error: insertError } = await supabase
-        .from("feedback")
-        .insert({ ...payload, student_id: null }));
-    }
-    if (insertError) {
+    try {
+      await submitFeedback({ data: payload });
+    } catch {
       setError("We couldn't send your feedback just now. Please try again in a moment.");
       setSubmitting(false);
       return;
@@ -97,11 +89,7 @@ export function FeedbackWidget() {
     setSubmitted(true);
   }
 
-  const field = (
-    label: string,
-    key: keyof typeof form,
-    placeholder: string,
-  ) => (
+  const field = (label: string, key: keyof typeof form, placeholder: string) => (
     <label className="block">
       <span className="text-sm font-extrabold">{label}</span>
       <textarea
@@ -237,7 +225,11 @@ export function FeedbackWidget() {
                 <div className="space-y-4 px-5 pb-2">
                   {field("What did you like?", "liked", "The part that worked well for you…")}
                   {field("What would you change?", "improve", "Anything confusing or frustrating…")}
-                  {field("What would you like us to add?", "wanted", "A feature or content you wish existed…")}
+                  {field(
+                    "What would you like us to add?",
+                    "wanted",
+                    "A feature or content you wish existed…",
+                  )}
                   {error && (
                     <p role="alert" className="text-sm font-bold text-pink">
                       {error}
@@ -245,11 +237,7 @@ export function FeedbackWidget() {
                   )}
                 </div>
                 <div className="sticky bottom-0 mt-2 border-t border-border bg-card p-5 pt-4">
-                  <Button
-                    className="w-full"
-                    disabled={!hasContent || submitting}
-                    onClick={submit}
-                  >
+                  <Button className="w-full" disabled={!hasContent || submitting} onClick={submit}>
                     {submitting ? (
                       <>
                         <Loader2 className="animate-spin" /> Sending…
