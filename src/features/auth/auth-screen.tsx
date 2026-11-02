@@ -1,8 +1,16 @@
 import { useState } from "react";
 import { Link, useNavigate } from "@tanstack/react-router";
 import { useQueryClient } from "@tanstack/react-query";
-import { LoaderCircle, HeartPulse, Mail, LockKeyhole, User } from "lucide-react";
-import { signIn, signUp } from "./auth.functions";
+import {
+  LoaderCircle,
+  HeartPulse,
+  Mail,
+  LockKeyhole,
+  User,
+  GraduationCap,
+  Stethoscope,
+} from "lucide-react";
+import { signIn, signUp, type AccountRole } from "./auth.functions";
 
 type Mode = "signin" | "signup";
 
@@ -12,6 +20,7 @@ export function AuthScreen({ mode }: { mode: Mode }) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [displayName, setDisplayName] = useState("");
+  const [role, setRole] = useState<AccountRole>("student");
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
 
@@ -24,7 +33,7 @@ export function AuthScreen({ mode }: { mode: Mode }) {
     try {
       if (isSignup) {
         await signUp({
-          data: { email, password, displayName: displayName.trim() || undefined },
+          data: { email, password, displayName: displayName.trim() || undefined, role },
         });
       } else {
         await signIn({ data: { email, password } });
@@ -60,9 +69,46 @@ export function AuthScreen({ mode }: { mode: Mode }) {
 
           <form onSubmit={handleSubmit} className="mt-6 space-y-4">
             {isSignup && (
+              <div className="space-y-1.5 text-left">
+                <span className="text-sm font-extrabold text-foreground">I'm joining as a…</span>
+                <div className="grid grid-cols-2 gap-2">
+                  {(
+                    [
+                      { value: "student", label: "Student", icon: GraduationCap },
+                      { value: "coach", label: "USMLE coach", icon: Stethoscope },
+                    ] as const
+                  ).map((option) => {
+                    const selected = role === option.value;
+                    return (
+                      <button
+                        key={option.value}
+                        type="button"
+                        onClick={() => setRole(option.value)}
+                        aria-pressed={selected}
+                        className={`flex items-center gap-2 rounded-2xl px-4 py-3 text-sm font-extrabold transition-colors ${
+                          selected
+                            ? "bg-primary text-primary-foreground"
+                            : "bg-muted text-muted-foreground hover:text-foreground"
+                        }`}
+                      >
+                        <option.icon className="size-4" />
+                        {option.label}
+                      </button>
+                    );
+                  })}
+                </div>
+                <p className="text-xs font-semibold text-muted-foreground">
+                  {role === "coach"
+                    ? "Create classes, enroll students, and message them."
+                    : "Study cases, OSCEs and flashcards, and learn from coaches."}
+                </p>
+              </div>
+            )}
+
+            {isSignup && (
               <Field
                 id="name"
-                label="Display name (optional)"
+                label={role === "coach" ? "Full name" : "Display name (optional)"}
                 icon={<User className="size-4 text-muted-foreground" />}
               >
                 <input

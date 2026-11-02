@@ -14,6 +14,7 @@ import {
   CircleCheck,
   Clock3,
   Flame,
+  GraduationCap,
   HeartPulse,
   Home,
   Layers3,
@@ -24,13 +25,13 @@ import {
   Stethoscope,
   Target,
   Trophy,
-  Users,
   X,
 } from "lucide-react";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { Button } from "@/components/ui/button";
 import type { Database } from "@/integrations/supabase/types";
 import { useAuth } from "@/features/auth/auth-context";
+import type { CoachProfile } from "@/features/usmle/usmle.functions";
 import {
   CelebrationLayer,
   HomeGamification,
@@ -66,21 +67,28 @@ type Student = Pick<
   | "longest_streak"
   | "created_at"
 >;
-type View = "home" | "cases" | "practice" | "groups" | "profile" | "leaderboards";
+type View = "home" | "cases" | "practice" | "usmle" | "profile" | "leaderboards";
 type PracticeTab = "OSCE" | "Quizzes" | "Flashcards";
-const nav = [
-  { label: "Home", to: "/", icon: Home },
+type NavItem = { key: View | "misc"; label: string; to: string; icon: typeof Home };
+// Students get the full study shell; coaches only need their coaching space and
+// their profile.
+const studentNav: NavItem[] = [
+  { key: "home", label: "Home", to: "/", icon: Home },
   ...(STUDY_WITH_ANNIE_ENABLED
-    ? [{ label: "AI Study", to: "/study-with-annie" as const, icon: BookOpenText }]
+    ? [{ key: "misc" as const, label: "AI Study", to: "/study-with-annie", icon: BookOpenText }]
     : []),
-  { label: "Cases", to: "/cases", icon: HeartPulse },
+  { key: "cases", label: "Cases", to: "/cases", icon: HeartPulse },
   ...(ANATOMY_LAB_ENABLED
-    ? [{ label: "Anatomy", to: "/anatomy" as const, icon: PersonStanding }]
+    ? [{ key: "misc" as const, label: "Anatomy", to: "/anatomy", icon: PersonStanding }]
     : []),
-  { label: "Practice", to: "/practice", icon: Stethoscope },
-  { label: "Groups", to: "/groups", icon: Users },
-  { label: "Profile", to: "/profile", icon: Activity },
-] as const;
+  { key: "practice", label: "Practice", to: "/practice", icon: Stethoscope },
+  { key: "usmle", label: "USMLE Prep", to: "/usmle", icon: GraduationCap },
+  { key: "profile", label: "Profile", to: "/profile", icon: Activity },
+];
+const coachNav: NavItem[] = [
+  { key: "usmle", label: "USMLE Prep", to: "/usmle", icon: GraduationCap },
+  { key: "profile", label: "Profile", to: "/profile", icon: Activity },
+];
 const FEATURED_CASE_AVATAR_SIZE = "!w-14 sm:!w-20";
 const subjects = [
   "Anatomy",
@@ -121,7 +129,7 @@ function SectionHeading({
 }: {
   title: string;
   action?: string;
-  to?: "/cases" | "/practice" | "/groups";
+  to?: "/cases" | "/practice" | "/usmle";
 }) {
   return (
     <div className="mb-4 flex items-center justify-between gap-3">
@@ -149,12 +157,21 @@ export const useActingStudent = () => useContext(StudentContext);
 export function StudyApp({ view, children }: { view: View; children?: ReactNode }) {
   const navigate = useNavigate();
   const isMobile = useIsMobile();
-  const { profile, isLoading: loading, signOut, refresh } = useAuth();
+  const { profile, isCoach, isLoading: loading, signOut, refresh } = useAuth();
   const [menuOpen, setMenuOpen] = useState(false);
   const [practiceTab, setPracticeTab] = useState<PracticeTab>("OSCE");
   const [activity, setActivity] = useState<string | null>(null);
   // Each account owns exactly one profile; it comes from the auth context.
   const student = profile as Student | undefined;
+  const coach = isCoach ? (profile as unknown as CoachProfile | undefined) : undefined;
+  const navItems = isCoach ? coachNav : studentNav;
+
+  // Coaches only have a coaching space; keep them out of the student-only views.
+  useEffect(() => {
+    if (isCoach && view !== "usmle" && view !== "profile") {
+      void navigate({ to: "/usmle" });
+    }
+  }, [isCoach, view, navigate]);
 
   // Keep XP / streak fresh when the tab regains focus.
   useEffect(() => {
@@ -174,10 +191,12 @@ export function StudyApp({ view, children }: { view: View; children?: ReactNode 
     await signOut();
     await navigate({ to: "/login" });
   };
-  const personalizedSubjects = student?.subjects_studying.length
+  // Coach profiles don't carry these student-only arrays, so guard every access
+  // (the shell header renders for both roles before the coach redirect fires).
+  const personalizedSubjects = student?.subjects_studying?.length
     ? student.subjects_studying
     : ["Internal Medicine", "Pharmacology"];
-  const weakAreas = student?.weak_areas.length
+  const weakAreas = student?.weak_areas?.length
     ? student.weak_areas
     : ["Pharmacology", "Clinical Skills"];
   const minutes = student?.daily_study_target_minutes ?? 30;
@@ -233,11 +252,11 @@ export function StudyApp({ view, children }: { view: View; children?: ReactNode 
             </span>
           </Link>
           <div className="hidden items-center gap-1 lg:flex">
-            {nav.map((item) => (
+            {navItems.map((item) => (
               <Link
                 key={item.label}
                 to={item.to}
-                className={`rounded-full px-4 py-2 text-sm font-extrabold transition-colors ${view === item.label.toLowerCase() ? "bg-lavender-soft text-foreground" : "text-muted-foreground hover:bg-muted hover:text-foreground"}`}
+                className={`rounded-full px-4 py-2 text-sm font-extrabold transition-colors ${view === item.key ? "bg-lavender-soft text-foreground" : "text-muted-foreground hover:bg-muted hover:text-foreground"}`}
               >
                 {item.label}
               </Link>
@@ -538,8 +557,8 @@ export function StudyApp({ view, children }: { view: View; children?: ReactNode 
                   </section>
                   <section className="clay-card bg-mint-soft p-6">
                     <div className="flex items-center justify-between">
-                      <h2 className="font-display text-xl font-black">Group activity</h2>
-                      <IconBubble icon={Users} color="mint" />
+                      <h2 className="font-display text-xl font-black">USMLE Prep</h2>
+                      <IconBubble icon={GraduationCap} color="mint" />
                     </div>
                     <div className="mt-5 space-y-4">
                       <div className="flex gap-3">
@@ -547,8 +566,8 @@ export function StudyApp({ view, children }: { view: View; children?: ReactNode 
                           👋
                         </span>
                         <div>
-                          <p className="text-sm font-bold">Clinical Skills study circle</p>
-                          <p className="text-xs text-ink-soft">Practice session this Friday</p>
+                          <p className="text-sm font-bold">Find a USMLE coach</p>
+                          <p className="text-xs text-ink-soft">Structured Step 1 & 2 classes</p>
                         </div>
                       </div>
                       <div className="flex gap-3">
@@ -556,16 +575,16 @@ export function StudyApp({ view, children }: { view: View; children?: ReactNode 
                           ✨
                         </span>
                         <div>
-                          <p className="text-sm font-bold">Weekly quiz challenge</p>
-                          <p className="text-xs text-ink-soft">Your group is waiting for you</p>
+                          <p className="text-sm font-bold">Enroll in a class</p>
+                          <p className="text-xs text-ink-soft">Learn from experienced coaches</p>
                         </div>
                       </div>
                     </div>
                     <Link
-                      to="/groups"
+                      to="/usmle"
                       className="mt-5 inline-flex items-center gap-1 text-sm font-extrabold"
                     >
-                      View groups <ArrowRight size={16} />
+                      Browse coaches <ArrowRight size={16} />
                     </Link>
                   </section>
                   <section className="clay-card bg-pink-soft p-6">
@@ -711,56 +730,65 @@ export function StudyApp({ view, children }: { view: View; children?: ReactNode 
             </section>
           </div>
         )}
-        {view === "groups" && children && (
+        {view === "usmle" && (
           <StudentContext.Provider value={student}>{children}</StudentContext.Provider>
-        )}
-        {view === "groups" && !children && (
-          <div>
-            <PageIntro
-              eyebrow="LEARN TOGETHER"
-              title="Study groups"
-              description="A little help from your people goes a long way."
-              icon={Users}
-              color="mint"
-            />
-            <div className="mt-8 grid gap-4 sm:grid-cols-2">
-              <div className="clay-card bg-mint-soft p-6">
-                <IconBubble icon={Users} color="mint" />
-                <h2 className="mt-5 font-display text-xl font-black">
-                  Clinical Skills study circle
-                </h2>
-                <p className="mt-2 text-sm text-ink-soft">
-                  Practice session this Friday · 8 members
-                </p>
-                <Button
-                  variant="mint"
-                  className="mt-6"
-                  onClick={() => setActivity("Group sessions are coming in a later step.")}
-                >
-                  View group <ArrowRight />
-                </Button>
-              </div>
-              <div className="clay-card bg-card p-6">
-                <IconBubble icon={Trophy} color="yellow" />
-                <h2 className="mt-5 font-display text-xl font-black">Weekly quiz challenge</h2>
-                <p className="mt-2 text-sm text-ink-soft">
-                  A friendly challenge with your study circle
-                </p>
-                <Button
-                  variant="secondary"
-                  className="mt-6"
-                  onClick={() => setActivity("Group challenges are coming in a later step.")}
-                >
-                  See challenge <ArrowRight />
-                </Button>
-              </div>
-            </div>
-          </div>
         )}
         {view === "leaderboards" && (
           <StudentContext.Provider value={student}>{children}</StudentContext.Provider>
         )}
-        {view === "profile" && (
+        {view === "profile" && isCoach && (
+          <div>
+            <PageIntro
+              eyebrow="YOUR COACHING PROFILE"
+              title="Coach profile"
+              description="This is how students see you across USMLE Prep."
+              icon={GraduationCap}
+              color="mint"
+            />
+            <div className="mt-8 grid gap-5 md:grid-cols-2">
+              <div className="clay-card bg-card p-6">
+                <div className="flex items-center gap-4">
+                  <span className="flex size-16 items-center justify-center rounded-3xl bg-mint font-display text-xl font-black">
+                    {coach ? initials(coach.name) : "?"}
+                  </span>
+                  <div className="min-w-0">
+                    <h2 className="font-display text-xl font-black">{coach?.name ?? "Coach"}</h2>
+                    <p className="truncate text-sm text-muted-foreground">{coach?.email}</p>
+                  </div>
+                </div>
+                <div className="mt-6 space-y-4 text-sm">
+                  <InfoRow label="Headline" value={coach?.headline || "Not set"} />
+                  <InfoRow label="Availability" value={coach?.availability || "Not set"} />
+                </div>
+              </div>
+              <div className="clay-card bg-mint-soft p-6">
+                <h2 className="font-display text-xl font-black">Areas of expertise</h2>
+                <div className="mt-4 flex flex-wrap gap-2">
+                  {coach?.expertise?.length ? (
+                    coach.expertise.map((area) => (
+                      <span
+                        key={area}
+                        className="rounded-full bg-card px-3 py-1.5 text-xs font-bold"
+                      >
+                        {area}
+                      </span>
+                    ))
+                  ) : (
+                    <span className="text-sm">Not set</span>
+                  )}
+                </div>
+                {coach?.bio && <p className="mt-5 text-sm leading-relaxed">{coach.bio}</p>}
+                <Link
+                  to="/usmle"
+                  className="mt-6 inline-flex items-center gap-1 text-sm font-extrabold"
+                >
+                  Edit on your dashboard <ArrowRight size={16} />
+                </Link>
+              </div>
+            </div>
+          </div>
+        )}
+        {view === "profile" && !isCoach && (
           <div>
             <PageIntro
               eyebrow="YOUR STUDY JOURNEY"
@@ -856,7 +884,7 @@ export function StudyApp({ view, children }: { view: View; children?: ReactNode 
             </div>
           </div>
         )}
-        {view === "profile" && (
+        {view === "profile" && !isCoach && (
           <div>
             <ProgressDashboard student={student} />
           </div>
@@ -867,9 +895,9 @@ export function StudyApp({ view, children }: { view: View; children?: ReactNode 
         className="app-main-nav app-tabbar fixed bottom-0 left-0 right-0 z-20 rounded-t-[24px] border-t border-border/70 bg-card/90 px-2 pt-1.5 shadow-[0_-8px_30px_-14px_var(--border)] backdrop-blur-md lg:hidden"
       >
         <div className="mx-auto flex max-w-lg items-stretch justify-around">
-          {nav.map((item) => {
+          {navItems.map((item) => {
             const Icon = item.icon;
-            const active = view === item.label.toLowerCase();
+            const active = view === item.key;
             return (
               <Link
                 key={item.label}

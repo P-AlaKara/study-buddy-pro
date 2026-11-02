@@ -29,6 +29,7 @@ export const requireAuth = createMiddleware({ type: "function" }).server(async (
       userId: session.userId,
       profileId: session.profileId,
       sessionId: session.sessionId,
+      role: session.role,
     },
   });
 });
@@ -42,6 +43,7 @@ export const optionalAuth = createMiddleware({ type: "function" }).server(async 
       userId: session?.userId ?? null,
       profileId: session?.profileId ?? null,
       sessionId: session?.sessionId ?? null,
+      role: session?.role ?? null,
     },
   });
 });

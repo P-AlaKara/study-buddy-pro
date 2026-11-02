@@ -220,50 +220,6 @@ export const updateDeckMeta = createServerFn({ method: "POST" })
     if (error) throw new Error(error.message);
   });
 
-export const listMyGroups = createServerFn({ method: "GET" })
-  .middleware([requireAuth])
-  .handler(async ({ context }): Promise<{ id: string; name: string }[]> => {
-    const db = await adminDb();
-    const { data } = await db
-      .from("group_members")
-      .select("group_id, groups(id,name)")
-      .eq("student_id", context.profileId);
-    return (data ?? []).map((r: any) => r.groups as { id: string; name: string }).filter(Boolean);
-  });
-
-export const shareDeckToGroup = createServerFn({ method: "POST" })
-  .middleware([requireAuth])
-  .inputValidator((d) =>
-    z.object({ groupId: z.string().uuid(), deckId: z.string().uuid() }).parse(d),
-  )
-  .handler(async ({ data, context }) => {
-    const db = await adminDb();
-    // Must be a member of the target group and able to see the deck.
-    const { data: member } = await db
-      .from("group_members")
-      .select("id")
-      .eq("group_id", data.groupId)
-      .eq("student_id", context.profileId)
-      .maybeSingle();
-    if (!member) throw new Error("Join the group first.");
-    const { data: deck } = await db
-      .from("flashcard_decks")
-      .select("id,title,is_official,owner_student_id")
-      .eq("id", data.deckId)
-      .single();
-    if (!deck || (!deck.is_official && deck.owner_student_id !== context.profileId)) {
-      throw new Error("Deck not found.");
-    }
-    const { error } = await db.from("group_shared_resources").insert({
-      group_id: data.groupId,
-      resource_type: "deck",
-      resource_ref: deck.id,
-      title: deck.title,
-      shared_by_student_id: context.profileId,
-    });
-    if (error) throw new Error(error.message);
-  });
-
 // --- Review session --------------------------------------------------------
 type ReviewItem = { card: Card; review: Review | null };
 

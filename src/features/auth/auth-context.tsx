@@ -1,13 +1,24 @@
 import { createContext, useContext, type ReactNode } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { getSession, signOut as signOutFn, type CurrentUserPayload } from "./auth.functions";
+import {
+  getSession,
+  signOut as signOutFn,
+  type AccountRole,
+  type CurrentUserPayload,
+} from "./auth.functions";
 import { getMyProfile } from "@/features/profile/profile.functions";
+import { getMyCoachProfile, type CoachProfile } from "@/features/usmle/usmle.functions";
 
-export type AuthProfile = Awaited<ReturnType<typeof getMyProfile>>;
+type StudentProfile = Awaited<ReturnType<typeof getMyProfile>>;
+// The shell reads name/email/id off whichever profile the account owns; the
+// student-only fields are consumed only by student views.
+export type AuthProfile = StudentProfile | CoachProfile;
 
 interface AuthValue {
   user: CurrentUserPayload | null;
   profile: AuthProfile | null;
+  role: AccountRole | null;
+  isCoach: boolean;
   isLoading: boolean;
   isAuthenticated: boolean;
   signOut: () => Promise<void>;
@@ -25,10 +36,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     staleTime: 60_000,
   });
   const user = sessionQuery.data ?? null;
+  const role = user?.role ?? null;
 
   const profileQuery = useQuery({
-    queryKey: ["auth", "profile", user?.id],
-    queryFn: () => getMyProfile(),
+    queryKey: ["auth", "profile", user?.id, role],
+    queryFn: () => (role === "coach" ? getMyCoachProfile() : getMyProfile()),
     enabled: !!user,
     staleTime: 30_000,
   });
@@ -36,6 +48,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const value: AuthValue = {
     user,
     profile: (profileQuery.data as AuthProfile) ?? null,
+    role,
+    isCoach: role === "coach",
     isAuthenticated: !!user,
     isLoading: sessionQuery.isLoading || (!!user && profileQuery.isLoading),
     async signOut() {

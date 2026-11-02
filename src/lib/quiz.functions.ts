@@ -40,36 +40,23 @@ export const getQuizHistory = createServerFn({ method: "GET" })
     };
   });
 
-async function assertGroupMember(db: any, groupId: string, profileId: string) {
-  const { data } = await db
-    .from("group_members")
-    .select("id")
-    .eq("group_id", groupId)
-    .eq("student_id", profileId)
-    .maybeSingle();
-  if (!data) throw new Error("You are not a member of this group.");
-}
-
 export const createQuizSession = createServerFn({ method: "POST" })
   .middleware([requireAuth])
   .inputValidator((d) =>
     z
       .object({
         mode: z.string().max(40),
-        groupId: z.string().uuid().nullable().optional(),
         questionIds: z.array(z.string()).max(200),
       })
       .parse(d),
   )
   .handler(async ({ data, context }): Promise<{ id: string }> => {
     const db = await adminDb();
-    if (data.groupId) await assertGroupMember(db, data.groupId, context.profileId);
     const { data: row, error } = await db
       .from("quiz_sessions")
       .insert({
         student_id: context.profileId,
         mode: data.mode,
-        group_id: data.groupId ?? null,
         question_ids: data.questionIds,
       })
       .select("id")
@@ -86,7 +73,6 @@ export const finishQuizSession = createServerFn({ method: "POST" })
         sessionId: z.string().uuid(),
         answers: z.record(z.string(), z.any()),
         score: z.number().min(0).max(100),
-        groupId: z.string().uuid().nullable().optional(),
       })
       .parse(d),
   )
@@ -103,15 +89,6 @@ export const finishQuizSession = createServerFn({ method: "POST" })
       .eq("id", data.sessionId)
       .eq("student_id", context.profileId);
     if (error) throw new Error(error.message);
-
-    if (data.groupId) {
-      await assertGroupMember(db, data.groupId, context.profileId);
-      await db.from("group_messages").insert({
-        group_id: data.groupId,
-        student_id: context.profileId,
-        message: `Finished today's group quiz with ${Math.round(data.score)}%`,
-      });
-    }
   });
 
 export const toggleBookmark = createServerFn({ method: "POST" })

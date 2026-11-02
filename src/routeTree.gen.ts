@@ -13,7 +13,7 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as AnatomyRouteImport } from './routes/anatomy'
 import { Route as CasesRouteImport } from './routes/cases'
 import { Route as FlashcardsRouteImport } from './routes/flashcards'
-import { Route as GroupsRouteImport } from './routes/groups'
+import { Route as UsmleRouteImport } from './routes/usmle'
 import { Route as LeaderboardsRouteImport } from './routes/leaderboards'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as OsceRouteImport } from './routes/osce'
@@ -26,8 +26,8 @@ import { Route as CasesCaseIdRouteImport } from './routes/cases.$caseId'
 import { Route as FlashcardsIndexRouteImport } from './routes/flashcards.index'
 import { Route as FlashcardsDeckIdRouteImport } from './routes/flashcards.$deckId'
 import { Route as FlashcardsReviewRouteImport } from './routes/flashcards.review'
-import { Route as GroupsIndexRouteImport } from './routes/groups.index'
-import { Route as GroupsGroupIdRouteImport } from './routes/groups.$groupId'
+import { Route as UsmleIndexRouteImport } from './routes/usmle.index'
+import { Route as UsmleCoachIdRouteImport } from './routes/usmle.$coachId'
 import { Route as OsceIndexRouteImport } from './routes/osce.index'
 import { Route as OsceStationIdRouteImport } from './routes/osce.$stationId'
 import { Route as QuizIndexRouteImport } from './routes/quiz.index'
@@ -55,9 +55,9 @@ const FlashcardsRoute = FlashcardsRouteImport.update({
   path: '/flashcards',
   getParentRoute: () => rootRouteImport,
 } as any)
-const GroupsRoute = GroupsRouteImport.update({
-  id: '/groups',
-  path: '/groups',
+const UsmleRoute = UsmleRouteImport.update({
+  id: '/usmle',
+  path: '/usmle',
   getParentRoute: () => rootRouteImport,
 } as any)
 const LeaderboardsRoute = LeaderboardsRouteImport.update({
@@ -120,15 +120,15 @@ const FlashcardsReviewRoute = FlashcardsReviewRouteImport.update({
   path: '/review',
   getParentRoute: () => FlashcardsRoute,
 } as any)
-const GroupsIndexRoute = GroupsIndexRouteImport.update({
+const UsmleIndexRoute = UsmleIndexRouteImport.update({
   id: '/',
   path: '/',
-  getParentRoute: () => GroupsRoute,
+  getParentRoute: () => UsmleRoute,
 } as any)
-const GroupsGroupIdRoute = GroupsGroupIdRouteImport.update({
-  id: '/$groupId',
-  path: '/$groupId',
-  getParentRoute: () => GroupsRoute,
+const UsmleCoachIdRoute = UsmleCoachIdRouteImport.update({
+  id: '/$coachId',
+  path: '/$coachId',
+  getParentRoute: () => UsmleRoute,
 } as any)
 const OsceIndexRoute = OsceIndexRouteImport.update({
   id: '/',
@@ -167,7 +167,7 @@ export interface FileRoutesByFullPath {
   '/anatomy': typeof AnatomyRoute
   '/cases': typeof CasesRouteWithChildren
   '/flashcards': typeof FlashcardsRouteWithChildren
-  '/groups': typeof GroupsRouteWithChildren
+  '/usmle': typeof UsmleRouteWithChildren
   '/leaderboards': typeof LeaderboardsRoute
   '/login': typeof LoginRoute
   '/osce': typeof OsceRouteWithChildren
@@ -178,13 +178,13 @@ export interface FileRoutesByFullPath {
   '/cases/$caseId': typeof CasesCaseIdRoute
   '/flashcards/$deckId': typeof FlashcardsDeckIdRoute
   '/flashcards/review': typeof FlashcardsReviewRoute
-  '/groups/$groupId': typeof GroupsGroupIdRoute
+  '/usmle/$coachId': typeof UsmleCoachIdRoute
   '/osce/$stationId': typeof OsceStationIdRoute
   '/quiz/play': typeof QuizPlayRoute
   '/study-with-annie/$documentId': typeof StudyWithAnnieDocumentIdRoute
   '/cases/': typeof CasesIndexRoute
   '/flashcards/': typeof FlashcardsIndexRoute
-  '/groups/': typeof GroupsIndexRoute
+  '/usmle/': typeof UsmleIndexRoute
   '/osce/': typeof OsceIndexRoute
   '/quiz/': typeof QuizIndexRoute
   '/study-with-annie/': typeof StudyWithAnnieIndexRoute
@@ -200,13 +200,13 @@ export interface FileRoutesByTo {
   '/cases/$caseId': typeof CasesCaseIdRoute
   '/flashcards/$deckId': typeof FlashcardsDeckIdRoute
   '/flashcards/review': typeof FlashcardsReviewRoute
-  '/groups/$groupId': typeof GroupsGroupIdRoute
+  '/usmle/$coachId': typeof UsmleCoachIdRoute
   '/osce/$stationId': typeof OsceStationIdRoute
   '/quiz/play': typeof QuizPlayRoute
   '/study-with-annie/$documentId': typeof StudyWithAnnieDocumentIdRoute
   '/cases': typeof CasesIndexRoute
   '/flashcards': typeof FlashcardsIndexRoute
-  '/groups': typeof GroupsIndexRoute
+  '/usmle': typeof UsmleIndexRoute
   '/osce': typeof OsceIndexRoute
   '/quiz': typeof QuizIndexRoute
   '/study-with-annie': typeof StudyWithAnnieIndexRoute
@@ -217,7 +217,7 @@ export interface FileRoutesById {
   '/anatomy': typeof AnatomyRoute
   '/cases': typeof CasesRouteWithChildren
   '/flashcards': typeof FlashcardsRouteWithChildren
-  '/groups': typeof GroupsRouteWithChildren
+  '/usmle': typeof UsmleRouteWithChildren
   '/leaderboards': typeof LeaderboardsRoute
   '/login': typeof LoginRoute
   '/osce': typeof OsceRouteWithChildren
@@ -228,13 +228,13 @@ export interface FileRoutesById {
   '/cases/$caseId': typeof CasesCaseIdRoute
   '/flashcards/$deckId': typeof FlashcardsDeckIdRoute
   '/flashcards/review': typeof FlashcardsReviewRoute
-  '/groups/$groupId': typeof GroupsGroupIdRoute
+  '/usmle/$coachId': typeof UsmleCoachIdRoute
   '/osce/$stationId': typeof OsceStationIdRoute
   '/quiz/play': typeof QuizPlayRoute
   '/study-with-annie/$documentId': typeof StudyWithAnnieDocumentIdRoute
   '/cases/': typeof CasesIndexRoute
   '/flashcards/': typeof FlashcardsIndexRoute
-  '/groups/': typeof GroupsIndexRoute
+  '/usmle/': typeof UsmleIndexRoute
   '/osce/': typeof OsceIndexRoute
   '/quiz/': typeof QuizIndexRoute
   '/study-with-annie/': typeof StudyWithAnnieIndexRoute
@@ -246,7 +246,7 @@ export interface FileRouteTypes {
     | '/anatomy'
     | '/cases'
     | '/flashcards'
-    | '/groups'
+    | '/usmle'
     | '/leaderboards'
     | '/login'
     | '/osce'
@@ -257,13 +257,13 @@ export interface FileRouteTypes {
     | '/cases/$caseId'
     | '/flashcards/$deckId'
     | '/flashcards/review'
-    | '/groups/$groupId'
+    | '/usmle/$coachId'
     | '/osce/$stationId'
     | '/quiz/play'
     | '/study-with-annie/$documentId'
     | '/cases/'
     | '/flashcards/'
-    | '/groups/'
+    | '/usmle/'
     | '/osce/'
     | '/quiz/'
     | '/study-with-annie/'
@@ -279,13 +279,13 @@ export interface FileRouteTypes {
     | '/cases/$caseId'
     | '/flashcards/$deckId'
     | '/flashcards/review'
-    | '/groups/$groupId'
+    | '/usmle/$coachId'
     | '/osce/$stationId'
     | '/quiz/play'
     | '/study-with-annie/$documentId'
     | '/cases'
     | '/flashcards'
-    | '/groups'
+    | '/usmle'
     | '/osce'
     | '/quiz'
     | '/study-with-annie'
@@ -295,7 +295,7 @@ export interface FileRouteTypes {
     | '/anatomy'
     | '/cases'
     | '/flashcards'
-    | '/groups'
+    | '/usmle'
     | '/leaderboards'
     | '/login'
     | '/osce'
@@ -306,13 +306,13 @@ export interface FileRouteTypes {
     | '/cases/$caseId'
     | '/flashcards/$deckId'
     | '/flashcards/review'
-    | '/groups/$groupId'
+    | '/usmle/$coachId'
     | '/osce/$stationId'
     | '/quiz/play'
     | '/study-with-annie/$documentId'
     | '/cases/'
     | '/flashcards/'
-    | '/groups/'
+    | '/usmle/'
     | '/osce/'
     | '/quiz/'
     | '/study-with-annie/'
@@ -323,7 +323,7 @@ export interface RootRouteChildren {
   AnatomyRoute: typeof AnatomyRoute
   CasesRoute: typeof CasesRouteWithChildren
   FlashcardsRoute: typeof FlashcardsRouteWithChildren
-  GroupsRoute: typeof GroupsRouteWithChildren
+  UsmleRoute: typeof UsmleRouteWithChildren
   LeaderboardsRoute: typeof LeaderboardsRoute
   LoginRoute: typeof LoginRoute
   OsceRoute: typeof OsceRouteWithChildren
@@ -365,11 +365,11 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof FlashcardsRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/groups': {
-      id: '/groups'
-      path: '/groups'
-      fullPath: '/groups'
-      preLoaderRoute: typeof GroupsRouteImport
+    '/usmle': {
+      id: '/usmle'
+      path: '/usmle'
+      fullPath: '/usmle'
+      preLoaderRoute: typeof UsmleRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/leaderboards': {
@@ -456,19 +456,19 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof FlashcardsReviewRouteImport
       parentRoute: typeof FlashcardsRoute
     }
-    '/groups/': {
-      id: '/groups/'
+    '/usmle/': {
+      id: '/usmle/'
       path: '/'
-      fullPath: '/groups/'
-      preLoaderRoute: typeof GroupsIndexRouteImport
-      parentRoute: typeof GroupsRoute
+      fullPath: '/usmle/'
+      preLoaderRoute: typeof UsmleIndexRouteImport
+      parentRoute: typeof UsmleRoute
     }
-    '/groups/$groupId': {
-      id: '/groups/$groupId'
-      path: '/$groupId'
-      fullPath: '/groups/$groupId'
-      preLoaderRoute: typeof GroupsGroupIdRouteImport
-      parentRoute: typeof GroupsRoute
+    '/usmle/$coachId': {
+      id: '/usmle/$coachId'
+      path: '/$coachId'
+      fullPath: '/usmle/$coachId'
+      preLoaderRoute: typeof UsmleCoachIdRouteImport
+      parentRoute: typeof UsmleRoute
     }
     '/osce/': {
       id: '/osce/'
@@ -543,18 +543,18 @@ const FlashcardsRouteWithChildren = FlashcardsRoute._addFileChildren(
   FlashcardsRouteChildren,
 )
 
-interface GroupsRouteChildren {
-  GroupsGroupIdRoute: typeof GroupsGroupIdRoute
-  GroupsIndexRoute: typeof GroupsIndexRoute
+interface UsmleRouteChildren {
+  UsmleCoachIdRoute: typeof UsmleCoachIdRoute
+  UsmleIndexRoute: typeof UsmleIndexRoute
 }
 
-const GroupsRouteChildren: GroupsRouteChildren = {
-  GroupsGroupIdRoute: GroupsGroupIdRoute,
-  GroupsIndexRoute: GroupsIndexRoute,
+const UsmleRouteChildren: UsmleRouteChildren = {
+  UsmleCoachIdRoute: UsmleCoachIdRoute,
+  UsmleIndexRoute: UsmleIndexRoute,
 }
 
-const GroupsRouteWithChildren =
-  GroupsRoute._addFileChildren(GroupsRouteChildren)
+const UsmleRouteWithChildren =
+  UsmleRoute._addFileChildren(UsmleRouteChildren)
 
 interface OsceRouteChildren {
   OsceStationIdRoute: typeof OsceStationIdRoute
@@ -585,7 +585,7 @@ const rootRouteChildren: RootRouteChildren = {
   AnatomyRoute: AnatomyRoute,
   CasesRoute: CasesRouteWithChildren,
   FlashcardsRoute: FlashcardsRouteWithChildren,
-  GroupsRoute: GroupsRouteWithChildren,
+  UsmleRoute: UsmleRouteWithChildren,
   LeaderboardsRoute: LeaderboardsRoute,
   LoginRoute: LoginRoute,
   OsceRoute: OsceRouteWithChildren,

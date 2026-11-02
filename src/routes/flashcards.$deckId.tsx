@@ -1,6 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
-import { ArrowLeft, Layers3, Pencil, Share2, Trash2 } from "lucide-react";
+import { ArrowLeft, Layers3, Pencil, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useActingStudent } from "@/components/study-app";
 import {
@@ -16,8 +16,6 @@ import {
   upsertCard,
   deleteCard as deleteCardFn,
   updateDeckMeta,
-  listMyGroups,
-  shareDeckToGroup,
 } from "@/lib/flashcards.functions";
 
 export const Route = createFileRoute("/flashcards/$deckId")({
@@ -43,8 +41,6 @@ function DeckPage() {
   const [cards, setCards] = useState<Card[]>([]);
   const [form, setForm] = useState(empty);
   const [editing, setEditing] = useState<string | null>(null);
-  const [groups, setGroups] = useState<{ id: string; name: string }[]>([]);
-  const [shareOpen, setShareOpen] = useState(false);
   const [msg, setMsg] = useState("");
   const [meta, setMeta] = useState<{ title: string; description: string } | null>(null);
 
@@ -56,10 +52,6 @@ function DeckPage() {
   useEffect(() => {
     load();
   }, [deckId]); // eslint-disable-line react-hooks/exhaustive-deps
-  useEffect(() => {
-    if (!student) return;
-    listMyGroups().then(setGroups);
-  }, [student?.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const mine = !!deck && !deck.is_official && deck.owner_student_id === student?.id;
 
@@ -91,16 +83,6 @@ function DeckPage() {
   async function remove(id: string) {
     await deleteCardFn({ data: { deckId, cardId: id } });
     load();
-  }
-  async function share(groupId: string) {
-    if (!student || !deck) return;
-    try {
-      await shareDeckToGroup({ data: { groupId, deckId: deck.id } });
-      setMsg("Shared with your group!");
-    } catch (e) {
-      setMsg(e instanceof Error ? e.message : "Could not share the deck.");
-    }
-    setShareOpen(false);
   }
   async function saveMeta() {
     if (!meta) return;
@@ -166,23 +148,7 @@ function DeckPage() {
               <Pencil /> Edit details
             </Button>
           )}
-          <Button variant="secondary" onClick={() => setShareOpen(!shareOpen)}>
-            <Share2 /> Share to group
-          </Button>
         </div>
-        {shareOpen && (
-          <div className="mt-3 flex flex-wrap gap-2">
-            {groups.length ? (
-              groups.map((g) => (
-                <Button key={g.id} size="sm" variant="mint" onClick={() => share(g.id)}>
-                  {g.name}
-                </Button>
-              ))
-            ) : (
-              <p className="text-sm">Join a group first on the Groups page.</p>
-            )}
-          </div>
-        )}
         {msg && <p className="mt-3 text-sm font-bold">{msg}</p>}
       </div>
 

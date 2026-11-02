@@ -8,7 +8,7 @@ export const Route = createFileRoute("/leaderboards")({
       { title: "Leaderboards | Medley" },
       {
         name: "description",
-        content: "Friendly weekly, monthly, case, group, university and year leaderboards.",
+        content: "Friendly weekly, monthly, case, university and year leaderboards.",
       },
     ],
   }),

@@ -302,7 +302,6 @@ export interface LeaderboardData {
   xp: { student_id: string; xp_amount: number; created_at: string }[];
   optouts: { student_id: string }[];
   attempts: { student_id: string; total_score: number | null; completed_at: string | null }[];
-  members: { group_id: string; student_id: string }[];
   participants: {
     id: string;
     student_id: string;
@@ -318,7 +317,7 @@ export const getLeaderboardData = createServerFn({ method: "GET" })
   .middleware([requireAuth])
   .handler(async (): Promise<LeaderboardData> => {
     const db = await adminDb();
-    const [students, xp, optouts, attempts, members, participants] = await Promise.all([
+    const [students, xp, optouts, attempts, participants] = await Promise.all([
       db.from("students").select("id,name,university,year_of_study,xp"),
       db.from("xp_events").select("student_id,xp_amount,created_at"),
       db.from("leaderboard_opt_outs").select("student_id"),
@@ -326,7 +325,6 @@ export const getLeaderboardData = createServerFn({ method: "GET" })
         .from("case_attempts")
         .select("student_id,total_score,completed_at")
         .eq("status", "completed"),
-      db.from("group_members").select("group_id,student_id"),
       db
         .from("challenge_participants")
         .select("id,student_id,display_name,team_name,mode,score,rank"),
@@ -336,7 +334,6 @@ export const getLeaderboardData = createServerFn({ method: "GET" })
       xp: xp.data ?? [],
       optouts: optouts.data ?? [],
       attempts: attempts.data ?? [],
-      members: members.data ?? [],
       participants: participants.data ?? [],
     };
   });
@@ -346,8 +343,6 @@ export interface SearchResult {
   cases: { id: string; title: string; specialty: string; topic: string }[];
   questions: { id: string; question_text: string; subject: string; topic: string }[];
   decks: { id: string; title: string; subject: string; topic: string }[];
-  groups: { id: string; name: string; description: string }[];
-  resources: { id: string; title: string; resource_type: string; resource_ref: string }[];
 }
 
 export const searchLibrary = createServerFn({ method: "GET" })
@@ -356,7 +351,7 @@ export const searchLibrary = createServerFn({ method: "GET" })
   .handler(async ({ data, context }): Promise<SearchResult> => {
     const db = await adminDb();
     const term = `%${data.term.toLowerCase()}%`;
-    const [cases, questions, decks, studyGroups, resources] = await Promise.all([
+    const [cases, questions, decks] = await Promise.all([
       db
         .from("cases")
         .select("id,title,specialty,topic")
@@ -373,16 +368,6 @@ export const searchLibrary = createServerFn({ method: "GET" })
         .select("id,title,subject,topic,is_official,owner_student_id")
         .or(`title.ilike.${term},topic.ilike.${term},subject.ilike.${term}`)
         .limit(20),
-      db
-        .from("groups")
-        .select("id,name,description")
-        .or(`name.ilike.${term},description.ilike.${term}`)
-        .limit(6),
-      db
-        .from("group_shared_resources")
-        .select("id,title,resource_type,resource_ref")
-        .ilike("title", term)
-        .limit(6),
     ]);
     const deckRows = (decks.data ?? [])
       .filter((d: any) => d.is_official || d.owner_student_id === context.profileId)
@@ -391,7 +376,5 @@ export const searchLibrary = createServerFn({ method: "GET" })
       cases: cases.data ?? [],
       questions: questions.data ?? [],
       decks: deckRows,
-      groups: studyGroups.data ?? [],
-      resources: resources.data ?? [],
     };
   });

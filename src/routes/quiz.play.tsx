@@ -29,7 +29,6 @@ import { createSuggestion } from "@/lib/flashcards";
 import {
   adaptivePick,
   fetchQuestions,
-  hashSeed,
   isCorrect,
   MODE_INFO,
   shuffle,
@@ -43,11 +42,8 @@ import {
 import { NoteButton } from "@/components/gamification";
 
 const search = z.object({
-  mode: z
-    .enum(["quick", "topic", "adaptive", "timed", "mistakes", "bookmarked", "group"])
-    .catch("quick"),
+  mode: z.enum(["quick", "topic", "adaptive", "timed", "mistakes", "bookmarked"]).catch("quick"),
   subject: z.string().optional(),
-  group: z.string().optional(),
 });
 
 export const Route = createFileRoute("/quiz/play")({
@@ -72,7 +68,7 @@ type Rec = { answer: Answer; correct: boolean };
 type Sugg = { id: string; front: string; back: string; status: string };
 
 function Runner() {
-  const { mode, subject, group } = Route.useSearch();
+  const { mode, subject } = Route.useSearch();
   const student = useActingStudent();
   const [questions, setQuestions] = useState<Question[] | null>(null);
   const [sessionId, setSessionId] = useState<string | null>(null);
@@ -106,21 +102,18 @@ function Runner() {
         );
         picked = shuffle(all.filter((q) => last[q.id] === false)).slice(0, 10);
       } else if (mode === "bookmarked") picked = all.filter((q) => bm.has(q.id));
-      else if (mode === "group")
-        picked = shuffle(all, hashSeed(`${group}-${new Date().toDateString()}`)).slice(0, 10);
       else picked = shuffle(all).slice(0, 10);
       setQuestions(picked);
       if (mode === "timed") setLeft(picked.length * 60);
       const data = await createQuizSession({
         data: {
           mode,
-          groupId: mode === "group" ? (group ?? null) : null,
           questionIds: picked.map((q) => q.id),
         },
       });
       if (data) setSessionId(data.id);
     })();
-  }, [student, mode, subject, group]);
+  }, [student, mode, subject]);
 
   useEffect(() => {
     if (mode !== "timed" || done || !questions) return;
@@ -159,7 +152,7 @@ function Runner() {
     );
     if (sessionId)
       await finishQuizSession({
-        data: { sessionId, answers: recs, score, groupId: group ?? null },
+        data: { sessionId, answers: recs, score },
       });
   }
   function next() {
@@ -182,15 +175,7 @@ function Runner() {
     await toggleBookmarkFn({ data: { questionId: q.id, bookmark: willBookmark } });
   }
 
-  const back = group ? (
-    <Link
-      to="/groups/$groupId"
-      params={{ groupId: group }}
-      className="inline-flex items-center gap-1 text-sm font-extrabold text-muted-foreground"
-    >
-      <ArrowLeft className="h-4 w-4" /> Group
-    </Link>
-  ) : (
+  const back = (
     <Link
       to="/quiz"
       className="inline-flex items-center gap-1 text-sm font-extrabold text-muted-foreground"
@@ -226,7 +211,7 @@ function Runner() {
         <div className="clay-card bg-blue-soft p-7 text-center">
           <Trophy className="mx-auto h-10 w-10 text-blue" />
           <p className="mt-3 text-xs font-black uppercase tracking-widest text-ink-soft">
-            {mode === "group" ? "Group quiz" : MODE_INFO[mode].label} complete
+            {MODE_INFO[mode].label} complete
           </p>
           <p className="mt-1 font-display text-5xl font-black">{pct}%</p>
           <p className="mt-1 text-ink-soft">

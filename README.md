@@ -77,26 +77,26 @@ Annie currently supports PDFs with extractable text; scanned documents are clear
 - Coverage across anatomy, physiology, biochemistry, pathology, and pharmacology.
 - Explanations for every answer option so a question teaches as well as assesses.
 - Topic accuracy, session history, saved questions, and targeted retry workflows.
-- Group quiz support for shared practice.
 
 ### Flashcards
 
 - Official, personal, and saved decks organised by subject.
-- Create and edit personal decks, then share useful material with a study group.
+- Create and edit personal decks of your own.
 - Spaced-repetition reviews with due-card counts and review scheduling.
 - Suggested cards built from saved review material and quiz practice.
 
-### Study groups
+### USMLE Prep
 
-- Create a group or join one with an invite code.
-- Real-time group chat, member roles, shared notes, links, and flashcard decks.
-- Start group quizzes and team clinical cases from the group space.
-- Group XP, member activity, and a daily group quiz snapshot.
+- Register as a student or as a USMLE coach when creating your account.
+- Coaches publish a profile (bio, qualifications, areas of expertise, availability) and run classes.
+- Students browse coaches, read reviews and ratings, and enroll in classes.
+- Coaches manage classes and enrolled students from a dedicated dashboard.
+- Private coach ↔ student direct messaging, plus class-wide announcements from coaches.
 
 ### Progress and motivation
 
 - Student profiles with goals, strengths, learning progress, level, and XP.
-- Weekly, monthly, case, group, university, and year-based leaderboards.
+- Weekly, monthly, case, university, and year-based leaderboards.
 - Friendly achievements and progress cues that reward consistent practice across the platform.
 
 ## A typical learning loop
@@ -106,7 +106,7 @@ Annie currently supports PDFs with extractable text; scanned documents are clear
 3. Review difficult concepts with scheduled flashcards.
 4. Apply the knowledge in a clinical case or OSCE station.
 5. Use the debrief and progress views to choose the next area to revisit.
-6. Practise or discuss the material with a study group when collaboration helps.
+6. Enroll with a USMLE coach and message them when you want structured guidance.
 
 ## Privacy and learning safety
 

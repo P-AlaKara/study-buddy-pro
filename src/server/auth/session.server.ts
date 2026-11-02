@@ -4,12 +4,13 @@
 // lets us revoke a session server-side (sign-out, sign-out-everywhere).
 import { getCookie, setCookie, deleteCookie } from "@tanstack/react-start/server";
 import { getAuthConfig } from "./config.server";
-import { signSessionToken, verifySessionToken } from "./jwt.server";
+import { signSessionToken, verifySessionToken, type AccountRole } from "./jwt.server";
 
 export interface ActiveSession {
   userId: string;
   profileId: string;
   sessionId: string;
+  role: AccountRole;
 }
 
 async function db() {
@@ -18,7 +19,11 @@ async function db() {
 }
 
 /** Create a session row and set the httpOnly session cookie. */
-export async function startSession(input: { userId: string; profileId: string }): Promise<void> {
+export async function startSession(input: {
+  userId: string;
+  profileId: string;
+  role: AccountRole;
+}): Promise<void> {
   const client = await db();
   const { sessionTtlSeconds } = getAuthConfig();
   const expiresAt = new Date(Date.now() + sessionTtlSeconds * 1000).toISOString();
@@ -33,6 +38,7 @@ export async function startSession(input: { userId: string; profileId: string })
   await writeSessionCookie({
     userId: input.userId,
     profileId: input.profileId,
+    role: input.role,
     sessionId: data.id as string,
   });
 }
@@ -77,6 +83,7 @@ export async function loadSession(): Promise<ActiveSession | null> {
     userId: claims.userId,
     profileId: claims.profileId,
     sessionId: claims.sessionId,
+    role: claims.role,
   };
   return session;
 }

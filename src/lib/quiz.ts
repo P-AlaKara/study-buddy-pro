@@ -29,11 +29,10 @@ export type Question = {
   related_flashcard_deck_id: string | null;
 };
 export type Answer = string | string[] | Record<string, string>;
-export type QuizMode =
-  "quick" | "topic" | "adaptive" | "timed" | "mistakes" | "bookmarked" | "group";
+export type QuizMode = "quick" | "topic" | "adaptive" | "timed" | "mistakes" | "bookmarked";
 
 export const SUBJECTS = ["Anatomy", "Physiology", "Biochemistry", "Pathology", "Pharmacology"];
-export const MODE_INFO: Record<Exclude<QuizMode, "group">, { label: string; desc: string }> = {
+export const MODE_INFO: Record<QuizMode, { label: string; desc: string }> = {
   quick: { label: "Quick quiz", desc: "10 random questions" },
   topic: { label: "Topic practice", desc: "Pick a subject and drill it" },
   adaptive: { label: "Adaptive practice", desc: "Focuses on your weak areas" },

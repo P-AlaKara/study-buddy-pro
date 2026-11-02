@@ -3,8 +3,8 @@ import { z } from "zod";
 import { requireAuth } from "@/features/auth/middleware";
 
 // Minimal signup surface (data minimization): email + password only, with an
-// optional display name. Every other profile field is deferred to the Profile
-// page and is optional there. No role selection is exposed at signup.
+// optional display name. The account role (student or coach) is chosen at
+// registration; every other profile field is deferred to the Profile page.
 const credentialsSchema = z.object({
   email: z.string().trim().toLowerCase().email("Enter a valid email address.").max(254),
   password: z.string().min(8, "Use at least 8 characters.").max(200, "Password is too long."),
@@ -12,12 +12,16 @@ const credentialsSchema = z.object({
 
 const signUpSchema = credentialsSchema.extend({
   displayName: z.string().trim().min(2).max(100).optional(),
+  role: z.enum(["student", "coach"]).default("student"),
 });
+
+export type AccountRole = "student" | "coach";
 
 export interface CurrentUserPayload {
   id: string;
   email: string;
   profileId: string;
+  role: AccountRole;
 }
 
 function displayNameFrom(email: string, provided?: string): string {
@@ -42,13 +46,14 @@ export const signUp = createServerFn({ method: "POST" })
     const email = normalizeEmail(data.email);
     try {
       const passwordHash = await hashPassword(data.password);
-      const { userId, profileId } = await createUserWithProfile({
+      const { userId, profileId, role } = await createUserWithProfile({
         email,
         passwordHash,
         displayName: displayNameFrom(email, data.displayName),
+        role: data.role,
       });
-      await startSession({ userId, profileId });
-      return { id: userId, email, profileId };
+      await startSession({ userId, profileId, role });
+      return { id: userId, email, profileId, role };
     } catch (error) {
       if (error instanceof EmailAlreadyRegisteredError) {
         throw new Error("That email is already registered. Try signing in instead.");
@@ -80,11 +85,11 @@ export const signIn = createServerFn({ method: "POST" })
       throw new Error("Incorrect email or password.");
     }
 
-    const profileId = await getProfileIdForUser(user.id);
+    const profileId = await getProfileIdForUser(user.id, user.role);
     if (!profileId) throw new Error("Your account has no profile. Contact support.");
 
-    await startSession({ userId: user.id, profileId });
-    return { id: user.id, email: user.email, profileId };
+    await startSession({ userId: user.id, profileId, role: user.role });
+    return { id: user.id, email: user.email, profileId, role: user.role };
   });
 
 export const signOut = createServerFn({ method: "POST" }).handler(
@@ -101,7 +106,7 @@ export const getCurrentUser = createServerFn({ method: "GET" })
     const { getUserById } = await import("@/server/auth/users.server");
     const user = await getUserById(context.userId);
     if (!user) throw new Error("Account not found.");
-    return { id: user.id, email: user.email, profileId: context.profileId };
+    return { id: user.id, email: user.email, profileId: context.profileId, role: user.role };
   });
 
 // Anonymous-safe session probe for route guards: returns null instead of a 401
@@ -114,6 +119,6 @@ export const getSession = createServerFn({ method: "GET" }).handler(
     if (!session) return null;
     const user = await getUserById(session.userId);
     if (!user) return null;
-    return { id: user.id, email: user.email, profileId: session.profileId };
+    return { id: user.id, email: user.email, profileId: session.profileId, role: session.role };
   },
 );

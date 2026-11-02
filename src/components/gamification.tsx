@@ -11,7 +11,6 @@ import {
   Award,
   Bell,
   Bookmark,
-  BookOpen,
   Brain,
   Check,
   ChevronRight,
@@ -27,7 +26,6 @@ import {
   Stethoscope,
   Target,
   Trophy,
-  Users,
   X,
 } from "lucide-react";
 import {
@@ -59,10 +57,7 @@ const notificationSettings = [
   ["weekly_case_released", "Weekly case released"],
   ["weekly_case_ending", "Weekly case ending"],
   ["flashcards_due", "Flashcards due"],
-  ["group_invites", "Group invites"],
-  ["team_case_invites", "Team case invites"],
   ["challenge_invites", "Challenge invites"],
-  ["group_activity", "Group activity"],
   ["session_reminders", "Session reminders"],
   ["achievements", "Achievements"],
   ["study_goals", "Study goals"],
@@ -243,8 +238,6 @@ function SearchCenter({ onClose }: { onClose: () => void }) {
       const cases = { data: result.cases };
       const questions = { data: result.questions };
       const decks = { data: result.decks };
-      const studyGroups = { data: result.groups };
-      const resources = { data: result.resources };
       setGroups(
         [
           {
@@ -291,33 +284,6 @@ function SearchCenter({ onClose }: { onClose: () => void }) {
               href: `/flashcards/${x.id}`,
             })),
           },
-          {
-            label: "Groups",
-            icon: Users,
-            color: "bg-mint-soft",
-            items: (studyGroups.data ?? []).map((x) => ({
-              id: x.id,
-              title: x.name,
-              detail: x.description,
-              href: `/groups/${x.id}`,
-            })),
-          },
-          {
-            label: "Resources",
-            icon: BookOpen,
-            color: "bg-card",
-            items: (resources.data ?? []).map((x) => ({
-              id: x.id,
-              title: x.title,
-              detail: x.resource_type,
-              href:
-                x.resource_type === "case"
-                  ? `/cases/${x.resource_ref}`
-                  : x.resource_type === "deck"
-                    ? `/flashcards/${x.resource_ref}`
-                    : "/groups",
-            })),
-          },
         ].filter((g) => g.items.length),
       );
       setLoading(false);
@@ -333,7 +299,7 @@ function SearchCenter({ onClose }: { onClose: () => void }) {
             autoFocus
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            placeholder="Search cases, topics, stations, decks, groups…"
+            placeholder="Search cases, topics, stations, decks…"
             className="h-12 w-full bg-transparent outline-none"
           />
         </label>
@@ -1243,7 +1209,6 @@ const boardTabs = [
   "Monthly",
   "Case-specific",
   "Friends",
-  "Group",
   "Team",
   "University",
   "Year",
@@ -1262,7 +1227,6 @@ export function Leaderboards({ student }: { student?: ActingStudent | undefined 
       const students = { data: board.students };
       const xp = { data: board.xp };
       const attempts = { data: board.attempts };
-      const members = { data: board.members };
       const participants = { data: board.participants };
       const excluded = new Set((board.optouts ?? []).map((x) => x.student_id));
       const people = (students.data ?? []).filter((s) => !excluded.has(s.id));
@@ -1294,15 +1258,6 @@ export function Leaderboards({ student }: { student?: ActingStudent | undefined 
         let pool = people;
         if (tab === "University") pool = pool.filter((s) => s.university === student.university);
         if (tab === "Year") pool = pool.filter((s) => s.year_of_study === student.year_of_study);
-        if (tab === "Group") {
-          const mine = new Set(
-            (members.data ?? []).filter((m) => m.student_id === student.id).map((m) => m.group_id),
-          );
-          const ids = new Set(
-            (members.data ?? []).filter((m) => mine.has(m.group_id)).map((m) => m.student_id),
-          );
-          pool = pool.filter((s) => ids.has(s.id));
-        }
         if (tab === "Friends")
           pool = pool.filter(
             (s) => s.year_of_study === student.year_of_study || s.id === student.id,
