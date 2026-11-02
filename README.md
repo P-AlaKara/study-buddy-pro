@@ -1,6 +1,6 @@
 # Medley
 
-Medley is an interactive study platform built primarily for medical and health-science students. It brings clinical reasoning, OSCE practice, quizzes, flashcards, collaborative study, and focused note reading into one learning space.
+Medley is an interactive study platform built primarily for medical and health-science students. It brings clinical reasoning, OSCE practice, quizzes, flashcards, USMLE coaching, and focused note reading into one learning space.
 
 Rather than treating studying as a collection of disconnected tasks, Medley helps students move between learning a concept, recalling it, applying it to a patient, reflecting on feedback, and returning to the areas that need more work. Its flagship clinical case simulator is supported by a wider set of tools, including the AI-assisted **Study with Annie** PDF reader.
 
@@ -13,19 +13,19 @@ Medley addresses five related problems:
 - **Passive studying:** rereading and highlighting can create familiarity without reliable recall.
 - **The theory-to-practice gap:** knowing a fact is different from recognising when it matters in a clinical encounter.
 - **Limited feedback:** learners may finish a question or station without understanding the reasoning behind the result.
-- **Fragmented workflows:** notes, flashcards, quizzes, cases, and group study are often kept in separate tools.
+- **Fragmented workflows:** notes, flashcards, quizzes, cases, and exam coaching are often kept in separate tools.
 - **Inconsistent motivation:** long study plans are easier to sustain when progress is visible and practice feels purposeful.
 
 ## How Medley helps
 
-| Learning challenge                      | Medley's response                                                                                                         |
-| --------------------------------------- | ------------------------------------------------------------------------------------------------------------------------- |
-| Notes are easy to read passively        | Study with Annie turns uploaded notes into an annotated reader with contextual prompts and recall questions.              |
-| Clinical knowledge can feel abstract    | Branching case challenges ask students to gather evidence, manage time, commit to decisions, and review the consequences. |
-| OSCE practice is hard to organise alone | Structured stations simulate the door note, patient interaction, examiner questions, and scored debrief.                  |
-| Students forget what they have reviewed | Quizzes, retry modes, bookmarks, and spaced-repetition flashcards bring important material back at useful moments.        |
-| Weak areas are difficult to identify    | Practice history, explanations, debriefs, and topic performance make gaps more visible.                                   |
-| Studying can feel isolated              | Groups support chat, shared resources, group quizzes, team cases, and friendly competition.                               |
+| Learning challenge                      | Medley's response                                                                                                           |
+| --------------------------------------- | --------------------------------------------------------------------------------------------------------------------------- |
+| Notes are easy to read passively        | Study with Annie turns uploaded notes into an annotated reader with contextual prompts and recall questions.                |
+| Clinical knowledge can feel abstract    | Branching case challenges ask students to gather evidence, manage time, commit to decisions, and review the consequences.   |
+| OSCE practice is hard to organise alone | Structured stations simulate the door note, patient interaction, examiner questions, and scored debrief.                    |
+| Students forget what they have reviewed | Quizzes, retry modes, bookmarks, and spaced-repetition flashcards bring important material back at useful moments.          |
+| Weak areas are difficult to identify    | Practice history, explanations, debriefs, and topic performance make gaps more visible.                                     |
+| USMLE prep is hard to navigate alone    | USMLE Prep connects students with coaches for structured classes, reviews, enrollment, direct messaging, and announcements. |
 
 The product is designed around active recall, deliberate practice, immediate feedback, and repeated application. It is a learning aid—not a source of clinical advice or a substitute for institutional teaching, supervision, or validated clinical guidance.
 
@@ -33,7 +33,7 @@ The product is designed around active recall, deliberate practice, immediate fee
 
 ### Personal study dashboard
 
-- A central study space for reaching cases, OSCE stations, quizzes, flashcards, groups, and Study with Annie.
+- A central study space for reaching cases, OSCE stations, quizzes, flashcards, USMLE Prep, and Study with Annie.
 - Student progress, current goals, strengths, weak areas, XP, levels, and recent activity in one place.
 - Suggested next actions that make it easier to continue a useful study session instead of deciding from scratch.
 
@@ -110,9 +110,9 @@ Annie currently supports PDFs with extractable text; scanned documents are clear
 
 ## Privacy and learning safety
 
-- **Prototype authentication:** Study with Annie currently accepts an email and starts the session immediately without verifying email ownership. Do not use it for sensitive material; verified authentication must be restored before production.
+- **Application-owned authentication:** accounts use email and password with Argon2id password hashing and an app-signed, httpOnly session cookie. Email verification and password reset are intentionally deferred and must be added before production.
+- All database access flows through authenticated server functions using a service-role client; the browser has no direct table access.
 - Study with Annie documents are stored privately and are accessible only to their owner through authenticated, time-limited access.
-- Database row-level security protects documents, extracted page text, annotations, Annie settings, attempts, and study sessions.
 - Uploaded note content is handled only as needed to extract text and produce document-grounded interactions.
 - Candidate blot-outs are validated against the extracted page text before they can be used.
 - Model output is schema-validated, retried once when malformed, and replaced with safe fallbacks when generation fails or times out.
@@ -122,7 +122,7 @@ Annie currently supports PDFs with extractable text; scanned documents are clear
 
 - **Application:** React 19, TypeScript, TanStack Start, TanStack Router, and Vite
 - **Interface:** Tailwind CSS, Radix UI primitives, Lucide icons, and Recharts
-- **Data and authentication:** Supabase Auth, PostgreSQL, Storage, Realtime, and row-level security
+- **Data and authentication:** application-owned accounts (Argon2id hashing + app-signed session cookies) on Supabase PostgreSQL and Storage, with all access through server functions
 - **Document reader:** PDF.js
 - **AI assistance:** Gemini, with structured validation and deterministic fallbacks
 - **Validation and testing:** Zod, TypeScript-based validators, and deterministic engine tests
@@ -134,7 +134,7 @@ Annie currently supports PDFs with extractable text; scanned documents are clear
 
 - Node.js `>=22.12.0 <23.0.0`
 - npm or Bun
-- A Supabase project for authentication, data, realtime features, and PDF storage
+- A Supabase project for data (PostgreSQL) and PDF storage
 - A Gemini API key if AI-generated Annie interactions are required; the deterministic fallback experience works without one
 
 ### Local setup
@@ -160,7 +160,7 @@ npm run dev             # Start the local development server
 npm run build           # Create a production build
 npm run start           # Run the built server
 npm run lint            # Run ESLint
-npm test                # Run case, OSCE, and Annie validation/engine tests
+npm test                # Run case, OSCE, Annie, and auth validation/engine tests
 npm run validate:cases  # Validate clinical case definitions
 npm run validate:osce   # Validate OSCE station definitions
 npm run test:annie      # Test Annie scheduling and candidate validation
@@ -171,7 +171,7 @@ npm run test:annie      # Test Annie scheduling and candidate validation
 Medley uses a friendly **claymorphism** visual language: soft, puffy, three-dimensional surfaces with large rounded corners, pill-shaped buttons, gentle shadows, and subtle highlights. The interface avoids hard borders, sharp corners, glass effects, and heavy shadows.
 
 - **Palette:** bubblegum pink, lavender, sky blue, mint/pistachio, peach, coral, lemon yellow, and soft cream. Page backgrounds remain quiet while cards and actions carry stronger colour.
-- **Feature colours:** cases use purple/lavender; OSCE uses pink/coral; quizzes use blue/aqua; flashcards use yellow/peach; groups use green/mint; progress uses a mixed gradient.
+- **Feature colours:** cases use purple/lavender; OSCE uses pink/coral; quizzes use blue/aqua; flashcards use yellow/peach; USMLE Prep uses green/mint; progress uses a mixed gradient.
 - **Buttons:** strong candy colours for primary actions and pale category colours for secondary actions, with pill shapes and a subtle press interaction.
 - **Cards:** generous spacing, rounded surfaces, gentle elevation, and an immediately clickable appearance.
 - **Typography:** rounded, soft-geometric headings paired with highly readable body text and generous line spacing for longer clinical content.
@@ -184,9 +184,11 @@ Medley uses a friendly **claymorphism** visual language: soft, puffy, three-dime
 src/
 ├── components/                 # Shared UI and application shell
 ├── features/
+│   ├── auth/                   # Application-owned accounts and session handling
 │   ├── case-challenge/         # Case content, engine, validation, and UI
 │   ├── osce/                   # OSCE stations, engine, debrief, and UI
-│   └── study-with-annie/       # PDF reader, Annie, scheduler, and settings
+│   ├── study-with-annie/       # PDF reader, Annie, scheduler, and settings
+│   └── usmle/                  # Coach profiles, classes, enrollments, and messaging
 ├── integrations/supabase/      # Supabase client and generated types
 ├── lib/                        # Quiz, flashcard, and shared domain helpers
 └── routes/                     # File-based application routes
