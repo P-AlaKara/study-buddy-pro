@@ -79,21 +79,23 @@ function ErrorComponent({ error, reset }: import("@tanstack/react-router").Error
 }
 
 export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()({
-  // Single gate for the whole app: sign in once, access everything. Public
-  // routes (login/register) are reachable while signed out; every other route
-  // redirects to /login. Signed-in users are bounced away from the auth pages.
+  // Single gate for the whole app: sign in once, access everything. The public
+  // landing page and the auth routes (login/register) are reachable while signed
+  // out; every other route redirects to /login. Signed-in users are bounced away
+  // from the auth pages, but keep "/" — it serves their study space.
   beforeLoad: async ({ location }) => {
-    const isPublic = PUBLIC_PATHS.has(location.pathname);
+    const isAuthPage = PUBLIC_PATHS.has(location.pathname);
+    const isLanding = location.pathname === "/";
     let user: Awaited<ReturnType<typeof getSession>> = null;
     try {
       user = await getSession();
     } catch {
       user = null;
     }
-    if (!user && !isPublic) {
+    if (!user && !isAuthPage && !isLanding) {
       throw redirect({ to: "/login" });
     }
-    if (user && isPublic) {
+    if (user && isAuthPage) {
       throw redirect({ to: "/" });
     }
     return { user };
