@@ -1,112 +1,128 @@
+import { useState, type ReactNode } from "react";
 import { Link } from "@tanstack/react-router";
 import {
   ArrowRight,
+  ArrowUpRight,
   BookOpenText,
   Brain,
   CheckCircle2,
+  ChevronDown,
   Flame,
+  Flower2,
   GraduationCap,
   HeartPulse,
   Layers3,
-  MessageCircle,
-  ShieldCheck,
-  Sparkles,
+  Lightbulb,
+  Menu,
+  Sprout,
   Stethoscope,
   Target,
-  Trophy,
+  TrendingUp,
+  X,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { FEATURED_CASE } from "@/features/case-challenge/featured-case";
 
 /**
  * Public landing page — the front door shown to signed-out visitors at `/`.
  * Signed-in students/coaches get the study shell instead (see routes/index.tsx).
- * Everything here reuses the app's claymorphic language: Nunito display type,
- * soft pastel surfaces, `clay-card` / `clay-button` depth, and pill chips.
+ *
+ * Redesigned after the "Medley" marketing prototype: a playful claymorphic
+ * story that walks from "study it" to "use it". It reuses the app's own design
+ * language — Nunito display type, pastel `-soft` surfaces, `clay-card` depth,
+ * pill chips and the shared `Button` — so the front door matches the product
+ * behind it, and stays responsive from small phones up to wide desktops.
  */
 
-const SUBJECTS = [
-  "Anatomy",
-  "Physiology",
-  "Pharmacology",
-  "Pathology",
-  "Internal Medicine",
-  "Surgery",
-  "Paediatrics",
-  "Obstetrics & Gynaecology",
-  "Microbiology",
-  "Biochemistry",
-  "Clinical Skills",
-  "Public Health",
+type SoftColor = "lavender" | "pink" | "blue" | "mint" | "yellow";
+
+const NAV_LINKS = [
+  { href: "#features", label: "Features" },
+  { href: "#how", label: "How it works" },
+  { href: "#annie", label: "Meet Annie" },
+  { href: "#progress", label: "Your progress" },
 ];
 
-type FeatureColor = "lavender" | "pink" | "blue" | "mint" | "yellow";
+const PILLARS: { icon: typeof Brain; color: SoftColor; label: string }[] = [
+  { icon: Brain, color: "lavender", label: "Remember what matters" },
+  { icon: Stethoscope, color: "pink", label: "Practise real reasoning" },
+  { icon: Sprout, color: "mint", label: "Grow with feedback" },
+];
 
 const FEATURES: {
   icon: typeof HeartPulse;
-  color: FeatureColor;
-  tag: string;
+  color: SoftColor;
   title: string;
   body: string;
+  href: string;
 }[] = [
   {
     icon: HeartPulse,
     color: "lavender",
-    tag: "Clinical cases",
-    title: "Reason through real patients",
-    body: "Branching cases take you from presentation to diagnosis. Gather evidence, watch the patient change, commit to a plan, then review exactly what your decisions did.",
+    title: "Clinical cases",
+    body: "Follow the clues, make decisions, and learn from how your choices play out on a real patient.",
+    href: "#how",
   },
   {
     icon: Stethoscope,
     color: "pink",
-    tag: "OSCE stations",
-    title: "Rehearse the exam room",
-    body: "A timed door note, a simulated consultation, examiner questions and a scored debrief — practised solo in Learn, Practice or Exam mode.",
+    title: "OSCE practice",
+    body: "Walk into a simulated station, practise your approach, and get a meaningful, scored debrief.",
+    href: "#how",
   },
   {
     icon: BookOpenText,
     color: "blue",
-    tag: "Study with Annie",
-    title: "Read your notes, actively",
-    body: "Upload your own PDFs and read them with Annie — she explains any passage you select and quietly checks whether you can recall it in your own words.",
+    title: "Study with Annie",
+    body: "Turn your own PDFs into focused reading, clear explanations, and gentle active recall.",
+    href: "#annie",
   },
   {
-    icon: Brain,
+    icon: Lightbulb,
     color: "mint",
-    tag: "Quizzes",
-    title: "Questions that teach back",
-    body: "Quick, topic, timed and adaptive modes across the core sciences, with a clear explanation behind every answer option — not just the right one.",
+    title: "Quizzes",
+    body: "Test what you know, understand every answer option, and retry the questions you missed.",
+    href: "#progress",
   },
   {
     icon: Layers3,
     color: "yellow",
-    tag: "Flashcards",
-    title: "Remember it for the exam",
-    body: "Spaced-repetition decks resurface high-yield cards at the moment you're about to forget them, so review time lands where it counts.",
+    title: "Flashcards",
+    body: "Make knowledge stick with personal decks and spaced-repetition reviews that land on time.",
+    href: "#progress",
   },
   {
     icon: GraduationCap,
     color: "lavender",
-    tag: "USMLE Prep",
-    title: "Learn alongside a coach",
-    body: "Find experienced coaches for structured Step 1 & 2 classes, enroll in a cohort, read reviews and message your coach directly.",
+    title: "USMLE Prep",
+    body: "Find coaches, join structured Step 1 & 2 classes, read reviews and message your coach directly.",
+    href: "/register",
   },
 ];
 
-const LOOP: { icon: typeof HeartPulse; color: FeatureColor; step: string; label: string }[] = [
-  { icon: BookOpenText, color: "blue", step: "Learn", label: "Read a concept actively with Annie" },
-  { icon: Brain, color: "mint", step: "Recall", label: "Lock it in with quizzes & cards" },
-  { icon: HeartPulse, color: "lavender", step: "Apply", label: "Use it on a patient case or OSCE" },
-  { icon: Target, color: "pink", step: "Reflect", label: "See weak spots, come back stronger" },
+const LOOP: { color: SoftColor; step: string; label: string }[] = [
+  { color: "lavender", step: "Learn", label: "Open your notes and unpack a topic with Annie." },
+  {
+    color: "yellow",
+    step: "Remember",
+    label: "Recall the essentials with quizzes and flashcards.",
+  },
+  { color: "blue", step: "Apply", label: "Work through a clinical case or OSCE station." },
+  { color: "mint", step: "Improve", label: "Use your feedback to choose what comes next." },
+];
+
+const ANNIE_BENEFITS = [
+  "Page-grounded explanations, right where you read",
+  "Highlights, sticky notes and bookmarks that stay put",
+  "Active recall that tests understanding, not just memory",
 ];
 
 function Wordmark({ className = "" }: { className?: string }) {
   return (
     <span
-      className={`flex items-center gap-2.5 font-display text-[26px] font-black text-foreground ${className}`}
+      className={`flex items-center gap-2.5 font-display text-[26px] font-black leading-none text-foreground ${className}`}
     >
-      <span className="flex size-10 items-center justify-center rounded-2xl bg-pink text-foreground shadow-sm">
-        <HeartPulse size={23} strokeWidth={2.5} />
+      <span className="flex size-10 shrink-0 items-center justify-center rounded-2xl bg-pink text-foreground shadow-sm">
+        <HeartPulse size={22} strokeWidth={2.5} />
       </span>
       medley<span className="text-pink">.</span>
     </span>
@@ -114,19 +130,16 @@ function Wordmark({ className = "" }: { className?: string }) {
 }
 
 function LandingNav() {
+  const [open, setOpen] = useState(false);
   return (
-    <header className="sticky top-0 z-30 border-b border-border/60 bg-background/80 backdrop-blur-md">
+    <header className="sticky top-0 z-40 border-b border-border/60 bg-background/80 backdrop-blur-md">
       <div className="app-container flex items-center justify-between gap-3 py-3.5 md:py-4">
-        <Link to="/" aria-label="Medley home">
+        <Link to="/" aria-label="Medley home" onClick={() => setOpen(false)}>
           <Wordmark />
         </Link>
+
         <nav className="hidden items-center gap-1 lg:flex" aria-label="Sections">
-          {[
-            { href: "#features", label: "Features" },
-            { href: "#how", label: "How it works" },
-            { href: "#cases", label: "Case simulator" },
-            { href: "#usmle", label: "USMLE Prep" },
-          ].map((item) => (
+          {NAV_LINKS.map((item) => (
             <a
               key={item.href}
               href={item.href}
@@ -136,8 +149,13 @@ function LandingNav() {
             </a>
           ))}
         </nav>
+
         <div className="flex items-center gap-2">
-          <Button asChild variant="secondary" className="bg-card shadow-sm hover:bg-card">
+          <Button
+            asChild
+            variant="secondary"
+            className="hidden bg-card shadow-sm hover:bg-card sm:inline-flex"
+          >
             <Link to="/login">Sign in</Link>
           </Button>
           <Button asChild variant="lavender">
@@ -145,57 +163,203 @@ function LandingNav() {
               Get started <ArrowRight size={16} />
             </Link>
           </Button>
+          <button
+            type="button"
+            className="clay-button flex size-11 items-center justify-center bg-card text-foreground lg:hidden"
+            aria-label="Toggle navigation"
+            aria-expanded={open}
+            onClick={() => setOpen((v) => !v)}
+          >
+            {open ? <X size={20} /> : <Menu size={20} />}
+          </button>
         </div>
       </div>
+
+      {open && (
+        <nav
+          className="app-container flex flex-col gap-1 pb-4 lg:hidden"
+          aria-label="Sections (mobile)"
+        >
+          {NAV_LINKS.map((item) => (
+            <a
+              key={item.href}
+              href={item.href}
+              onClick={() => setOpen(false)}
+              className="rounded-2xl px-4 py-3 text-sm font-extrabold text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+            >
+              {item.label}
+            </a>
+          ))}
+          <Link
+            to="/login"
+            onClick={() => setOpen(false)}
+            className="rounded-2xl px-4 py-3 text-sm font-extrabold text-muted-foreground transition-colors hover:bg-muted hover:text-foreground sm:hidden"
+          >
+            Sign in
+          </Link>
+        </nav>
+      )}
     </header>
+  );
+}
+
+const CASE_CHOICES = [
+  "Ask a focused follow-up question",
+  "Review the patient's vital signs",
+  "Form a working differential",
+];
+
+/** Interactive mock of the clinical-case cockpit — cycles a "next step" choice. */
+function CaseWindow() {
+  const [active, setActive] = useState(1);
+  const stepLabel = `Step ${active + 3} of 5`;
+  const progress = 55 + active * 15;
+
+  return (
+    <div className="clay-card w-full max-w-sm bg-card p-4 md:p-5">
+      <div className="flex items-center justify-between text-[10px] font-black uppercase tracking-wider text-muted-foreground">
+        <span>✳ medley / clinical cases</span>
+        <span className="flex gap-1" aria-hidden>
+          <i className="size-2 rounded-full bg-pink" />
+          <i className="size-2 rounded-full bg-yellow" />
+          <i className="size-2 rounded-full bg-mint" />
+        </span>
+      </div>
+
+      <div className="mt-3 flex items-center gap-3 rounded-2xl bg-lavender-soft p-4">
+        <span className="flex size-12 shrink-0 items-center justify-center rounded-2xl bg-card text-lavender shadow-[inset_0_2px_1px_var(--card)]">
+          <HeartPulse size={24} strokeWidth={2.3} />
+        </span>
+        <div className="min-w-0">
+          <p className="text-[10px] font-black uppercase tracking-wider text-ink-soft">
+            Case challenge 01
+          </p>
+          <p className="font-display text-base font-black leading-tight">Think like a clinician</p>
+          <p className="text-[11px] font-bold text-ink-soft">Gather clues · Make a decision</p>
+        </div>
+      </div>
+
+      <div className="mt-4">
+        <div className="flex items-center justify-between text-[10px] font-bold text-muted-foreground">
+          <span>Case progress</span>
+          <span>{stepLabel}</span>
+        </div>
+        <div className="mt-2 h-2 overflow-hidden rounded-full bg-muted">
+          <div
+            className="h-full rounded-full bg-lavender transition-[width] duration-300"
+            style={{ width: `${progress}%` }}
+          />
+        </div>
+      </div>
+
+      <p className="mt-4 font-display text-sm font-black">What would you do next?</p>
+      <div className="mt-2 space-y-2">
+        {CASE_CHOICES.map((choice, i) => {
+          const selected = i === active;
+          return (
+            <div
+              key={choice}
+              className={`flex items-center gap-2.5 rounded-2xl border px-3 py-2.5 text-[11px] font-bold transition-colors ${
+                selected
+                  ? "border-mint/60 bg-mint-soft text-foreground"
+                  : "border-border bg-background text-ink-soft"
+              }`}
+            >
+              <span
+                className={`grid size-3.5 shrink-0 place-items-center rounded-full border ${
+                  selected ? "border-mint bg-mint" : "border-border"
+                }`}
+              >
+                {selected && <CheckCircle2 size={10} className="text-foreground" strokeWidth={3} />}
+              </span>
+              {choice}
+            </div>
+          );
+        })}
+      </div>
+
+      <div className="mt-3 flex items-center justify-between">
+        <span className="text-[10px] font-bold text-muted-foreground">✧ Learn by doing</span>
+        <button
+          type="button"
+          onClick={() => setActive((v) => (v + 1) % CASE_CHOICES.length)}
+          className="clay-button inline-flex items-center gap-1 rounded-full bg-lavender px-3.5 py-2 text-[11px] font-black text-foreground"
+        >
+          Next step <ArrowRight size={13} />
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function FloatingChip({
+  icon: Icon,
+  color,
+  title,
+  sub,
+  className = "",
+}: {
+  icon: typeof Flame;
+  color: SoftColor;
+  title: string;
+  sub: string;
+  className?: string;
+}) {
+  return (
+    <div
+      className={`clay-card absolute hidden items-center gap-2.5 bg-card p-3 md:flex ${className}`}
+    >
+      <span
+        className={`flex size-9 items-center justify-center rounded-xl bg-${color}-soft text-${color}`}
+      >
+        <Icon size={18} strokeWidth={2.4} />
+      </span>
+      <div className="leading-tight">
+        <p className="font-display text-xs font-black">{title}</p>
+        <p className="text-[10px] font-bold text-muted-foreground">{sub}</p>
+      </div>
+    </div>
   );
 }
 
 function Hero() {
   return (
     <section className="relative overflow-hidden">
-      {/* Soft pastel glow behind the hero for depth. */}
       <div
         aria-hidden
         className="pointer-events-none absolute inset-0 -z-10"
         style={{
           background:
-            "radial-gradient(42rem 28rem at 18% -8%, var(--lavender-soft), transparent 70%), radial-gradient(38rem 26rem at 98% 2%, var(--pink-soft), transparent 68%), radial-gradient(34rem 24rem at 60% 108%, var(--blue-soft), transparent 72%)",
+            "radial-gradient(42rem 28rem at 16% -8%, var(--lavender-soft), transparent 70%), radial-gradient(38rem 26rem at 98% 4%, var(--pink-soft), transparent 68%), radial-gradient(34rem 24rem at 62% 112%, var(--blue-soft), transparent 72%)",
         }}
       />
-      <div className="app-container grid items-center gap-12 pb-10 pt-12 md:pb-16 md:pt-16 lg:grid-cols-[minmax(0,1.05fr)_minmax(0,1fr)] lg:gap-10 lg:pt-20">
+      <div className="app-container grid items-center gap-12 pb-10 pt-10 md:pb-16 md:pt-14 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.05fr)] lg:gap-10 lg:pt-20">
         <div>
           <span className="inline-flex items-center gap-1.5 rounded-full bg-card px-3.5 py-1.5 text-xs font-black uppercase tracking-wider text-ink-soft shadow-sm">
-            <Sparkles size={15} className="text-pink" /> One study space for medicine
+            <span className="size-2 rounded-full bg-pink" /> Learning, but make it active
           </span>
-          <h1 className="mt-5 font-display text-4xl font-black leading-[1.05] tracking-tight md:text-6xl">
-            Study medicine the way you'll{" "}
-            <span className="relative whitespace-nowrap text-primary">
-              practise it
-              <svg
+          <h1 className="mt-5 font-display text-5xl font-black leading-[1.05] tracking-tight md:text-6xl lg:text-7xl">
+            Study it.
+            <br />
+            Recall it.
+            <br />
+            <span className="relative isolate whitespace-nowrap text-primary">
+              Use it.
+              <span
                 aria-hidden
-                viewBox="0 0 220 12"
-                className="absolute -bottom-1.5 left-0 h-2.5 w-full text-lavender"
-                preserveAspectRatio="none"
-              >
-                <path
-                  d="M2 8c40-6 110-6 216-3"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="5"
-                  strokeLinecap="round"
-                />
-              </svg>
+                className="absolute -bottom-1 left-0 -z-10 h-3 w-full rounded-full bg-yellow"
+                style={{ transform: "rotate(-2deg)" }}
+              />
             </span>
           </h1>
-          <p className="mt-6 max-w-xl text-lg leading-relaxed text-ink-soft md:text-xl">
-            Cases, OSCEs, quizzes, flashcards, your own notes and USMLE coaching — brought into one
-            joyful place that moves you from reading a fact to using it on a patient.
+          <p className="mt-6 max-w-xl text-lg leading-relaxed text-ink-soft">
+            Meet your new favourite study space. Clinical cases, OSCEs, quizzes, flashcards and your
+            own notes — finally working together for the way future healthcare pros learn.
           </p>
           <div className="mt-8 flex flex-col gap-3 sm:flex-row sm:items-center">
             <Button asChild variant="lavender" size="lg" className="text-base">
               <Link to="/register">
-                Create your free account <ArrowRight size={18} />
+                Start learning <ArrowRight size={18} />
               </Link>
             </Button>
             <Button
@@ -204,99 +368,70 @@ function Hero() {
               size="lg"
               className="bg-card text-base hover:bg-card"
             >
-              <Link to="/login">I already have an account</Link>
+              <a href="#how">
+                See how it works <ChevronDown size={18} />
+              </a>
             </Button>
           </div>
-          <p className="mt-5 flex items-center gap-2 text-sm font-semibold text-muted-foreground">
-            <ShieldCheck size={16} className="text-mint" />A learning aid — never a substitute for
-            clinical supervision.
+          <p className="mt-6 flex items-center gap-2 text-sm font-semibold text-muted-foreground">
+            <span className="flex -space-x-1.5" aria-hidden>
+              <span className="grid size-7 place-items-center rounded-lg border-2 border-background bg-lavender-soft text-xs">
+                ♡
+              </span>
+              <span className="grid size-7 place-items-center rounded-lg border-2 border-background bg-mint-soft text-xs">
+                ✚
+              </span>
+              <span className="grid size-7 place-items-center rounded-lg border-2 border-background bg-yellow-soft text-xs">
+                ✦
+              </span>
+            </span>
+            Made for medical &amp; health-science students
           </p>
         </div>
 
-        <HeroPreview />
+        {/* Case window + layered floating chips. Chips hide below md to avoid
+            overflow; the window alone carries the story on phones. */}
+        <div className="relative mx-auto flex w-full max-w-md justify-center pt-4 md:max-w-lg md:pt-0 lg:mr-0">
+          <CaseWindow />
+          <FloatingChip
+            icon={Flower2}
+            color="pink"
+            title="Annie is here!"
+            sub="Little nudges, big aha moments"
+            className="-left-4 top-[14%] lg:-left-8"
+          />
+          <FloatingChip
+            icon={Flame}
+            color="yellow"
+            title="Keep your momentum"
+            sub="One session at a time"
+            className="-right-4 bottom-[18%] lg:-right-8"
+          />
+          <FloatingChip
+            icon={Stethoscope}
+            color="blue"
+            title="OSCE practice"
+            sub="Confidence, step by step"
+            className="-bottom-5 left-2"
+          />
+        </div>
       </div>
     </section>
   );
 }
 
-/** A tasteful mock of the signed-in experience, built from the same clay pieces. */
-function HeroPreview() {
+function PillarStrip() {
   return (
-    <div className="relative mx-auto w-full max-w-md lg:mr-0">
-      {/* Weekly case card — mirrors the real home screen's featured case. */}
-      <div className="clay-card bg-lavender-soft p-5 md:p-6">
-        <span className="inline-flex rounded-full bg-card/75 px-3 py-1 text-[11px] font-black uppercase tracking-wider text-ink-soft">
-          ✦ Weekly case
-        </span>
-        <div className="mt-4 flex items-start gap-3.5">
-          <span className="flex size-12 shrink-0 items-center justify-center rounded-2xl bg-card text-lavender shadow-[inset_0_2px_1px_var(--card)]">
-            <HeartPulse size={24} strokeWidth={2.3} />
-          </span>
-          <div className="min-w-0">
-            <h3 className="font-display text-xl font-black leading-tight">{FEATURED_CASE.title}</h3>
-            <div className="mt-2 flex flex-wrap gap-1.5 text-[11px] font-bold text-ink-soft">
-              <span className="rounded-full bg-card/70 px-2.5 py-1">
-                Level {FEATURED_CASE.difficulty}
-              </span>
-              {FEATURED_CASE.specialty.slice(0, 2).map((s) => (
-                <span key={s} className="rounded-full bg-card/70 px-2.5 py-1">
-                  {s}
-                </span>
-              ))}
-            </div>
-            <span className="clay-button mt-4 inline-flex items-center gap-1.5 rounded-full bg-lavender px-4 py-2 text-sm font-black text-foreground">
-              Start case <ArrowRight size={15} />
+    <section className="app-container" aria-label="How Medley studies">
+      <div className="clay-card grid gap-5 bg-card p-6 sm:grid-cols-3 md:p-7">
+        {PILLARS.map((p) => (
+          <div key={p.label} className="flex items-center justify-center gap-3 sm:justify-start">
+            <span
+              className={`flex size-10 items-center justify-center rounded-xl bg-${p.color}-soft text-${p.color}`}
+            >
+              <p.icon size={20} strokeWidth={2.4} />
             </span>
-          </div>
-        </div>
-      </div>
-
-      {/* Supporting row: a mini progress ring + a quiz result tile. */}
-      <div className="mt-4 grid grid-cols-2 gap-4">
-        <div className="clay-card flex items-center gap-3 bg-card p-4">
-          <div className="relative grid size-14 shrink-0 place-items-center rounded-full progress-gradient p-[6px]">
-            <div className="grid size-full place-items-center rounded-full bg-card">
-              <span className="font-display text-sm font-black">72%</span>
-            </div>
-          </div>
-          <div className="min-w-0">
-            <p className="text-[11px] font-black uppercase text-muted-foreground">Today</p>
-            <p className="truncate font-display text-sm font-black">Daily goal</p>
-          </div>
-        </div>
-        <div className="clay-card bg-mint-soft p-4">
-          <span className="flex size-9 items-center justify-center rounded-xl bg-card text-mint">
-            <CheckCircle2 size={19} strokeWidth={2.4} />
-          </span>
-          <p className="mt-2.5 font-display text-sm font-black leading-tight">Correct!</p>
-          <p className="text-[11px] font-bold text-ink-soft">+20 XP · Pharmacology</p>
-        </div>
-      </div>
-
-      {/* Floating streak chip, offset for a layered, product-y feel. */}
-      <div className="clay-card absolute -right-3 -top-4 flex items-center gap-2 rounded-full bg-yellow-soft px-3.5 py-2 text-sm font-black md:-right-5">
-        <Flame size={17} className="text-pink" /> 12 day streak
-      </div>
-    </div>
-  );
-}
-
-function StatStrip() {
-  const stats = [
-    { value: "6", label: "study tools, one space" },
-    { value: "12", label: "core subjects covered" },
-    { value: "3", label: "OSCE modes: Learn · Practice · Exam" },
-    { value: "∞", label: "attempts — practise until it sticks" },
-  ];
-  return (
-    <section className="app-container">
-      <div className="clay-card grid grid-cols-2 gap-6 bg-card p-6 md:grid-cols-4 md:p-8">
-        {stats.map((s) => (
-          <div key={s.label} className="text-center md:text-left">
-            <p className="font-display text-3xl font-black text-primary md:text-4xl">{s.value}</p>
-            <p className="mt-1 text-sm font-semibold leading-snug text-muted-foreground">
-              {s.label}
-            </p>
+            <span className="font-display text-base font-black">{p.label}</span>
           </div>
         ))}
       </div>
@@ -304,11 +439,19 @@ function StatStrip() {
   );
 }
 
-function SectionHead({ eyebrow, title, body }: { eyebrow: string; title: string; body?: string }) {
+function SectionHead({
+  eyebrow,
+  title,
+  body,
+}: {
+  eyebrow: string;
+  title: ReactNode;
+  body?: string;
+}) {
   return (
     <div className="mx-auto max-w-2xl text-center">
       <span className="text-xs font-black uppercase tracking-wider text-pink">{eyebrow}</span>
-      <h2 className="mt-3 font-display text-3xl font-black md:text-4xl">{title}</h2>
+      <h2 className="mt-3 font-display text-3xl font-black leading-tight md:text-5xl">{title}</h2>
       {body && <p className="mt-4 text-base leading-relaxed text-ink-soft md:text-lg">{body}</p>}
     </div>
   );
@@ -318,25 +461,43 @@ function Features() {
   return (
     <section id="features" className="app-container scroll-mt-24">
       <SectionHead
-        eyebrow="Everything in one place"
-        title="Six ways to practise, no tab-juggling"
-        body="Each tool does one thing well — and they share your progress, so moving between them feels like one continuous study session."
+        eyebrow="Your all-in-one study space"
+        title={
+          <>
+            Everything clicks <span className="text-lavender">together.</span>
+          </>
+        }
+        body="From the first time you meet a topic to the moment you're ready to apply it, there's a Medley mode for that."
       />
       <div className="mt-10 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-        {FEATURES.map((f) => (
-          <article key={f.tag} className={`clay-card bg-${f.color}-soft p-6`}>
-            <span
-              className={`flex size-12 items-center justify-center rounded-2xl bg-card text-${f.color} shadow-[inset_0_2px_1px_var(--card)]`}
-            >
-              <f.icon size={23} strokeWidth={2.3} />
-            </span>
-            <p className="mt-4 text-[11px] font-black uppercase tracking-wider text-ink-soft">
-              {f.tag}
-            </p>
-            <h3 className="mt-1 font-display text-xl font-black leading-snug">{f.title}</h3>
-            <p className="mt-2.5 text-sm leading-relaxed text-ink-soft">{f.body}</p>
-          </article>
-        ))}
+        {FEATURES.map((f) => {
+          const inner = (
+            <>
+              <div className="flex items-center justify-between">
+                <span
+                  className={`flex size-14 items-center justify-center rounded-2xl bg-card text-${f.color} shadow-[inset_0_2px_1px_var(--card)]`}
+                >
+                  <f.icon size={26} strokeWidth={2.3} />
+                </span>
+                <span className="grid size-8 place-items-center rounded-full bg-card/70 text-ink-soft transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5">
+                  <ArrowUpRight size={17} />
+                </span>
+              </div>
+              <h3 className="mt-5 font-display text-2xl font-black leading-snug">{f.title}</h3>
+              <p className="mt-2 text-sm leading-relaxed text-ink-soft">{f.body}</p>
+            </>
+          );
+          const cls = `clay-card group block bg-${f.color}-soft p-6`;
+          return f.href.startsWith("#") ? (
+            <a key={f.title} href={f.href} className={cls}>
+              {inner}
+            </a>
+          ) : (
+            <Link key={f.title} to={f.href} className={cls}>
+              {inner}
+            </Link>
+          );
+        })}
       </div>
     </section>
   );
@@ -344,208 +505,232 @@ function Features() {
 
 function LearningLoop() {
   return (
-    <section id="how" className="app-container scroll-mt-24">
-      <SectionHead
-        eyebrow="How Medley works"
-        title="A loop that turns notes into know-how"
-        body="Studying sticks when you learn, recall, apply and reflect — then go again. Medley keeps that whole cycle under one roof."
-      />
-      <div className="relative mt-12 grid gap-4 md:grid-cols-4">
-        {/* Connecting rail on desktop. */}
-        <div
-          aria-hidden
-          className="absolute left-[12%] right-[12%] top-7 hidden h-0.5 md:block"
-          style={{
-            background:
-              "linear-gradient(90deg, var(--blue), var(--mint), var(--lavender), var(--pink))",
-            opacity: 0.4,
-          }}
+    <section id="how" className="scroll-mt-24 rounded-[2.5rem] bg-pink-soft/60 py-16 md:py-20">
+      <div className="app-container">
+        <SectionHead
+          eyebrow="The Medley method"
+          title={
+            <>
+              One little loop.
+              <br />
+              <span className="text-pink">A lot of learning.</span>
+            </>
+          }
+          body="No more switching between disconnected study tools. Move naturally from understanding a concept to using it."
         />
-        {LOOP.map((item, i) => (
-          <div key={item.step} className="relative flex flex-col items-center text-center">
-            <span
-              className={`relative z-10 flex size-14 items-center justify-center rounded-full bg-${item.color}-soft text-${item.color} ring-4 ring-background`}
-            >
-              <item.icon size={24} strokeWidth={2.3} />
-            </span>
-            <p className="mt-4 text-[11px] font-black uppercase tracking-wider text-muted-foreground">
-              Step {i + 1}
-            </p>
-            <h3 className="mt-0.5 font-display text-lg font-black">{item.step}</h3>
-            <p className="mt-1.5 max-w-[14rem] text-sm leading-relaxed text-ink-soft">
-              {item.label}
-            </p>
-          </div>
-        ))}
+        <div className="relative mt-12 grid gap-y-10 gap-x-4 sm:grid-cols-2 md:grid-cols-4">
+          <div
+            aria-hidden
+            className="absolute left-[12%] right-[12%] top-10 hidden border-t-2 border-dashed border-pink/35 md:block"
+          />
+          {LOOP.map((item, i) => (
+            <div key={item.step} className="relative flex flex-col items-center text-center">
+              <span
+                className={`relative z-10 flex size-20 items-center justify-center rounded-3xl bg-${item.color}-soft font-display text-3xl font-black text-foreground ring-4 ring-background`}
+              >
+                {String(i + 1).padStart(2, "0")}
+              </span>
+              <h3 className="mt-5 font-display text-xl font-black">{item.step}</h3>
+              <p className="mt-2 max-w-[13rem] text-sm leading-relaxed text-ink-soft">
+                {item.label}
+              </p>
+            </div>
+          ))}
+        </div>
       </div>
     </section>
   );
 }
 
-function CaseSpotlight() {
-  const points = [
-    "Order histories, exams, labs and imaging — then defend your reasoning",
-    "Vitals drift and the patient deteriorates if you stall",
-    "Commit to a diagnosis and management plan under real clinical time",
-    "A scored debrief shows missed evidence and the teaching points",
+const ANNIE_HIGHLIGHT =
+  "During ventricular systole, the ventricles contract and eject blood into the pulmonary artery and aorta.";
+
+function AnnieSection() {
+  const [mode, setMode] = useState<"explain" | "recall">("explain");
+  const recall = mode === "recall";
+
+  return (
+    <section id="annie" className="app-container scroll-mt-24">
+      <div className="clay-card grid items-center gap-10 bg-card p-6 md:p-10 lg:grid-cols-[0.95fr_1.05fr] lg:p-12">
+        <div>
+          <span className="inline-flex items-center gap-1.5 rounded-full bg-pink-soft px-3.5 py-1.5 text-xs font-black uppercase tracking-wider text-pink">
+            <Flower2 size={14} /> Meet your reading sidekick
+          </span>
+          <h2 className="mt-5 font-display text-3xl font-black leading-tight md:text-4xl">
+            Your notes. Now with <span className="text-pink">Annie.</span>
+          </h2>
+          <p className="mt-4 text-base leading-relaxed text-ink-soft md:text-lg">
+            Bring your text-based PDFs and read in peace. Annie stays beside the page, helping you
+            clarify a selected passage or recall it in your own words — without turning reading time
+            into endless chat.
+          </p>
+          <ul className="mt-6 space-y-3">
+            {ANNIE_BENEFITS.map((b) => (
+              <li key={b} className="flex items-start gap-3">
+                <span className="mt-0.5 flex size-6 shrink-0 items-center justify-center rounded-full bg-mint-soft text-mint">
+                  <CheckCircle2 size={16} strokeWidth={2.6} />
+                </span>
+                <span className="text-sm font-semibold leading-relaxed text-foreground md:text-base">
+                  {b}
+                </span>
+              </li>
+            ))}
+          </ul>
+          <div
+            className="mt-6 inline-flex gap-1.5 rounded-full bg-muted p-1"
+            role="group"
+            aria-label="Annie demo mode"
+          >
+            {(["explain", "recall"] as const).map((m) => (
+              <button
+                key={m}
+                type="button"
+                onClick={() => setMode(m)}
+                aria-pressed={mode === m}
+                className={`rounded-full px-4 py-2 text-xs font-black transition-colors ${
+                  mode === m
+                    ? "bg-pink text-foreground shadow-sm"
+                    : "text-ink-soft hover:text-foreground"
+                }`}
+              >
+                {m === "explain" ? "Explain this" : "Active recall"}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Reader mock */}
+        <div className="relative rounded-3xl bg-muted p-4 soft-inset md:p-5">
+          <div className="flex items-center justify-between rounded-2xl bg-card px-4 py-3 text-[10px] font-black text-muted-foreground">
+            <span className="truncate">📄 Cardiovascular Physiology.pdf</span>
+            <span className="hidden shrink-0 sm:inline">Page 12 / 48 · 100%</span>
+          </div>
+          <div className="mt-3 rounded-2xl bg-background p-5 md:p-6">
+            <p className="text-[10px] font-black uppercase tracking-wider text-muted-foreground">
+              Chapter 02 · Physiology
+            </p>
+            <h3 className="mt-1.5 font-display text-xl font-black">The Cardiac Cycle</h3>
+            <p className="mt-3 text-sm leading-relaxed text-ink-soft">
+              The cardiac cycle is a sequence of events that occur during a single heartbeat. It
+              includes periods of contraction and relaxation.
+            </p>
+            <p className="mt-2.5 text-sm leading-relaxed text-ink-soft">
+              <span
+                className={
+                  recall
+                    ? "rounded bg-lavender text-transparent [box-decoration-break:clone] [-webkit-box-decoration-break:clone] select-none"
+                    : "rounded bg-yellow/70 text-foreground [box-decoration-break:clone] [-webkit-box-decoration-break:clone]"
+                }
+              >
+                {ANNIE_HIGHLIGHT}
+              </span>
+            </p>
+            <p className="mt-2.5 text-sm leading-relaxed text-ink-soft">
+              During diastole, the ventricles relax and fill with blood before the next heartbeat.
+            </p>
+          </div>
+          <div className="clay-card mt-3 bg-pink-soft p-4 md:absolute md:-bottom-5 md:right-4 md:mt-0 md:max-w-[16rem]">
+            <p className="flex items-center gap-2 font-display text-xs font-black">
+              <span className="flex size-6 items-center justify-center rounded-lg bg-pink text-foreground">
+                <Flower2 size={14} />
+              </span>
+              Annie says…
+            </p>
+            <p className="mt-2 text-[11px] leading-relaxed text-ink-soft">
+              {recall
+                ? "In your own words, what happens during ventricular systole? Try to recall it before you reveal the text."
+                : "Systole is the squeezing phase: the ventricles contract to move blood out of the heart."}
+            </p>
+          </div>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function ProgressSection() {
+  const bars: { label: string; pct: number; color: SoftColor }[] = [
+    { label: "Anatomy", pct: 82, color: "lavender" },
+    { label: "Physiology", pct: 69, color: "blue" },
+    { label: "Pathology", pct: 47, color: "mint" },
   ];
   return (
-    <section id="cases" className="app-container scroll-mt-24">
-      <div className="clay-card overflow-hidden bg-lavender-soft p-7 md:p-12">
-        <div className="grid items-center gap-10 lg:grid-cols-2">
-          <div>
-            <span className="inline-flex items-center gap-1.5 rounded-full bg-card/80 px-3.5 py-1.5 text-xs font-black uppercase tracking-wider text-ink-soft">
-              <Sparkles size={14} className="text-lavender" /> Flagship simulator
-            </span>
-            <h2 className="mt-5 font-display text-3xl font-black leading-tight md:text-4xl">
-              The clinical case simulator
-            </h2>
-            <p className="mt-4 max-w-lg text-base leading-relaxed text-ink-soft md:text-lg">
-              Knowing a fact and knowing when it matters are different skills. Branching cases put
-              you in the room so you can build the second one safely.
-            </p>
-            <ul className="mt-6 space-y-3">
-              {points.map((p) => (
-                <li key={p} className="flex items-start gap-3">
-                  <span className="mt-0.5 flex size-6 shrink-0 items-center justify-center rounded-full bg-card text-mint">
-                    <CheckCircle2 size={16} strokeWidth={2.6} />
-                  </span>
-                  <span className="text-sm font-semibold leading-relaxed text-foreground md:text-base">
-                    {p}
-                  </span>
-                </li>
-              ))}
-            </ul>
-            <Button asChild variant="lavender" className="mt-8">
-              <Link to="/register">
-                Try a case <ArrowRight size={16} />
-              </Link>
-            </Button>
-          </div>
-
-          {/* Vitals / status mock to evoke the real cockpit. */}
+    <section id="progress" className="app-container scroll-mt-24">
+      <div className="grid items-center gap-10 lg:grid-cols-2 lg:gap-16">
+        {/* Dashboard mock */}
+        <div className="clay-card order-2 bg-lavender-soft p-6 md:p-8 lg:order-1">
           <div className="clay-card bg-card p-5 md:p-6">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2.5">
-                <span className="flex size-10 items-center justify-center rounded-2xl bg-lavender-soft text-lavender">
-                  <HeartPulse size={20} strokeWidth={2.4} />
-                </span>
-                <div>
-                  <p className="font-display text-sm font-black">Patient monitor</p>
-                  <p className="text-[11px] font-bold text-muted-foreground">
-                    Live during the case
-                  </p>
-                </div>
-              </div>
-              <span className="rounded-full bg-pink-soft px-2.5 py-1 text-[11px] font-black text-pink">
-                ● stable
-              </span>
+            <div className="flex items-center justify-between font-display text-base font-black">
+              <span>✨ Your study snapshot</span>
+              <TrendingUp size={18} className="text-pink" />
             </div>
-            <div className="mt-5 grid grid-cols-3 gap-3">
-              {[
-                { k: "HR", v: "98", u: "bpm", c: "pink" },
-                { k: "BP", v: "138/86", u: "mmHg", c: "lavender" },
-                { k: "SpO₂", v: "96", u: "%", c: "blue" },
-              ].map((vital) => (
+            <div className="mt-4 grid grid-cols-2 gap-3">
+              <div className="rounded-2xl bg-yellow-soft p-4">
+                <p className="text-[10px] font-black uppercase text-muted-foreground">
+                  Sessions this week
+                </p>
+                <p className="font-display text-3xl font-black">8</p>
+              </div>
+              <div className="rounded-2xl bg-mint-soft p-4">
+                <p className="text-[10px] font-black uppercase text-muted-foreground">
+                  Cards due today
+                </p>
+                <p className="font-display text-3xl font-black">12</p>
+              </div>
+            </div>
+            <div className="mt-4 space-y-3">
+              {bars.map((b) => (
                 <div
-                  key={vital.k}
-                  className="rounded-2xl border border-border bg-background p-3 text-center"
+                  key={b.label}
+                  className="flex items-center gap-3 text-xs font-bold text-ink-soft"
                 >
-                  <p className="text-[11px] font-black uppercase text-muted-foreground">
-                    {vital.k}
-                  </p>
-                  <p className={`mt-1 font-display text-xl font-black text-${vital.c}`}>
-                    {vital.v}
-                  </p>
-                  <p className="text-[10px] font-bold text-muted-foreground">{vital.u}</p>
+                  <span className="w-20 shrink-0">{b.label}</span>
+                  <span className="h-2.5 flex-1 overflow-hidden rounded-full bg-muted">
+                    <span
+                      className={`block h-full rounded-full bg-${b.color}`}
+                      style={{ width: `${b.pct}%` }}
+                    />
+                  </span>
                 </div>
               ))}
             </div>
-            <div className="mt-4 rounded-2xl bg-muted p-4 soft-inset">
-              <p className="text-[11px] font-black uppercase text-muted-foreground">
-                Your next move
-              </p>
-              <div className="mt-2.5 flex flex-wrap gap-2">
-                {["Take history", "Examine", "Order labs", "Treat"].map((a, i) => (
-                  <span
-                    key={a}
-                    className={`rounded-full px-3 py-1.5 text-xs font-black ${
-                      i === 0 ? "bg-lavender text-foreground" : "bg-card text-ink-soft"
-                    }`}
-                  >
-                    {a}
-                  </span>
-                ))}
-              </div>
+            <div className="mt-4 rounded-2xl bg-pink-soft p-3.5 text-xs font-bold text-foreground">
+              🌱 Suggested next: revisit cardiovascular pathology
             </div>
           </div>
-        </div>
-      </div>
-    </section>
-  );
-}
-
-function UsmleCallout() {
-  return (
-    <section id="usmle" className="app-container scroll-mt-24">
-      <div className="grid gap-4 md:grid-cols-2">
-        <div className="clay-card bg-mint-soft p-7 md:p-9">
-          <span className="flex size-12 items-center justify-center rounded-2xl bg-card text-mint">
-            <GraduationCap size={24} strokeWidth={2.3} />
-          </span>
-          <h3 className="mt-5 font-display text-2xl font-black">USMLE Prep with real coaches</h3>
-          <p className="mt-3 text-base leading-relaxed text-ink-soft">
-            Browse experienced coaches, enroll in structured Step 1 & 2 classes, read reviews from
-            other students and message your coach directly — all inside Medley.
+          <p className="mt-4 text-center text-[11px] font-semibold text-muted-foreground">
+            Illustrative dashboard data shown.
           </p>
-          <div className="mt-6 flex flex-wrap gap-2">
-            {["Structured classes", "Direct messaging", "Student reviews", "Announcements"].map(
-              (t) => (
-                <span
-                  key={t}
-                  className="rounded-full bg-card px-3 py-1.5 text-xs font-extrabold text-ink-soft"
-                >
-                  {t}
-                </span>
-              ),
-            )}
+        </div>
+
+        <div className="order-1 lg:order-2">
+          <span className="text-xs font-black uppercase tracking-wider text-pink">
+            Progress that actually helps
+          </span>
+          <h2 className="mt-3 font-display text-3xl font-black leading-tight md:text-4xl">
+            See your growth.
+            <br />
+            <span className="text-lavender">Know your next move.</span>
+          </h2>
+          <p className="mt-4 max-w-md text-base leading-relaxed text-ink-soft md:text-lg">
+            Go beyond streaks and scores. Keep track of strengths, missed questions, case feedback
+            and due cards — so your next study session has a purpose.
+          </p>
+          <div className="mt-6 flex flex-wrap gap-2.5">
+            {[
+              { icon: TrendingUp, label: "Topic progress" },
+              { icon: Flame, label: "XP & levels" },
+              { icon: Target, label: "Targeted review" },
+            ].map((chip) => (
+              <span
+                key={chip.label}
+                className="clay-card inline-flex items-center gap-1.5 rounded-full bg-card px-4 py-2 text-xs font-extrabold text-ink-soft"
+              >
+                <chip.icon size={14} className="text-pink" /> {chip.label}
+              </span>
+            ))}
           </div>
         </div>
-        <div className="clay-card bg-blue-soft p-7 md:p-9">
-          <span className="flex size-12 items-center justify-center rounded-2xl bg-card text-blue">
-            <MessageCircle size={24} strokeWidth={2.3} />
-          </span>
-          <h3 className="mt-5 font-display text-2xl font-black">Coaching made for you</h3>
-          <p className="mt-3 text-base leading-relaxed text-ink-soft">
-            Teaching Step prep? Create your coaching profile, open classes, enroll students and keep
-            your cohort in the loop — Medley handles enrollment, reviews and messaging.
-          </p>
-          <Button asChild variant="blue" className="mt-6">
-            <Link to="/register">
-              Join as a coach <ArrowRight size={16} />
-            </Link>
-          </Button>
-        </div>
-      </div>
-    </section>
-  );
-}
-
-function SubjectMarquee() {
-  return (
-    <section className="app-container">
-      <p className="text-center text-xs font-black uppercase tracking-wider text-muted-foreground">
-        Built around the subjects you actually sit
-      </p>
-      <div className="mt-5 flex flex-wrap justify-center gap-2.5">
-        {SUBJECTS.map((s) => (
-          <span
-            key={s}
-            className="clay-card rounded-full bg-card px-4 py-2 text-sm font-extrabold text-ink-soft"
-          >
-            {s}
-          </span>
-        ))}
       </div>
     </section>
   );
@@ -560,24 +745,21 @@ function FinalCta() {
           className="pointer-events-none absolute inset-0 opacity-30"
           style={{
             background:
-              "radial-gradient(20rem 14rem at 15% 10%, #fff, transparent 60%), radial-gradient(22rem 16rem at 90% 90%, #fff, transparent 60%)",
+              "radial-gradient(20rem 14rem at 14% 8%, #fff, transparent 60%), radial-gradient(22rem 16rem at 90% 92%, #fff, transparent 60%)",
           }}
         />
         <div className="relative">
-          <span className="flex mx-auto size-14 items-center justify-center rounded-2xl bg-card text-pink shadow-sm">
-            <Trophy size={27} strokeWidth={2.3} />
-          </span>
-          <h2 className="mt-5 font-display text-3xl font-black text-foreground md:text-5xl">
-            Ready to study smarter?
+          <h2 className="font-display text-3xl font-black leading-tight text-foreground md:text-5xl">
+            Big dreams. Smarter study sessions.
           </h2>
           <p className="mx-auto mt-4 max-w-xl text-base font-semibold leading-relaxed text-foreground/80 md:text-lg">
-            Create your free account and start with this week's case. Your progress, streaks and
-            weak spots are waiting.
+            Every confident decision starts with a little practice. Create your free account and
+            start with this week's case.
           </p>
           <div className="mt-8 flex flex-col items-center justify-center gap-3 sm:flex-row">
             <Button asChild size="lg" className="bg-card text-base text-foreground hover:bg-card">
               <Link to="/register">
-                Get started free <ArrowRight size={18} />
+                Come study with Medley <ArrowRight size={18} />
               </Link>
             </Button>
             <Button
@@ -586,7 +768,7 @@ function FinalCta() {
               variant="secondary"
               className="bg-foreground/10 text-base text-foreground hover:bg-foreground/15"
             >
-              <Link to="/login">Sign in</Link>
+              <Link to="/login">I already have an account</Link>
             </Button>
           </div>
         </div>
@@ -600,13 +782,21 @@ function Footer() {
     <footer className="app-container">
       <div className="flex flex-col items-center justify-between gap-6 border-t border-border/70 py-10 md:flex-row">
         <Wordmark className="text-[22px]" />
-        <p className="max-w-md text-center text-xs leading-relaxed text-muted-foreground md:text-right">
-          Medley is a learning aid for medical and health-science students. It is not a source of
-          clinical advice and does not replace institutional teaching or supervision.
-        </p>
+        <nav className="flex flex-wrap justify-center gap-x-6 gap-y-2 text-xs font-extrabold text-muted-foreground">
+          {NAV_LINKS.map((item) => (
+            <a key={item.href} href={item.href} className="transition-colors hover:text-pink">
+              {item.label}
+            </a>
+          ))}
+          <Link to="/register" className="transition-colors hover:text-pink">
+            Get started
+          </Link>
+        </nav>
       </div>
-      <p className="pb-10 text-center text-xs font-semibold text-muted-foreground md:text-right">
-        © {new Date().getFullYear()} Medley
+      <p className="pb-10 text-center text-xs leading-relaxed text-muted-foreground">
+        © {new Date().getFullYear()} Medley. Made for curious minds and future healthcare pros.
+        Medley is a learning aid, not a substitute for qualified clinical advice, supervision or
+        validated guidance.
       </p>
     </footer>
   );
@@ -618,12 +808,11 @@ export function LandingPage() {
       <LandingNav />
       <main className="space-y-20 pb-8 md:space-y-28">
         <Hero />
-        <StatStrip />
+        <PillarStrip />
         <Features />
         <LearningLoop />
-        <CaseSpotlight />
-        <UsmleCallout />
-        <SubjectMarquee />
+        <AnnieSection />
+        <ProgressSection />
         <FinalCta />
       </main>
       <Footer />
