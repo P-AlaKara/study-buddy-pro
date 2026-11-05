@@ -216,7 +216,7 @@ function CaseWindow() {
   const progress = 55 + active * 15;
 
   return (
-    <div className="clay-card w-full max-w-sm bg-card p-4 md:p-5">
+    <div className="clay-card w-full bg-card p-4 md:p-5">
       <div className="flex items-center justify-between text-[10px] font-black uppercase tracking-wider text-muted-foreground">
         <span>✳ medley / clinical cases</span>
         <span className="flex gap-1" aria-hidden>
@@ -333,7 +333,7 @@ function Hero() {
             "radial-gradient(42rem 28rem at 16% -8%, var(--lavender-soft), transparent 70%), radial-gradient(38rem 26rem at 98% 4%, var(--pink-soft), transparent 68%), radial-gradient(34rem 24rem at 62% 112%, var(--blue-soft), transparent 72%)",
         }}
       />
-      <div className="app-container grid items-center gap-12 pb-10 pt-10 md:pb-16 md:pt-14 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.05fr)] lg:gap-10 lg:pt-20">
+      <div className="app-container grid items-center gap-10 pb-10 pt-10 md:pb-16 md:pt-14 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.18fr)] lg:gap-4 lg:pt-20 xl:gap-8">
         <div>
           <span className="inline-flex items-center gap-1.5 rounded-full bg-card px-3.5 py-1.5 text-xs font-black uppercase tracking-wider text-ink-soft shadow-sm">
             <span className="size-2 rounded-full bg-pink" /> Learning, but make it active
@@ -389,16 +389,18 @@ function Hero() {
           </p>
         </div>
 
-        {/* Case window + layered floating chips. Chips hide below md to avoid
-            overflow; the window alone carries the story on phones. */}
-        <div className="relative mx-auto flex w-full max-w-md justify-center pt-4 md:max-w-lg md:pt-0 lg:mr-0">
+        {/* Case window + layered floating chips. The tight relative box anchors
+            the chips to the window edges; it tilts slightly on desktop and hugs
+            the left of its column so it sits close to the hero copy. Chips hide
+            below md to avoid overflow; the window carries the story on phones. */}
+        <div className="relative mx-auto w-full max-w-md pt-4 md:max-w-lg md:pt-0 lg:mx-0 lg:rotate-[3deg] xl:max-w-xl">
           <CaseWindow />
           <FloatingChip
             icon={Flower2}
             color="pink"
             title="Annie is here!"
             sub="Little nudges, big aha moments"
-            className="-left-4 top-[14%] lg:-left-8"
+            className="-left-4 top-[14%] lg:-left-5"
           />
           <FloatingChip
             icon={Flame}
