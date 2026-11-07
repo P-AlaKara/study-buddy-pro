@@ -7,7 +7,7 @@ import {
   ArrowRight,
   Bell,
   BookOpen,
-  BookOpenText,
+  FileText,
   Brain,
   ChevronDown,
   ChevronRight,
@@ -41,7 +41,7 @@ import {
 import { DR_AMBROSE, DrAmbrose } from "@/features/case-challenge/components/dr-ambrose";
 import { PatientAvatar } from "@/features/case-challenge/components/patient-avatar";
 import { FEATURED_CASE } from "@/features/case-challenge/featured-case";
-import { STUDY_WITH_ANNIE_ENABLED } from "@/features/study-with-annie/feature-flag";
+import { EXAM_GENERATOR_ENABLED } from "@/features/exam-generator/feature-flag";
 import { ANATOMY_LAB_ENABLED } from "@/features/anatomy-lab/feature-flag";
 
 type Student = Pick<
@@ -67,15 +67,15 @@ type Student = Pick<
   | "longest_streak"
   | "created_at"
 >;
-type View = "home" | "cases" | "practice" | "usmle" | "profile" | "leaderboards";
+type View = "home" | "cases" | "practice" | "usmle" | "profile" | "leaderboards" | "exams";
 type PracticeTab = "OSCE" | "Quizzes" | "Flashcards";
 type NavItem = { key: View | "misc"; label: string; to: string; icon: typeof Home };
 // Students get the full study shell; coaches only need their coaching space and
 // their profile.
 const studentNav: NavItem[] = [
   { key: "home", label: "Home", to: "/", icon: Home },
-  ...(STUDY_WITH_ANNIE_ENABLED
-    ? [{ key: "misc" as const, label: "AI Study", to: "/study-with-annie", icon: BookOpenText }]
+  ...(EXAM_GENERATOR_ENABLED
+    ? [{ key: "exams" as const, label: "Exam Generator", to: "/exams", icon: FileText }]
     : []),
   { key: "cases", label: "Cases", to: "/cases", icon: HeartPulse },
   ...(ANATOMY_LAB_ENABLED
@@ -731,6 +731,9 @@ export function StudyApp({ view, children }: { view: View; children?: ReactNode 
           </div>
         )}
         {view === "usmle" && (
+          <StudentContext.Provider value={student}>{children}</StudentContext.Provider>
+        )}
+        {view === "exams" && (
           <StudentContext.Provider value={student}>{children}</StudentContext.Provider>
         )}
         {view === "leaderboards" && (

@@ -2,7 +2,7 @@
 
 Medley is an interactive study platform built primarily for medical and health-science students. It brings clinical reasoning, OSCE practice, quizzes, flashcards, USMLE coaching, and focused note reading into one learning space.
 
-Rather than treating studying as a collection of disconnected tasks, Medley helps students move between learning a concept, recalling it, applying it to a patient, reflecting on feedback, and returning to the areas that need more work. Its flagship clinical case simulator is supported by a wider set of tools, including the AI-assisted **Study with Annie** PDF reader.
+Rather than treating studying as a collection of disconnected tasks, Medley helps students move between learning a concept, recalling it, applying it to a patient, reflecting on feedback, and returning to the areas that need more work. Its flagship clinical case simulator is supported by a wider set of tools, including the AI-assisted **Exam Generator** that turns lecture notes into comprehensive exams.
 
 ## The problem Medley aims to solve
 
@@ -20,7 +20,7 @@ Medley addresses five related problems:
 
 | Learning challenge                      | Medley's response                                                                                                           |
 | --------------------------------------- | --------------------------------------------------------------------------------------------------------------------------- |
-| Notes are easy to read passively        | Study with Annie turns uploaded notes into an annotated reader with contextual prompts and recall questions.                |
+| Notes are easy to read passively        | The Exam Generator turns uploaded notes into a comprehensive, source-grounded exam covering the whole topic.                |
 | Clinical knowledge can feel abstract    | Branching case challenges ask students to gather evidence, manage time, commit to decisions, and review the consequences.   |
 | OSCE practice is hard to organise alone | Structured stations simulate the door note, patient interaction, examiner questions, and scored debrief.                    |
 | Students forget what they have reviewed | Quizzes, retry modes, bookmarks, and spaced-repetition flashcards bring important material back at useful moments.          |
@@ -33,7 +33,7 @@ The product is designed around active recall, deliberate practice, immediate fee
 
 ### Personal study dashboard
 
-- A central study space for reaching cases, OSCE stations, quizzes, flashcards, USMLE Prep, and Study with Annie.
+- A central study space for reaching cases, OSCE stations, quizzes, flashcards, USMLE Prep, and the Exam Generator.
 - Student progress, current goals, strengths, weak areas, XP, levels, and recent activity in one place.
 - Suggested next actions that make it easier to continue a useful study session instead of deciding from scratch.
 
@@ -54,22 +54,20 @@ The product is designed around active recall, deliberate practice, immediate fee
 - Debriefs across relevant domains such as information gathering, clinical reasoning, rapport, and time management.
 - Critical-fail handling and saved progress for realistic, repeatable station practice.
 
-### Study with Annie
+### Exam Generator
 
-Study with Annie is a private PDF workspace that turns a student's own notes into a more active reading session.
+The Exam Generator turns a student's own lecture notes into a comprehensive, source-grounded examination.
 
-- Authenticated students can upload text-based PDFs up to 25 MB and see processing, ready, and failure states in their library.
-- A distraction-reduced PDF.js reader provides page navigation, zoom, selectable text, and light, dark, and sepia themes.
-- Highlights in four colours, page-anchored sticky notes, and bookmarks persist per student and document.
-- Annie appears as a small floating academic assistant and keeps the PDF at a stable size while her anchored bubble opens or closes.
-- Each opened page receives a cached, source-grounded overview of what the student will learn and what is most important to remember.
-- Selecting PDF text reveals an **Explain this** action. Annie uses the selection and its stored page context to provide a concise explanation, terminology, and an optional accurate memory aid.
-- Active recall hides an exact, meaningful passage at the PDF text layer and asks the student to explain it in their own words. Gemini evaluates semantic understanding as correct, partially correct, or incorrect before the source is restored.
-- Annie is intentionally limited to page overviews, selected-text explanations, and active recall; generic chat, unsolicited commentary, mood modes, and quiz dashboards are excluded.
-- Reading position persists per document, and session summaries report pages covered, recall performance, and passages worth revisiting.
-- Gemini responses use validated structured output. If extraction or AI evaluation fails, the reader restores the source and reports the limitation rather than inventing content or a score.
+- Authenticated students upload one or more text-based PDFs or PowerPoint (`.pptx`) files; the material is extracted in-memory and combined into a single exam.
+- A structured, multi-stage pipeline analyses every document, builds a coverage map of granular learning objectives, generates questions objective by objective, then audits coverage and fills gaps — prioritising comprehensive breadth over an arbitrary question count.
+- Each exam mixes single-best-answer MCQs (with per-option explanations), short-answer recall prompts, and structured long-answer questions with model answers and marking rubrics, tagged by Bloom level where useful.
+- Questions are grounded only in the uploaded material, carry a source document and page/slide reference, and are checked for duplicates and near-duplicates before being saved.
+- Students take the exam at their own pace: one question at a time, a question navigator, autosave, flag-for-review, skip-and-return, and resume from the last position — designed for long sessions of hundreds of questions. Display pagination never limits how many questions are generated or stored.
+- Any exam question can be saved to a new or existing flashcard deck in a couple of clicks, reusing Medley's spaced-repetition flashcards.
+- Exam mode keeps answers hidden until submission. The results summary is computed deterministically (no AI): score, correct, missed, saved cards, and per-topic performance to guide revision. The post-submit review reveals correct answers, explanations, and model answers, with optional on-demand AI grading and feedback for written answers.
+- Generation is resumable: progress is saved after every batch, so a closed tab or interruption resumes where it left off, and partial or unassessable coverage is reported honestly rather than presented as complete.
 
-Annie currently supports PDFs with extractable text; scanned documents are clearly rejected because OCR is not included. It intentionally excludes unrestricted chat, multiple-choice quizzes, flashcard generation, document rewriting, scoring dashboards, source recommendations, social reading, and multiple companion characters.
+Only text-based documents are supported; scanned or image-only files are clearly rejected (OCR is not included). The uploaded files and extracted text are **never stored permanently** — only the generated exam, its questions, coverage map, attempts, answers, and saved flashcards persist, so students can return to an exam without re-uploading their notes.
 
 ### Quizzes
 
@@ -101,8 +99,8 @@ Annie currently supports PDFs with extractable text; scanned documents are clear
 
 ## A typical learning loop
 
-1. Read lecture notes in Study with Annie, adding highlights and sticky notes.
-2. Use Annie's blot-outs or a Medley quiz to practise recall.
+1. Generate a comprehensive exam from your lecture notes in the Exam Generator.
+2. Work through the exam at your own pace, saving tricky questions to flashcards as you go.
 3. Review difficult concepts with scheduled flashcards.
 4. Apply the knowledge in a clinical case or OSCE station.
 5. Use the debrief and progress views to choose the next area to revisit.
@@ -112,9 +110,9 @@ Annie currently supports PDFs with extractable text; scanned documents are clear
 
 - **Application-owned authentication:** accounts use email and password with Argon2id password hashing and an app-signed, httpOnly session cookie. Email verification and password reset are intentionally deferred and must be added before production.
 - All database access flows through authenticated server functions using a service-role client; the browser has no direct table access.
-- Study with Annie documents are stored privately and are accessible only to their owner through authenticated, time-limited access.
-- Uploaded note content is handled only as needed to extract text and produce document-grounded interactions.
-- Candidate blot-outs are validated against the extracted page text before they can be used.
+- Uploaded documents are never stored permanently: the Exam Generator extracts text in-memory, keeps it only transiently while generating, and discards both the files and the extracted text when generation finishes, fails, or is cancelled. Only the generated exam is saved.
+- Generated exams, questions, coverage maps, attempts, answers, and saved flashcards belong to the authenticated student and are protected by the same authorization rules as the rest of the app.
+- Generated questions are validated against a strict schema, grounded in the uploaded material, and de-duplicated before persistence.
 - Model output is schema-validated, retried once when malformed, and replaced with safe fallbacks when generation fails or times out.
 - Students should verify medical content against their curriculum and authoritative clinical guidance.
 
@@ -123,8 +121,8 @@ Annie currently supports PDFs with extractable text; scanned documents are clear
 - **Application:** React 19, TypeScript, TanStack Start, TanStack Router, and Vite
 - **Interface:** Tailwind CSS, Radix UI primitives, Lucide icons, and Recharts
 - **Data and authentication:** application-owned accounts (Argon2id hashing + app-signed session cookies) on Supabase PostgreSQL and Storage, with all access through server functions
-- **Document reader:** PDF.js
-- **AI assistance:** Gemini, with structured validation and deterministic fallbacks
+- **Document extraction:** PDF.js (PDF) and fflate (PPTX), server-side only
+- **AI assistance:** OpenAI for the Exam Generator and Gemini for OSCE, both with structured, Zod-validated output
 - **Validation and testing:** Zod, TypeScript-based validators, and deterministic engine tests
 - **Deployment:** Nitro server output with a Render blueprint
 
@@ -135,7 +133,7 @@ Annie currently supports PDFs with extractable text; scanned documents are clear
 - Node.js `>=22.12.0 <23.0.0`
 - npm or Bun
 - A Supabase project for data (PostgreSQL) and PDF storage
-- A Gemini API key if AI-generated Annie interactions are required; the deterministic fallback experience works without one
+- An OpenAI API key for the Exam Generator (required to generate exams); a Gemini API key for OSCE AI features
 
 ### Local setup
 
@@ -147,11 +145,11 @@ npm install
 npm run dev
 ```
 
-Set the Supabase values in `.env` before starting the app. Never expose `SUPABASE_SECRET_KEY` in client-side code or commit real credentials. `GEMINI_API_KEY` and `GEMINI_MODEL` are optional server-side settings for Study with Annie.
+Set the Supabase values in `.env` before starting the app. Never expose `SUPABASE_SECRET_KEY` in client-side code or commit real credentials. `OPENAI_API_KEY` (and the optional `OPENAI_MODEL*` overrides) power the Exam Generator; `GEMINI_API_KEY` and `GEMINI_MODEL` remain server-side settings for OSCE AI features. All model keys stay server-side.
 
-Study with Annie (shown as **AI Study** in the navigation) is always enabled. If you ever need to take it offline, set `STUDY_WITH_ANNIE_ENABLED` to `false` in `src/features/study-with-annie/feature-flag.ts` and rebuild. It is deliberately a code constant rather than an environment variable so a stale value in a deployment environment can never hide or expose it unexpectedly.
+The Exam Generator (shown as **Exam Generator** in the navigation) is always enabled. If you ever need to take it offline, set `EXAM_GENERATOR_ENABLED` to `false` in `src/features/exam-generator/feature-flag.ts` and rebuild. It is deliberately a code constant rather than an environment variable so a stale value in a deployment environment can never hide or expose it unexpectedly.
 
-Apply the migrations in `supabase/migrations` to the configured Supabase project before testing data-backed features. The Study with Annie migration also creates its private document bucket and access policies.
+Apply the migrations in `supabase/migrations` to the configured Supabase project before testing data-backed features. The Exam Generator migration replaces the former Study with Annie tables and persists only generated exams, never uploaded documents. It also revokes access to the old `annie-notes` storage bucket; that now-unused bucket should be emptied and removed from the Supabase dashboard (hosted Supabase does not allow deleting storage objects from SQL).
 
 ### Useful commands
 
@@ -160,10 +158,10 @@ npm run dev             # Start the local development server
 npm run build           # Create a production build
 npm run start           # Run the built server
 npm run lint            # Run ESLint
-npm test                # Run case, OSCE, Annie, and auth validation/engine tests
+npm test                # Run case, OSCE, Exam Generator, and auth validation/engine tests
 npm run validate:cases  # Validate clinical case definitions
 npm run validate:osce   # Validate OSCE station definitions
-npm run test:annie      # Test Annie scheduling and candidate validation
+npm run test:exams      # Test Exam Generator pipeline, extraction, grading, and flashcards
 ```
 
 ## Design system
@@ -187,7 +185,7 @@ src/
 │   ├── auth/                   # Application-owned accounts and session handling
 │   ├── case-challenge/         # Case content, engine, validation, and UI
 │   ├── osce/                   # OSCE stations, engine, debrief, and UI
-│   ├── study-with-annie/       # PDF reader, Annie, scheduler, and settings
+│   ├── exam-generator/         # Upload, extraction, generation pipeline, player, and review
 │   └── usmle/                  # Coach profiles, classes, enrollments, and messaging
 ├── integrations/supabase/      # Supabase client and generated types
 ├── lib/                        # Quiz, flashcard, and shared domain helpers
@@ -203,5 +201,5 @@ supabase/migrations/            # Database schema, policies, storage, and seeds
 - Explain outcomes clearly enough that mistakes become useful.
 - Keep personality warm and motivating without weakening academic accuracy.
 - Ground AI interactions in the learner's source material and degrade gracefully when AI is unavailable.
-- Protect student documents and keep controls visible, predictable, and accessible.
+- Save the generated exam, not the uploaded notes, and keep controls visible, predictable, and accessible.
 - Support focused individual study first, then add collaboration where it improves learning.

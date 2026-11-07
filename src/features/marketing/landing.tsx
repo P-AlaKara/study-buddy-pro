@@ -38,7 +38,7 @@ type SoftColor = "lavender" | "pink" | "blue" | "mint" | "yellow";
 const NAV_LINKS = [
   { href: "#features", label: "Features" },
   { href: "#how", label: "How it works" },
-  { href: "#annie", label: "Meet Annie" },
+  { href: "#exams", label: "Exam Generator" },
   { href: "#progress", label: "Your progress" },
 ];
 
@@ -72,9 +72,9 @@ const FEATURES: {
   {
     icon: BookOpenText,
     color: "blue",
-    title: "Study with Annie",
-    body: "Turn your own PDFs into focused reading, clear explanations, and gentle active recall.",
-    href: "#annie",
+    title: "Exam Generator",
+    body: "Turn your PDFs and slides into a comprehensive, source-grounded exam — and save tricky questions to flashcards.",
+    href: "#exams",
   },
   {
     icon: Lightbulb,
@@ -100,7 +100,11 @@ const FEATURES: {
 ];
 
 const LOOP: { color: SoftColor; step: string; label: string }[] = [
-  { color: "lavender", step: "Learn", label: "Open your notes and unpack a topic with Annie." },
+  {
+    color: "lavender",
+    step: "Learn",
+    label: "Turn your notes into a comprehensive exam with the Exam Generator.",
+  },
   {
     color: "yellow",
     step: "Remember",
@@ -110,10 +114,10 @@ const LOOP: { color: SoftColor; step: string; label: string }[] = [
   { color: "mint", step: "Improve", label: "Use your feedback to choose what comes next." },
 ];
 
-const ANNIE_BENEFITS = [
-  "Page-grounded explanations, right where you read",
-  "Highlights, sticky notes and bookmarks that stay put",
-  "Active recall that tests understanding, not just memory",
+const EXAM_BENEFITS = [
+  "Comprehensive coverage of every topic in your notes",
+  "MCQs, short and long answers — each grounded in your material",
+  "Save any question to flashcards in a couple of clicks",
 ];
 
 function Wordmark({ className = "" }: { className?: string }) {
@@ -398,8 +402,8 @@ function Hero() {
           <FloatingChip
             icon={Flower2}
             color="pink"
-            title="Annie is here!"
-            sub="Little nudges, big aha moments"
+            title="Your exam is ready!"
+            sub="Built from your own notes"
             className="-left-4 top-[14%] lg:-left-5"
           />
           <FloatingChip
@@ -544,30 +548,36 @@ function LearningLoop() {
   );
 }
 
-const ANNIE_HIGHLIGHT =
-  "During ventricular systole, the ventricles contract and eject blood into the pulmonary artery and aorta.";
+const EXAM_SAMPLE = {
+  stem: "A 67-year-old with heart failure presents with sudden breathlessness and bibasal crackles. Which finding most strongly suggests acute pulmonary oedema?",
+  options: [
+    { id: "A", text: "Dry mucous membranes" },
+    { id: "B", text: "Pink, frothy sputum" },
+    { id: "C", text: "Reduced jugular venous pressure" },
+  ],
+  correct: "B",
+};
 
-function AnnieSection() {
-  const [mode, setMode] = useState<"explain" | "recall">("explain");
-  const recall = mode === "recall";
+function ExamSection() {
+  const [mode, setMode] = useState<"take" | "save">("take");
+  const saving = mode === "save";
 
   return (
-    <section id="annie" className="app-container scroll-mt-24">
+    <section id="exams" className="app-container scroll-mt-24">
       <div className="clay-card grid items-center gap-10 bg-card p-6 md:p-10 lg:grid-cols-[0.95fr_1.05fr] lg:p-12">
         <div>
-          <span className="inline-flex items-center gap-1.5 rounded-full bg-pink-soft px-3.5 py-1.5 text-xs font-black uppercase tracking-wider text-pink">
-            <Flower2 size={14} /> Meet your reading sidekick
+          <span className="inline-flex items-center gap-1.5 rounded-full bg-blue-soft px-3.5 py-1.5 text-xs font-black uppercase tracking-wider text-blue">
+            <BookOpenText size={14} /> Your notes, examined
           </span>
           <h2 className="mt-5 font-display text-3xl font-black leading-tight md:text-4xl">
-            Your notes. Now with <span className="text-pink">Annie.</span>
+            Your notes. Now an <span className="text-blue">exam.</span>
           </h2>
           <p className="mt-4 text-base leading-relaxed text-ink-soft md:text-lg">
-            Bring your text-based PDFs and read in peace. Annie stays beside the page, helping you
-            clarify a selected passage or recall it in your own words — without turning reading time
-            into endless chat.
+            Upload your PDFs and slide decks. The Exam Generator reads all of it, maps every topic,
+            and writes a comprehensive, source-grounded exam you can take at your own pace.
           </p>
           <ul className="mt-6 space-y-3">
-            {ANNIE_BENEFITS.map((b) => (
+            {EXAM_BENEFITS.map((b) => (
               <li key={b} className="flex items-start gap-3">
                 <span className="mt-0.5 flex size-6 shrink-0 items-center justify-center rounded-full bg-mint-soft text-mint">
                   <CheckCircle2 size={16} strokeWidth={2.6} />
@@ -581,9 +591,9 @@ function AnnieSection() {
           <div
             className="mt-6 inline-flex gap-1.5 rounded-full bg-muted p-1"
             role="group"
-            aria-label="Annie demo mode"
+            aria-label="Exam Generator demo mode"
           >
-            {(["explain", "recall"] as const).map((m) => (
+            {(["take", "save"] as const).map((m) => (
               <button
                 key={m}
                 type="button"
@@ -591,57 +601,63 @@ function AnnieSection() {
                 aria-pressed={mode === m}
                 className={`rounded-full px-4 py-2 text-xs font-black transition-colors ${
                   mode === m
-                    ? "bg-pink text-foreground shadow-sm"
+                    ? "bg-blue text-foreground shadow-sm"
                     : "text-ink-soft hover:text-foreground"
                 }`}
               >
-                {m === "explain" ? "Explain this" : "Active recall"}
+                {m === "take" ? "Take the exam" : "Save to flashcards"}
               </button>
             ))}
           </div>
         </div>
 
-        {/* Reader mock */}
+        {/* Exam mock */}
         <div className="relative rounded-3xl bg-muted p-4 soft-inset md:p-5">
           <div className="flex items-center justify-between rounded-2xl bg-card px-4 py-3 text-[10px] font-black text-muted-foreground">
-            <span className="truncate">📄 Cardiovascular Physiology.pdf</span>
-            <span className="hidden shrink-0 sm:inline">Page 12 / 48 · 100%</span>
+            <span className="truncate">✦ Cardiovascular physiology · Question 12 / 86</span>
+            <span className="hidden shrink-0 sm:inline">MCQ</span>
           </div>
           <div className="mt-3 rounded-2xl bg-background p-5 md:p-6">
-            <p className="text-[10px] font-black uppercase tracking-wider text-muted-foreground">
-              Chapter 02 · Physiology
-            </p>
-            <h3 className="mt-1.5 font-display text-xl font-black">The Cardiac Cycle</h3>
-            <p className="mt-3 text-sm leading-relaxed text-ink-soft">
-              The cardiac cycle is a sequence of events that occur during a single heartbeat. It
-              includes periods of contraction and relaxation.
-            </p>
-            <p className="mt-2.5 text-sm leading-relaxed text-ink-soft">
-              <span
-                className={
-                  recall
-                    ? "rounded bg-lavender text-transparent [box-decoration-break:clone] [-webkit-box-decoration-break:clone] select-none"
-                    : "rounded bg-yellow/70 text-foreground [box-decoration-break:clone] [-webkit-box-decoration-break:clone]"
-                }
-              >
-                {ANNIE_HIGHLIGHT}
-              </span>
-            </p>
-            <p className="mt-2.5 text-sm leading-relaxed text-ink-soft">
-              During diastole, the ventricles relax and fill with blood before the next heartbeat.
+            <h3 className="font-display text-base font-black leading-relaxed">
+              {EXAM_SAMPLE.stem}
+            </h3>
+            <div className="mt-3 space-y-2">
+              {EXAM_SAMPLE.options.map((o) => {
+                const correct = o.id === EXAM_SAMPLE.correct;
+                return (
+                  <div
+                    key={o.id}
+                    className={`flex items-center gap-2.5 rounded-xl p-2.5 text-xs ${
+                      correct && saving
+                        ? "bg-mint-soft"
+                        : correct
+                          ? "bg-blue-soft ring-1 ring-blue"
+                          : "bg-muted/60"
+                    }`}
+                  >
+                    <span className="flex size-5 items-center justify-center rounded-full border-2 border-border text-[10px] font-black">
+                      {o.id}
+                    </span>
+                    {o.text}
+                  </div>
+                );
+              })}
+            </div>
+            <p className="mt-3 text-[10px] text-muted-foreground">
+              Source: Heart failure lecture · slide 28
             </p>
           </div>
-          <div className="clay-card mt-3 bg-pink-soft p-4 md:absolute md:-bottom-5 md:right-4 md:mt-0 md:max-w-[16rem]">
+          <div className="clay-card mt-3 bg-yellow-soft p-4 md:absolute md:-bottom-5 md:right-4 md:mt-0 md:max-w-[16rem]">
             <p className="flex items-center gap-2 font-display text-xs font-black">
-              <span className="flex size-6 items-center justify-center rounded-lg bg-pink text-foreground">
-                <Flower2 size={14} />
+              <span className="flex size-6 items-center justify-center rounded-lg bg-yellow text-foreground">
+                <Layers3 size={14} />
               </span>
-              Annie says…
+              {saving ? "Saved to flashcards" : "Add to flashcards"}
             </p>
             <p className="mt-2 text-[11px] leading-relaxed text-ink-soft">
-              {recall
-                ? "In your own words, what happens during ventricular systole? Try to recall it before you reveal the text."
-                : "Systole is the squeezing phase: the ventricles contract to move blood out of the heart."}
+              {saving
+                ? "The question and answer are now in your deck, ready for spaced review after the exam."
+                : "Keep any tricky question for later — one tap saves it to a deck."}
             </p>
           </div>
         </div>
@@ -813,7 +829,7 @@ export function LandingPage() {
         <PillarStrip />
         <Features />
         <LearningLoop />
-        <AnnieSection />
+        <ExamSection />
         <ProgressSection />
         <FinalCta />
       </main>
