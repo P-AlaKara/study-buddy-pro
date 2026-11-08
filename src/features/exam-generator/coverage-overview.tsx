@@ -1,7 +1,16 @@
 // Coverage review (wireframe 4): what was built, topic coverage, honest
 // caveats, and the Start action. Also the failed-exam state.
 import { useState } from "react";
-import { ArrowRight, FileText, Layers3, ListChecks, RefreshCw, Trash2, Trophy } from "lucide-react";
+import {
+  ArrowRight,
+  FileText,
+  Layers3,
+  ListChecks,
+  RefreshCw,
+  Target,
+  Trash2,
+  Trophy,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Bar, Chip, PageEyebrow, StatTile, Stepper } from "./ui";
 import type { ExamOverview } from "./types";
@@ -33,6 +42,14 @@ export function CoverageOverview({
             Built topic by topic from {overview.sourceDocuments.length} source
             {overview.sourceDocuments.length === 1 ? "" : "s"}, grounded in your material.
           </p>
+          {overview.focusAreas && (
+            <p className="mt-3 inline-flex items-start gap-1.5 rounded-2xl bg-lavender-soft px-3 py-2 text-sm font-semibold">
+              <Target className="mt-0.5 size-4 shrink-0 text-blue" />
+              <span>
+                <span className="text-ink-soft">Focused on:</span> {overview.focusAreas}
+              </span>
+            </p>
+          )}
         </div>
         <span className="hidden size-20 shrink-0 place-items-center rounded-3xl bg-yellow text-4xl shadow-[0_8px_0_#edcf70] sm:grid">
           <Trophy className="size-9 text-[color:var(--case-yellow-ink)]" />

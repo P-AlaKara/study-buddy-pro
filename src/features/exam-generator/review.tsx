@@ -68,6 +68,19 @@ export function ExamReview({ examId, onRetake }: { examId: string; onRetake: () 
   const s = data.summary;
   const answerByQ = new Map(data.answers.map((a) => [a.questionId, a]));
 
+  // Weak areas for a focused retake: topics the student scored below 70% on
+  // (topicPerformance is already sorted weakest-first). If they aced everything,
+  // fall back to their three lowest topics so the button is still useful.
+  const gradedTopics = s.topicPerformance.filter((t) => t.total > 0);
+  const weakTopics = (
+    gradedTopics.filter((t) => t.percent < 70).length
+      ? gradedTopics.filter((t) => t.percent < 70)
+      : gradedTopics.slice(0, 3)
+  )
+    .slice(0, 6)
+    .map((t) => t.topic);
+  const focusQuery = weakTopics.join(", ");
+
   return (
     <div>
       {/* Hero summary */}
@@ -144,8 +157,13 @@ export function ExamReview({ examId, onRetake }: { examId: string; onRetake: () 
         <Button variant="ghost" onClick={() => void retake()}>
           <RotateCcw /> Retake
         </Button>
-        <Button variant="blue" onClick={() => navigate({ to: "/exams/new" })}>
-          <Sparkles /> Generate another
+        <Button
+          variant="blue"
+          onClick={() =>
+            navigate({ to: "/exams/new", search: focusQuery ? { focus: focusQuery } : {} })
+          }
+        >
+          <Sparkles /> {focusQuery ? "Target my weak areas" : "Generate another"}
         </Button>
       </div>
 

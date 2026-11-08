@@ -42,21 +42,45 @@ export interface SourceUnitForPrompt {
   text: string;
 }
 
-export function buildCoverageMapPrompt(units: SourceUnitForPrompt[]): string {
+export function buildCoverageMapPrompt(
+  units: SourceUnitForPrompt[],
+  focusAreas?: string | null,
+): string {
   const body = units
     .map((u) => `[${u.document} · ${u.unitKind} ${u.unit}]\n${u.text}`)
     .join("\n\n");
+  const focus = focusAreas?.trim();
+  const focusBlock = focus
+    ? [
+        "",
+        "STUDENT FOCUS — the student has asked for an exam concentrated on these areas:",
+        focus,
+        "Prioritise material relevant to these areas: identify every testable objective they",
+        "contain, break them into fine-grained objectives, and set generous `target_questions`",
+        "(e.g. 3–5) so the exam drills them deeply. Give little or no weight to clearly unrelated",
+        "material. Never invent content to satisfy a focus area — ground every objective in the",
+        "supplied text. If NONE of the requested areas appear in the material at all, ignore this",
+        "focus and map the material comprehensively so the student still receives a usable exam.",
+        "",
+      ].join("\n")
+    : "";
   return [
-    "Analyse the following lecture material and build a COMPREHENSIVE coverage map of every",
-    "distinct, testable learning objective it contains. Break major topics into granular",
+    focus
+      ? "Analyse the following lecture material and build a coverage map of the testable learning"
+      : "Analyse the following lecture material and build a COMPREHENSIVE coverage map of every",
+    focus
+      ? "objectives it contains that are relevant to the student's focus (see below). Break major"
+      : "distinct, testable learning objective it contains. Break major topics into granular",
     "objectives (definitions, classifications, mechanisms, pathophysiology, clinical features,",
     "investigations, management, complications, contraindications, differentials, etc.) — but only",
     "where the material actually supports them.",
-    "",
+    focusBlock,
     "For each objective set `target_questions` to how many questions are needed to assess it well",
     "(usually 1–3; use more only for genuinely broad objectives). Set `source_ref` to a short",
     'citation like "<document> · <page/slide> N" when identifiable, else null. Do NOT skip material',
-    "just to keep the list short — coverage is the priority.",
+    focus
+      ? "within the focus just to keep the list short — depth on the focus areas is the priority."
+      : "just to keep the list short — coverage is the priority.",
     "",
     "SOURCE MATERIAL:",
     body,

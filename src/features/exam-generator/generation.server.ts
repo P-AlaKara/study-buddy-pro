@@ -207,7 +207,7 @@ async function mapStep(db: any, job: any, progress: any, units: SourceUnit[]): P
 
   const map = await generateOpenAIJson({
     system: EXAM_SYSTEM_PROMPT,
-    prompt: buildCoverageMapPrompt(chunk),
+    prompt: buildCoverageMapPrompt(chunk, (progress.focusAreas as string | null) ?? null),
     schema: coverageMapSchema,
     schemaName: "coverage_map",
     role: "generation",

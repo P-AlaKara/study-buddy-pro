@@ -105,7 +105,9 @@ export const listExams = createServerFn({ method: "GET" })
     const exams = await selectAll(() =>
       db
         .from("exams")
-        .select("id,title,status,question_count,source_documents,created_at,completed_at")
+        .select(
+          "id,title,status,question_count,source_documents,focus_areas,created_at,completed_at",
+        )
         .eq("student_id", student)
         .order("created_at", { ascending: false }),
     );
@@ -141,6 +143,7 @@ export const listExams = createServerFn({ method: "GET" })
         createdAt: e.created_at,
         completedAt: e.completed_at,
         sourceDocuments: (e.source_documents as SourceDocumentMeta[]) ?? [],
+        focusAreas: e.focus_areas ?? null,
         attempt: attempt
           ? {
               status: attempt.status,
@@ -163,7 +166,7 @@ export const getExamOverview = createServerFn({ method: "GET" })
       db,
       data.examId,
       student,
-      "id,title,status,question_count,source_documents,coverage_summary,generation_error,created_at,completed_at",
+      "id,title,status,question_count,source_documents,coverage_summary,focus_areas,generation_error,created_at,completed_at",
     );
     return {
       id: exam.id,
@@ -171,6 +174,7 @@ export const getExamOverview = createServerFn({ method: "GET" })
       status: exam.status,
       questionCount: exam.question_count,
       sourceDocuments: (exam.source_documents as SourceDocumentMeta[]) ?? [],
+      focusAreas: exam.focus_areas ?? null,
       coverage: exam.coverage_summary ?? {
         topics: [],
         typeDistribution: { mcq: 0, short: 0, long: 0 },
@@ -197,6 +201,14 @@ export const createExamFromUploads = createServerFn({ method: "POST" })
     const db = await adminDb();
     const student = studentId(context);
     const { extractDocument, ExtractionError } = await import("./extract.server");
+
+    // Optional student-directed focus. "specific" mode concentrates the exam on
+    // the areas the student names (also used to pre-fill a weak-areas retake);
+    // anything else is a general, comprehensive exam. null ⇒ general.
+    const focusMode = (data.get("focusMode") as string | null) ?? "general";
+    const focusAreasRaw = (data.get("focusAreas") as string | null) ?? "";
+    const focusAreas =
+      focusMode === "specific" && focusAreasRaw.trim() ? focusAreasRaw.trim().slice(0, 600) : null;
 
     const idempotencyKey = (data.get("idempotencyKey") as string | null)?.slice(0, 100) || null;
     if (idempotencyKey) {
@@ -257,6 +269,7 @@ export const createExamFromUploads = createServerFn({ method: "POST" })
         title: title.slice(0, 200),
         status: "generating",
         source_documents: sourceDocuments,
+        focus_areas: focusAreas,
       })
       .select("id")
       .single();
@@ -275,6 +288,8 @@ export const createExamFromUploads = createServerFn({ method: "POST" })
         filesProcessed: sourceDocuments.length,
         unitCount: units.length,
         warnings,
+        // Read back by the generation worker to steer the coverage map.
+        focusAreas,
       },
     });
     if (jobError) {
@@ -701,7 +716,7 @@ export const getExamReview = createServerFn({ method: "GET" })
       db,
       data.examId,
       student,
-      "id,title,status,question_count,source_documents,coverage_summary,generation_error,created_at,completed_at",
+      "id,title,status,question_count,source_documents,coverage_summary,focus_areas,generation_error,created_at,completed_at",
     );
     const attempt = await loadAttempt(db, data.examId, student);
     if (attempt.status !== "submitted") throw new Error("Submit the exam to see your review.");
@@ -734,6 +749,7 @@ export const getExamReview = createServerFn({ method: "GET" })
         status: exam.status,
         questionCount: exam.question_count,
         sourceDocuments: (exam.source_documents as SourceDocumentMeta[]) ?? [],
+        focusAreas: exam.focus_areas ?? null,
         coverage: exam.coverage_summary,
         generationError: exam.generation_error,
         createdAt: exam.created_at,

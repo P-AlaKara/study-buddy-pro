@@ -1,7 +1,7 @@
 // Upload screen (wireframe 2): multiple PDFs / PPTX, validation, removal, then
 // kick off generation. Files are sent straight to the server for in-memory
 // extraction — nothing is stored.
-import { useRef, useState } from "react";
+import { type ReactNode, useRef, useState } from "react";
 import { useNavigate } from "@tanstack/react-router";
 import {
   AlertCircle,
@@ -10,6 +10,8 @@ import {
   Lock,
   Plus,
   Presentation,
+  Sparkles,
+  Target,
   UploadCloud,
   X,
 } from "lucide-react";
@@ -32,13 +34,23 @@ function formatSize(bytes: number): string {
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }
 
-export function UploadPanel() {
+export function UploadPanel({ initialFocus = null }: { initialFocus?: string | null }) {
   const navigate = useNavigate();
   const inputRef = useRef<HTMLInputElement>(null);
   const [files, setFiles] = useState<File[]>([]);
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
   const [dragging, setDragging] = useState(false);
+
+  // Exam focus. A general exam covers the whole upload; a specific exam steers
+  // generation toward the named areas. `initialFocus` arrives pre-filled when a
+  // student chooses to re-test their weak areas after completing an exam.
+  const prefilledFocus = initialFocus?.trim() ?? "";
+  const fromWeakAreas = prefilledFocus.length > 0;
+  const [focusMode, setFocusMode] = useState<"general" | "specific">(
+    fromWeakAreas ? "specific" : "general",
+  );
+  const [focusAreas, setFocusAreas] = useState(prefilledFocus);
 
   const addFiles = (incoming: FileList | File[]) => {
     setError("");
@@ -71,11 +83,18 @@ export function UploadPanel() {
       setError("Add at least one PDF or PowerPoint file.");
       return;
     }
+    const focus = focusMode === "specific" ? focusAreas.trim() : "";
+    if (focusMode === "specific" && focus.length < 3) {
+      setError("Tell us which areas to focus on, or switch to a general exam.");
+      return;
+    }
     setBusy(true);
     setError("");
     try {
       const form = new FormData();
       form.append("idempotencyKey", crypto.randomUUID());
+      form.append("focusMode", focusMode);
+      form.append("focusAreas", focus);
       for (const file of files) form.append("files", file);
       const { examId } = await createExamFromUploads({ data: form });
       await navigate({ to: "/exams/$examId", params: { examId } });
@@ -97,6 +116,17 @@ export function UploadPanel() {
         Add one or more PDFs or slide decks. We combine the material into a single comprehensive
         exam.
       </p>
+
+      {fromWeakAreas && (
+        <div className="mt-5 flex items-start gap-3 rounded-2xl bg-lavender-soft p-4 text-sm">
+          <Target className="mt-0.5 size-5 shrink-0 text-blue" />
+          <p className="font-semibold">
+            Focused on your weak areas. Re-upload the same notes — we never keep them — and we’ll
+            build a fresh exam that drills these topics harder. Edit the list below or switch back
+            to a general exam anytime.
+          </p>
+        </div>
+      )}
 
       {/* Drop zone */}
       <div
@@ -202,6 +232,50 @@ export function UploadPanel() {
         </section>
       )}
 
+      {/* Exam focus — general (whole upload) vs specific (student-directed) */}
+      <section className="mt-8">
+        <h2 className="font-display text-lg font-black">Exam focus</h2>
+        <p className="mt-1 text-sm text-ink-soft">
+          Test everything in your notes, or steer the exam toward the areas you want to work on.
+        </p>
+        <div className="mt-3 grid gap-3 sm:grid-cols-2">
+          <FocusOption
+            selected={focusMode === "general"}
+            onSelect={() => setFocusMode("general")}
+            icon={<Sparkles size={18} />}
+            title="General"
+            body="Comprehensive — covers every topic found in your notes."
+          />
+          <FocusOption
+            selected={focusMode === "specific"}
+            onSelect={() => setFocusMode("specific")}
+            icon={<Target size={18} />}
+            title="Specific"
+            body="You choose the areas to concentrate on."
+          />
+        </div>
+        {focusMode === "specific" && (
+          <div className="mt-3">
+            <label htmlFor="focus-areas" className="text-sm font-bold">
+              Areas to focus on
+            </label>
+            <textarea
+              id="focus-areas"
+              value={focusAreas}
+              onChange={(e) => setFocusAreas(e.target.value)}
+              maxLength={600}
+              rows={3}
+              placeholder="e.g. Acid–base balance, the nephron, potassium handling"
+              className="mt-1.5 w-full resize-y rounded-2xl border border-border bg-background p-3.5 text-sm leading-relaxed soft-inset focus:outline-none focus:ring-2 focus:ring-blue"
+            />
+            <p className="mt-1 text-xs text-muted-foreground">
+              List topics, systems or keywords. We only build questions your material actually
+              supports.
+            </p>
+          </div>
+        )}
+      </section>
+
       <div className="mt-8 flex flex-col items-center justify-between gap-3 sm:flex-row">
         <p className="flex items-center gap-1.5 text-xs text-muted-foreground">
           <Lock size={13} /> Your files are processed privately and never stored.
@@ -212,5 +286,42 @@ export function UploadPanel() {
         </Button>
       </div>
     </div>
+  );
+}
+
+function FocusOption({
+  selected,
+  onSelect,
+  icon,
+  title,
+  body,
+}: {
+  selected: boolean;
+  onSelect: () => void;
+  icon: ReactNode;
+  title: string;
+  body: string;
+}) {
+  return (
+    <button
+      type="button"
+      aria-pressed={selected}
+      onClick={onSelect}
+      className={`flex items-start gap-3 rounded-2xl border-2 p-4 text-left transition-colors ${
+        selected ? "border-blue bg-blue-soft" : "border-border bg-card hover:border-blue/40"
+      }`}
+    >
+      <span
+        className={`mt-0.5 flex size-9 shrink-0 items-center justify-center rounded-xl ${
+          selected ? "bg-blue text-foreground" : "bg-muted text-muted-foreground"
+        }`}
+      >
+        {icon}
+      </span>
+      <span className="min-w-0">
+        <span className="block font-display font-black">{title}</span>
+        <span className="mt-0.5 block text-xs text-ink-soft">{body}</span>
+      </span>
+    </button>
   );
 }

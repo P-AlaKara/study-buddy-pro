@@ -2,7 +2,16 @@
 // saved-exams library.
 import { useCallback, useEffect, useState } from "react";
 import { useNavigate } from "@tanstack/react-router";
-import { ArrowRight, BookOpen, FileText, Layers3, Loader2, Sparkles, Trash2 } from "lucide-react";
+import {
+  ArrowRight,
+  BookOpen,
+  FileText,
+  Layers3,
+  Loader2,
+  Sparkles,
+  Target,
+  Trash2,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { logProblem } from "@/lib/log-problem";
 import { Chip, PageEyebrow } from "./ui";
@@ -187,6 +196,13 @@ export function ExamHome() {
                     {exam.sourceDocuments.map((d) => d.name).join(" · ") || "Generated exam"}
                   </p>
                 </div>
+                {exam.focusAreas && (
+                  <span className="hidden sm:block">
+                    <Chip tone="lavender">
+                      <Target className="size-3" /> Focused
+                    </Chip>
+                  </span>
+                )}
                 <StatusChip exam={exam} />
                 <span
                   role="button"

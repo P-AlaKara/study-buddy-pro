@@ -92,6 +92,8 @@ export interface ExamListItem {
   createdAt: string;
   completedAt: string | null;
   sourceDocuments: SourceDocumentMeta[];
+  /** Student-directed focus for this exam; null = a general exam. */
+  focusAreas: string | null;
   attempt: {
     status: AttemptStatus;
     answered: number;
@@ -106,6 +108,8 @@ export interface ExamOverview {
   status: ExamStatus;
   questionCount: number;
   sourceDocuments: SourceDocumentMeta[];
+  /** Student-directed focus for this exam; null = a general exam. */
+  focusAreas: string | null;
   coverage: CoverageSummary;
   generationError: string | null;
   createdAt: string;
