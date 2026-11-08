@@ -102,37 +102,65 @@ function StudentDiscovery() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <p className="flex items-center gap-1.5 text-xs font-extrabold tracking-widest text-mint">
-          <GraduationCap className="h-4 w-4" /> USMLE PREP
-        </p>
-        <h1 className="mt-1 font-display text-3xl font-black md:text-5xl">Find your USMLE coach</h1>
-        <p className="mt-2 text-muted-foreground">
-          Browse coaches, enroll in structured classes, and message them directly.
-        </p>
+      {/* Hero */}
+      <div className="clay-card overflow-hidden bg-gradient-to-br from-mint-soft to-accent p-6 md:p-8">
+        <div className="flex items-center justify-between gap-6">
+          <div className="min-w-0">
+            <p className="flex items-center gap-1.5 text-xs font-extrabold tracking-widest text-mint">
+              <GraduationCap className="h-4 w-4" /> USMLE PREP
+            </p>
+            <h1 className="mt-2 font-display text-3xl font-black md:text-5xl">
+              Prepare for the USMLE
+            </h1>
+            <p className="mt-3 max-w-xl text-sm text-ink-soft md:text-base">
+              Learn from experienced coaches, join structured classes, and get guidance for your
+              Step exams.
+            </p>
+            <div className="mt-4 flex flex-wrap gap-2">
+              {["Structured classes", "Expert guidance", "Direct messaging"].map((t) => (
+                <span
+                  key={t}
+                  className="rounded-full bg-card/80 px-3 py-1.5 text-[11px] font-black text-ink-soft"
+                >
+                  {t}
+                </span>
+              ))}
+            </div>
+          </div>
+          <span className="hidden size-28 shrink-0 place-items-center rounded-[28px] bg-card/70 text-6xl shadow-[inset_0_2px_1px_var(--card)] md:grid">
+            🩺
+          </span>
+        </div>
       </div>
 
       {enrollments.length > 0 && (
         <section>
-          <h2 className="font-display text-xl font-black">Your classes</h2>
+          <SectionTitle icon="📚" title="My classes" />
           <div className="mt-3 grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
             {enrollments.map((e) => (
               <Link
                 key={e.class_id}
-                to="/usmle/$coachId"
-                params={{ coachId: e.coach_id }}
-                className="clay-card block bg-card p-5"
+                to="/usmle/class/$classId"
+                params={{ classId: e.class_id }}
+                className="clay-card flex items-start gap-4 bg-card p-5"
               >
-                <span className="inline-flex rounded-full bg-mint-soft px-2.5 py-1 text-[11px] font-black uppercase tracking-wider text-ink-soft">
-                  {e.usmle_step}
+                <span className="flex size-14 shrink-0 items-center justify-center rounded-2xl bg-mint-soft text-2xl shadow-[inset_0_2px_1px_var(--card)]">
+                  🎓
                 </span>
-                <p className="mt-3 font-display text-lg font-black">{e.class_title}</p>
-                <p className="text-sm text-ink-soft">with {e.coach_name}</p>
-                {e.schedule && (
-                  <p className="mt-2 flex items-center gap-1.5 text-xs font-bold text-ink-soft">
-                    <CalendarClock className="h-3.5 w-3.5" /> {e.schedule}
+                <div className="min-w-0 flex-1">
+                  <span className="inline-flex rounded-full bg-mint-soft px-2.5 py-1 text-[11px] font-black uppercase tracking-wider text-ink-soft">
+                    {e.usmle_step}
+                  </span>
+                  <p className="mt-2 font-display text-lg font-black leading-snug">
+                    {e.class_title}
                   </p>
-                )}
+                  <p className="text-sm text-ink-soft">with {e.coach_name}</p>
+                  {e.schedule && (
+                    <p className="mt-2 flex items-center gap-1.5 text-xs font-bold text-ink-soft">
+                      <CalendarClock className="h-3.5 w-3.5" /> {e.schedule}
+                    </p>
+                  )}
+                </div>
               </Link>
             ))}
           </div>
@@ -140,18 +168,21 @@ function StudentDiscovery() {
       )}
 
       {announcements.length > 0 && (
-        <section className="clay-card bg-blue-soft p-5">
-          <h2 className="flex items-center gap-2 font-display text-lg font-black">
-            <Megaphone className="h-5 w-5" /> Announcements
+        <section className="clay-card bg-lavender-soft p-5 md:p-6">
+          <h2 className="flex items-center gap-2 font-display text-xl font-black">
+            <span className="flex size-9 items-center justify-center rounded-2xl bg-card">
+              <Megaphone className="h-5 w-5" />
+            </span>
+            Announcements
           </h2>
-          <ul className="mt-3 space-y-2">
+          <ul className="mt-4 grid gap-3 sm:grid-cols-2">
             {announcements.slice(0, 6).map((a) => (
-              <li key={a.id} className="rounded-2xl bg-card p-3">
+              <li key={a.id} className="rounded-2xl bg-card p-4">
                 <p className="text-xs font-black uppercase tracking-wide text-ink-soft">
                   {a.class_title}
                 </p>
                 <p className="mt-1 text-sm leading-relaxed">{a.body}</p>
-                <p className="mt-1 text-[10px] text-ink-soft">
+                <p className="mt-2 text-[10px] font-bold text-ink-soft">
                   {new Date(a.created_at).toLocaleString([], {
                     month: "short",
                     day: "numeric",
@@ -167,7 +198,7 @@ function StudentDiscovery() {
 
       <section>
         <div className="flex flex-wrap items-center justify-between gap-3">
-          <h2 className="font-display text-xl font-black">Browse coaches</h2>
+          <SectionTitle icon="🧑‍🏫" title="Browse coaches" />
           <label className="flex items-center gap-2 rounded-full bg-card px-4 py-2 soft-inset">
             <Search className="h-4 w-4 text-muted-foreground" />
             <input
@@ -179,45 +210,86 @@ function StudentDiscovery() {
           </label>
         </div>
         {loading ? (
-          <div className="mt-3 clay-card h-40 w-full animate-pulse bg-mint-soft" />
-        ) : (
-          <div className="mt-3 grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+          <div className="mt-4 clay-card h-40 w-full animate-pulse bg-mint-soft" />
+        ) : filtered.length ? (
+          <div className="mt-4 grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
             {filtered.map((c) => (
-              <Link
-                key={c.id}
-                to="/usmle/$coachId"
-                params={{ coachId: c.id }}
-                className="clay-card block bg-card p-5 transition-transform hover:-translate-y-1"
-              >
-                <div className="flex items-start justify-between gap-2">
-                  <span className="flex size-12 items-center justify-center rounded-2xl bg-mint font-display text-lg font-black">
-                    {initials(c.name)}
-                  </span>
-                  <Stars rating={c.rating} count={c.reviews} />
-                </div>
-                <p className="mt-3 font-display text-lg font-black">{c.name}</p>
-                <p className="line-clamp-2 text-sm text-ink-soft">{c.headline || "USMLE coach"}</p>
-                <div className="mt-3 flex flex-wrap gap-1.5">
-                  {c.expertise.slice(0, 3).map((e) => (
-                    <span
-                      key={e}
-                      className="rounded-full bg-mint-soft px-2.5 py-1 text-[11px] font-bold"
-                    >
-                      {e}
-                    </span>
-                  ))}
-                </div>
-                <p className="mt-3 text-xs font-bold text-ink-soft">
-                  {c.classes} open {c.classes === 1 ? "class" : "classes"}
-                </p>
-              </Link>
+              <CoachCard key={c.id} coach={c} />
             ))}
-            {!filtered.length && (
-              <p className="text-sm text-muted-foreground">No coaches match your search yet.</p>
-            )}
           </div>
+        ) : (
+          <EmptyState
+            icon="🔎"
+            title={term ? "No coaches found" : "No coaches yet"}
+            body={
+              term
+                ? "No coaches match your search or filters. Try a different name or specialty."
+                : "Coaches will appear here as they join Medley."
+            }
+          />
         )}
       </section>
+    </div>
+  );
+}
+
+function SectionTitle({ icon, title }: { icon: string; title: string }) {
+  return (
+    <h2 className="flex items-center gap-2.5 font-display text-xl font-black md:text-2xl">
+      <span className="flex size-10 items-center justify-center rounded-2xl bg-mint-soft text-xl shadow-[inset_0_2px_1px_var(--card)]">
+        {icon}
+      </span>
+      {title}
+    </h2>
+  );
+}
+
+function CoachCard({ coach }: { coach: CoachListItem }) {
+  return (
+    <Link
+      to="/usmle/$coachId"
+      params={{ coachId: coach.id }}
+      className="clay-card flex flex-col bg-card p-5"
+    >
+      <div className="flex items-start gap-3">
+        <span className="flex size-14 shrink-0 items-center justify-center rounded-2xl bg-mint font-display text-lg font-black">
+          {initials(coach.name)}
+        </span>
+        <div className="min-w-0 flex-1">
+          <div className="flex items-start justify-between gap-2">
+            <p className="font-display text-lg font-black leading-tight">{coach.name}</p>
+            <Stars rating={coach.rating} count={coach.reviews} />
+          </div>
+          <p className="line-clamp-2 text-sm text-ink-soft">{coach.headline || "USMLE coach"}</p>
+        </div>
+      </div>
+      {coach.expertise.length > 0 && (
+        <div className="mt-3 flex flex-wrap gap-1.5">
+          {coach.expertise.slice(0, 3).map((e) => (
+            <span key={e} className="rounded-full bg-mint-soft px-2.5 py-1 text-[11px] font-bold">
+              {e}
+            </span>
+          ))}
+        </div>
+      )}
+      <div className="mt-4 flex items-center justify-between gap-2 border-t border-border/70 pt-3">
+        <span className="text-xs font-bold text-ink-soft">
+          {coach.classes} open {coach.classes === 1 ? "class" : "classes"}
+        </span>
+        <span className="text-sm font-extrabold text-mint">View profile →</span>
+      </div>
+    </Link>
+  );
+}
+
+function EmptyState({ icon, title, body }: { icon: string; title: string; body: string }) {
+  return (
+    <div className="clay-card mt-4 grid place-items-center bg-card px-6 py-14 text-center">
+      <span className="flex size-20 items-center justify-center rounded-3xl bg-mint-soft text-4xl shadow-[inset_0_2px_1px_var(--card)]">
+        {icon}
+      </span>
+      <h3 className="mt-5 font-display text-2xl font-black">{title}</h3>
+      <p className="mt-2 max-w-sm text-sm text-muted-foreground">{body}</p>
     </div>
   );
 }
@@ -243,18 +315,27 @@ function CoachDashboardView() {
 
   return (
     <div className="space-y-5">
-      <div className="clay-card bg-mint-soft p-6">
-        <p className="flex items-center gap-1.5 text-xs font-extrabold tracking-widest text-ink-soft">
+      <div className="clay-card overflow-hidden bg-gradient-to-br from-mint-soft to-accent p-6 md:p-7">
+        <p className="flex items-center gap-1.5 text-xs font-extrabold tracking-widest text-mint">
           <GraduationCap className="h-4 w-4" /> COACH DASHBOARD
         </p>
-        <h1 className="mt-1 font-display text-2xl font-black md:text-3xl">
+        <h1 className="mt-2 font-display text-2xl font-black md:text-4xl">
           Welcome, {data.coach.name}
         </h1>
-        <p className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-sm font-bold text-ink-soft">
-          <span>{data.classes.length} classes</span>
-          <span>{totalStudents} students</span>
-          <span>{data.threads.length} conversations</span>
-        </p>
+        <div className="mt-4 flex flex-wrap gap-2">
+          {[
+            `${data.classes.length} ${data.classes.length === 1 ? "class" : "classes"}`,
+            `${totalStudents} ${totalStudents === 1 ? "student" : "students"}`,
+            `${data.threads.length} ${data.threads.length === 1 ? "conversation" : "conversations"}`,
+          ].map((t) => (
+            <span
+              key={t}
+              className="rounded-full bg-card/80 px-3 py-1.5 text-[11px] font-black text-ink-soft"
+            >
+              {t}
+            </span>
+          ))}
+        </div>
       </div>
 
       <div className="flex gap-2 overflow-x-auto pb-1">
@@ -408,6 +489,13 @@ function CoachClasses({ data, reload }: { data: CoachDashboard; reload: () => Pr
                 {c.schedule || "No schedule set"}
                 {c.capacity != null && ` · cap ${c.capacity}`}
               </p>
+              <Link
+                to="/usmle/class/$classId"
+                params={{ classId: c.id }}
+                className="mt-2 inline-flex items-center gap-1 text-xs font-extrabold text-mint"
+              >
+                Open class page →
+              </Link>
             </div>
             <div className="flex shrink-0 flex-col items-end gap-2">
               <Button

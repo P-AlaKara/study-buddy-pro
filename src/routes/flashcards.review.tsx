@@ -1,7 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { z } from "zod";
-import { ArrowLeft, Pause, Play, PartyPopper } from "lucide-react";
+import { ArrowLeft, Pause, Play } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useActingStudent } from "@/components/study-app";
 import {
@@ -14,6 +14,7 @@ import {
   type Review,
 } from "@/lib/flashcards";
 import { getReviewQueue, recordReview } from "@/lib/flashcards.functions";
+import { DEFAULT_DECK_COLOR, getDeckColor } from "@/lib/deck-colors";
 import { NoteButton } from "@/components/gamification";
 
 export const Route = createFileRoute("/flashcards/review")({
@@ -38,8 +39,8 @@ type Item = { card: Card; review: Review | null };
 const RATINGS: { r: Rating; label: string; cls: string }[] = [
   { r: "again", label: "Again", cls: "bg-pink" },
   { r: "hard", label: "Hard", cls: "bg-peach" },
-  { r: "good", label: "Good", cls: "bg-mint" },
-  { r: "easy", label: "Easy", cls: "bg-blue" },
+  { r: "good", label: "Good", cls: "bg-yellow" },
+  { r: "easy", label: "Easy", cls: "bg-lavender" },
 ];
 
 function ReviewSession() {
@@ -49,7 +50,14 @@ function ReviewSession() {
   const [shown, setShown] = useState(false);
   const [paused, setPaused] = useState(false);
   const [doneCount, setDoneCount] = useState(0);
+  // Card colour follows the deck's chosen colour (browser preference). When the
+  // session spans every deck, fall back to the default.
+  const [cardColor, setCardColor] = useState(DEFAULT_DECK_COLOR);
   const pauseKey = student ? `medley-review-paused-${student.id}-${deck ?? "all"}` : "";
+
+  useEffect(() => {
+    setCardColor(deck ? getDeckColor(deck) : DEFAULT_DECK_COLOR);
+  }, [deck]);
 
   useEffect(() => {
     if (!student) return;
@@ -107,17 +115,19 @@ function ReviewSession() {
 
   if (!queue.length)
     return (
-      <div className="max-w-2xl space-y-4">
+      <div className="mx-auto max-w-2xl space-y-4">
         {back}
-        <div className="clay-card bg-yellow-soft p-8 text-center">
-          <PartyPopper className="mx-auto h-10 w-10" />
-          <p className="mt-3 font-display text-2xl font-black">All caught up!</p>
-          <p className="mt-1 text-ink-soft">
+        <div className="clay-card grid place-items-center bg-card px-6 py-16 text-center">
+          <span className="flex size-20 items-center justify-center rounded-3xl bg-yellow-soft text-4xl shadow-[inset_0_2px_1px_var(--card)]">
+            ✨
+          </span>
+          <p className="mt-5 font-display text-2xl font-black">All caught up!</p>
+          <p className="mt-2 max-w-sm text-ink-soft">
             {doneCount ? `You reviewed ${doneCount} cards.` : "Nothing is due right now."} Come back
-            tomorrow.
+            when your next cards are ready.
           </p>
-          <Button variant="yellow" className="mt-5" asChild>
-            <Link to="/flashcards">Back to decks</Link>
+          <Button variant="yellow" className="mt-6" asChild>
+            <Link to="/flashcards">Back to your decks →</Link>
           </Button>
         </div>
       </div>
@@ -126,8 +136,11 @@ function ReviewSession() {
   const { card, review } = queue[0]!;
   const isCloze = card.type === "cloze" && card.cloze_text;
 
+  const total = doneCount + queue.length;
+  const pct = total ? Math.round((doneCount / total) * 100) : 0;
+
   return (
-    <div className="max-w-2xl space-y-4">
+    <div className="mx-auto max-w-2xl space-y-4">
       <div className="flex items-center justify-between">
         {back}
         <Button size="sm" variant="secondary" onClick={togglePause}>
@@ -142,6 +155,18 @@ function ReviewSession() {
           )}
         </Button>
       </div>
+
+      {/* Progress */}
+      <div className="clay-card flex items-center gap-3 bg-card px-4 py-3">
+        <span className="whitespace-nowrap text-xs font-black text-ink-soft">
+          {doneCount} / {total}
+        </span>
+        <span className="h-2.5 flex-1 overflow-hidden rounded-full bg-muted soft-inset">
+          <span className="block h-full rounded-full bg-mint" style={{ width: `${pct}%` }} />
+        </span>
+        <span className="whitespace-nowrap text-xs font-black text-ink-soft">{pct}%</span>
+      </div>
+
       <div className="flex flex-wrap gap-2 text-xs font-extrabold">
         <span className="rounded-full bg-blue-soft px-3 py-1">{counts.new} new</span>
         <span className="rounded-full bg-pink-soft px-3 py-1">{counts.learning} learning</span>
@@ -152,9 +177,11 @@ function ReviewSession() {
       </div>
 
       {paused ? (
-        <div className="clay-card bg-yellow-soft p-10 text-center">
-          <Pause className="mx-auto h-10 w-10" />
-          <p className="mt-3 font-display text-2xl font-black">Session paused</p>
+        <div className="clay-card grid place-items-center bg-card px-6 py-14 text-center">
+          <span className="flex size-16 items-center justify-center rounded-3xl bg-yellow-soft text-3xl shadow-[inset_0_2px_1px_var(--card)]">
+            ⏸️
+          </span>
+          <p className="mt-4 font-display text-2xl font-black">Session paused</p>
           <p className="mt-1 text-ink-soft">
             Your progress is saved. Resume whenever you're ready.
           </p>
@@ -164,29 +191,36 @@ function ReviewSession() {
         </div>
       ) : (
         <>
-          <div className="clay-card min-h-72 bg-card p-6 md:p-8">
-            <span className="rounded-full bg-yellow-soft px-3 py-1 text-xs font-extrabold">
+          <div
+            className="clay-card flex min-h-72 flex-col p-6 md:min-h-80 md:p-8"
+            style={{ background: cardColor }}
+          >
+            <span className="self-start rounded-full bg-card/70 px-3 py-1 text-xs font-extrabold">
               {CARD_TYPE_LABEL[card.type]}
             </span>
             {card.image_url && (
               <img
                 src={card.image_url}
                 alt="Card image"
-                className="mt-4 max-h-56 w-full rounded-2xl bg-muted object-contain p-2"
+                className="mt-4 max-h-56 w-full rounded-2xl bg-card/60 object-contain p-2"
               />
             )}
             <p className="mt-5 font-display text-xl font-black leading-snug md:text-2xl">
               {isCloze ? clozeFront(card.cloze_text!) : card.front}
             </p>
-            {shown && (
+            {shown ? (
               <>
-                <div className="mt-5 rounded-2xl bg-yellow-soft p-4 leading-relaxed">
+                <div className="mt-5 rounded-2xl bg-card/75 p-4 leading-relaxed">
                   {isCloze ? clozeBack(card.cloze_text!) : card.back}
                 </div>
                 <div className="mt-4">
                   <NoteButton studentId={student?.id} contentType="flashcard" contentId={card.id} />
                 </div>
               </>
+            ) : (
+              <div className="mt-auto pt-6 text-xs font-bold text-ink-soft">
+                Rate your recall after revealing the answer.
+              </div>
             )}
           </div>
           {!shown ? (
@@ -194,7 +228,7 @@ function ReviewSession() {
               Show answer
             </Button>
           ) : (
-            <div className="grid grid-cols-4 gap-2">
+            <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
               {RATINGS.map((x) => (
                 <button
                   key={x.r}
@@ -209,6 +243,9 @@ function ReviewSession() {
               ))}
             </div>
           )}
+          <p className="text-center text-xs text-muted-foreground">
+            Card colour follows the deck's chosen colour.
+          </p>
         </>
       )}
     </div>

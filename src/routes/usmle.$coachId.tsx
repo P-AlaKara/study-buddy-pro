@@ -35,6 +35,15 @@ export const Route = createFileRoute("/usmle/$coachId")({
 
 type Tab = "classes" | "reviews" | "message";
 
+function initials(name: string) {
+  return name
+    .split(" ")
+    .map((p) => p[0])
+    .slice(0, 2)
+    .join("")
+    .toUpperCase();
+}
+
 function CoachProfilePage() {
   const { coachId } = Route.useParams();
   const { isCoach } = useAuth();
@@ -79,53 +88,63 @@ function CoachProfilePage() {
         <ArrowLeft className="h-4 w-4" /> USMLE Prep
       </Link>
 
-      <div className="clay-card bg-mint-soft p-6">
-        <div className="flex items-start gap-4">
-          <span className="flex size-16 shrink-0 items-center justify-center rounded-3xl bg-mint font-display text-xl font-black">
-            {coach.name
-              .split(" ")
-              .map((p) => p[0])
-              .slice(0, 2)
-              .join("")
-              .toUpperCase()}
-          </span>
-          <div className="min-w-0 flex-1">
-            <h1 className="font-display text-2xl font-black md:text-3xl">{coach.name}</h1>
-            <p className="mt-1 text-ink-soft">{coach.headline || "USMLE coach"}</p>
-            <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-sm font-bold text-ink-soft">
-              <span className="inline-flex items-center gap-1">
-                <Star className="h-4 w-4 fill-yellow text-yellow" />
-                {rating > 0 ? `${rating.toFixed(1)} (${reviews.length})` : "No reviews yet"}
-              </span>
-              {coach.availability && (
+      {/* Hero */}
+      <div className="clay-card overflow-hidden bg-gradient-to-br from-mint-soft to-accent p-6 md:p-7">
+        <div className="flex flex-col gap-5 md:flex-row md:items-start md:justify-between">
+          <div className="flex min-w-0 items-start gap-4">
+            <span className="flex size-20 shrink-0 items-center justify-center rounded-3xl bg-mint font-display text-2xl font-black shadow-[inset_0_2px_1px_var(--card)]">
+              {initials(coach.name)}
+            </span>
+            <div className="min-w-0 flex-1">
+              <p className="text-xs font-extrabold tracking-widest text-mint">USMLE COACH</p>
+              <h1 className="mt-1 font-display text-2xl font-black md:text-4xl">{coach.name}</h1>
+              <p className="mt-1 text-ink-soft">{coach.headline || "USMLE coach"}</p>
+              <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-sm font-bold text-ink-soft">
                 <span className="inline-flex items-center gap-1">
-                  <CalendarClock className="h-4 w-4" /> {coach.availability}
+                  <Star className="h-4 w-4 fill-yellow text-yellow" />
+                  {rating > 0 ? `${rating.toFixed(1)} (${reviews.length})` : "No reviews yet"}
                 </span>
+                {coach.availability && (
+                  <span className="inline-flex items-center gap-1">
+                    <CalendarClock className="h-4 w-4" /> {coach.availability}
+                  </span>
+                )}
+              </div>
+              {coach.expertise.length > 0 && (
+                <div className="mt-3 flex flex-wrap gap-1.5">
+                  {coach.expertise.map((e) => (
+                    <span
+                      key={e}
+                      className="rounded-full bg-card px-2.5 py-1 text-[11px] font-bold"
+                    >
+                      {e}
+                    </span>
+                  ))}
+                </div>
               )}
             </div>
-            {coach.expertise.length > 0 && (
-              <div className="mt-3 flex flex-wrap gap-1.5">
-                {coach.expertise.map((e) => (
-                  <span key={e} className="rounded-full bg-card px-2.5 py-1 text-[11px] font-bold">
-                    {e}
-                  </span>
-                ))}
-              </div>
-            )}
           </div>
+          {isStudent && canMessage && (
+            <Button
+              variant="mint"
+              className="shrink-0 bg-card md:bg-mint"
+              onClick={() => setTab("message")}
+            >
+              <MessageSquare /> Message coach
+            </Button>
+          )}
         </div>
-        {coach.bio && <p className="mt-4 text-sm leading-relaxed">{coach.bio}</p>}
-        {coach.qualifications && (
-          <div className="mt-4 rounded-2xl bg-card/70 p-4">
-            <p className="flex items-center gap-1.5 text-xs font-black uppercase text-ink-soft">
-              <Award className="h-3.5 w-3.5" /> Qualifications
-            </p>
-            <p className="mt-1 whitespace-pre-line text-sm leading-relaxed">
-              {coach.qualifications}
-            </p>
-          </div>
-        )}
+        {coach.bio && <p className="mt-5 text-sm leading-relaxed">{coach.bio}</p>}
       </div>
+
+      {coach.qualifications && (
+        <div className="clay-card bg-card p-5 md:p-6">
+          <p className="flex items-center gap-1.5 text-xs font-black uppercase text-ink-soft">
+            <Award className="h-4 w-4" /> Qualifications
+          </p>
+          <p className="mt-2 whitespace-pre-line text-sm leading-relaxed">{coach.qualifications}</p>
+        </div>
+      )}
 
       <div className="flex gap-2 overflow-x-auto pb-1">
         {tabs.map((t) => (
@@ -168,6 +187,15 @@ function CoachProfilePage() {
                       {c.capacity != null && ` / ${c.capacity}`} enrolled
                     </span>
                   </p>
+                  {c.isEnrolled && (
+                    <Link
+                      to="/usmle/class/$classId"
+                      params={{ classId: c.id }}
+                      className="mt-2 inline-flex items-center gap-1 text-xs font-extrabold text-mint"
+                    >
+                      View class & classmates →
+                    </Link>
+                  )}
                 </div>
                 {isStudent && (
                   <Button
@@ -184,9 +212,15 @@ function CoachProfilePage() {
             </div>
           ))}
           {!classes.length && (
-            <p className="text-sm text-muted-foreground">
-              This coach hasn't published any classes yet.
-            </p>
+            <div className="clay-card grid place-items-center bg-card px-6 py-12 text-center">
+              <span className="flex size-16 items-center justify-center rounded-3xl bg-mint-soft text-3xl shadow-[inset_0_2px_1px_var(--card)]">
+                🗓️
+              </span>
+              <h3 className="mt-4 font-display text-xl font-black">No open classes right now</h3>
+              <p className="mt-1 max-w-sm text-sm text-muted-foreground">
+                This coach hasn't published any classes yet. Check back soon or message them.
+              </p>
+            </div>
           )}
         </div>
       )}

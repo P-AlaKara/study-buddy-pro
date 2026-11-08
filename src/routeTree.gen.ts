@@ -36,6 +36,7 @@ import { Route as QuizIndexRouteImport } from './routes/quiz.index'
 import { Route as QuizPlayRouteImport } from './routes/quiz.play'
 import { Route as UsmleIndexRouteImport } from './routes/usmle.index'
 import { Route as UsmleCoachIdRouteImport } from './routes/usmle.$coachId'
+import { Route as UsmleClassClassIdRouteImport } from './routes/usmle.class.$classId'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -172,6 +173,11 @@ const UsmleCoachIdRoute = UsmleCoachIdRouteImport.update({
   path: '/$coachId',
   getParentRoute: () => UsmleRoute,
 } as any)
+const UsmleClassClassIdRoute = UsmleClassClassIdRouteImport.update({
+  id: '/class/$classId',
+  path: '/class/$classId',
+  getParentRoute: () => UsmleRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -201,6 +207,7 @@ export interface FileRoutesByFullPath {
   '/osce/': typeof OsceIndexRoute
   '/quiz/': typeof QuizIndexRoute
   '/usmle/': typeof UsmleIndexRoute
+  '/usmle/class/$classId': typeof UsmleClassClassIdRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -224,6 +231,7 @@ export interface FileRoutesByTo {
   '/osce': typeof OsceIndexRoute
   '/quiz': typeof QuizIndexRoute
   '/usmle': typeof UsmleIndexRoute
+  '/usmle/class/$classId': typeof UsmleClassClassIdRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -254,6 +262,7 @@ export interface FileRoutesById {
   '/osce/': typeof OsceIndexRoute
   '/quiz/': typeof QuizIndexRoute
   '/usmle/': typeof UsmleIndexRoute
+  '/usmle/class/$classId': typeof UsmleClassClassIdRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -285,6 +294,7 @@ export interface FileRouteTypes {
     | '/osce/'
     | '/quiz/'
     | '/usmle/'
+    | '/usmle/class/$classId'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -308,6 +318,7 @@ export interface FileRouteTypes {
     | '/osce'
     | '/quiz'
     | '/usmle'
+    | '/usmle/class/$classId'
   id:
     | '__root__'
     | '/'
@@ -337,6 +348,7 @@ export interface FileRouteTypes {
     | '/osce/'
     | '/quiz/'
     | '/usmle/'
+    | '/usmle/class/$classId'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -546,6 +558,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof UsmleCoachIdRouteImport
       parentRoute: typeof UsmleRoute
     }
+    '/usmle/class/$classId': {
+      id: '/usmle/class/$classId'
+      path: '/class/$classId'
+      fullPath: '/usmle/class/$classId'
+      preLoaderRoute: typeof UsmleClassClassIdRouteImport
+      parentRoute: typeof UsmleRoute
+    }
   }
 }
 
@@ -618,11 +637,13 @@ const QuizRouteWithChildren = QuizRoute._addFileChildren(QuizRouteChildren)
 interface UsmleRouteChildren {
   UsmleCoachIdRoute: typeof UsmleCoachIdRoute
   UsmleIndexRoute: typeof UsmleIndexRoute
+  UsmleClassClassIdRoute: typeof UsmleClassClassIdRoute
 }
 
 const UsmleRouteChildren: UsmleRouteChildren = {
   UsmleCoachIdRoute: UsmleCoachIdRoute,
   UsmleIndexRoute: UsmleIndexRoute,
+  UsmleClassClassIdRoute: UsmleClassClassIdRoute,
 }
 
 const UsmleRouteWithChildren = UsmleRoute._addFileChildren(UsmleRouteChildren)
@@ -645,3 +666,13 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
+
+import type { getRouter } from './router.tsx'
+import type { startInstance } from './start.ts'
+declare module '@tanstack/react-start' {
+  interface Register {
+    ssr: true
+    router: Awaited<ReturnType<typeof getRouter>>
+    config: Awaited<ReturnType<typeof startInstance.getOptions>>
+  }
+}

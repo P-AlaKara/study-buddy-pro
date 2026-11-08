@@ -629,3 +629,102 @@ export const getStudentHome = createServerFn({ method: "GET" })
       return { enrollments, announcements };
     },
   );
+
+// ===========================================================================
+// CLASS DETAIL (students see their classmates; coaches see their own roster)
+// ===========================================================================
+
+export type Classmate = { student_id: string; name: string; is_self: boolean };
+
+export type ClassDetail = {
+  class: {
+    id: string;
+    title: string;
+    description: string;
+    usmle_step: string;
+    schedule: string;
+    capacity: number | null;
+    is_open: boolean;
+    coach_id: string;
+    coach_name: string;
+  };
+  classmates: Classmate[];
+  announcements: ClassAnnouncement[];
+  viewerRole: "student" | "coach";
+  isOwner: boolean;
+};
+
+export const getClassDetail = createServerFn({ method: "GET" })
+  .middleware([requireAuth])
+  .inputValidator((d) => z.object({ classId: z.string().uuid() }).parse(d))
+  .handler(async ({ data, context }): Promise<ClassDetail> => {
+    const db = await adminDb();
+    const { data: cls } = await db
+      .from("coach_classes")
+      .select("id,title,description,usmle_step,schedule,capacity,is_open,coach_id,coaches(name)")
+      .eq("id", data.classId)
+      .maybeSingle();
+    if (!cls) throw new Error("Class not found.");
+
+    // Authorization: the owning coach, or a student enrolled in this class.
+    let isOwner = false;
+    if (context.role === "coach") {
+      const coachId = await requireCoach(db, context);
+      if (cls.coach_id !== coachId) throw new Error("This class isn't yours.");
+      isOwner = true;
+    } else if (context.role === "student") {
+      const { data: mine } = await db
+        .from("class_enrollments")
+        .select("id")
+        .eq("class_id", data.classId)
+        .eq("student_id", context.profileId)
+        .maybeSingle();
+      if (!mine) throw new Error("Enroll in this class to view it.");
+    } else {
+      throw new Error("You don't have access to this class.");
+    }
+
+    const [{ data: enr }, { data: ann }] = await Promise.all([
+      db
+        .from("class_enrollments")
+        .select("student_id,created_at,students(name)")
+        .eq("class_id", data.classId)
+        .order("created_at"),
+      db
+        .from("class_announcements")
+        .select("id,class_id,body,created_at")
+        .eq("class_id", data.classId)
+        .order("created_at", { ascending: false })
+        .limit(50),
+    ]);
+
+    const classmates: Classmate[] = (enr ?? []).map((e: any) => ({
+      student_id: e.student_id,
+      name: e.students?.name ?? "Student",
+      is_self: context.role === "student" && e.student_id === context.profileId,
+    }));
+
+    return {
+      class: {
+        id: cls.id,
+        title: cls.title,
+        description: cls.description ?? "",
+        usmle_step: cls.usmle_step,
+        schedule: cls.schedule ?? "",
+        capacity: cls.capacity ?? null,
+        is_open: cls.is_open,
+        coach_id: cls.coach_id,
+        coach_name: cls.coaches?.name ?? "Coach",
+      },
+      classmates,
+      announcements: (ann ?? []).map((a: any) => ({
+        id: a.id,
+        class_id: a.class_id,
+        class_title: cls.title,
+        body: a.body,
+        created_at: a.created_at,
+      })),
+      viewerRole: context.role === "coach" ? "coach" : "student",
+      isOwner,
+    };
+  });
