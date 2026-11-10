@@ -463,7 +463,7 @@ export const startOrResumeAttempt = createServerFn({ method: "POST" })
 async function loadAttempt(db: any, examId: string, student: string) {
   const { data, error } = await db
     .from("exam_attempts")
-    .select("id,status,current_index")
+    .select("id,status,current_index,stats")
     .eq("exam_id", examId)
     .eq("student_id", student)
     .maybeSingle();
