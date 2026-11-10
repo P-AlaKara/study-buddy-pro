@@ -148,11 +148,14 @@ export function buildQuestionBatchPrompt(input: {
 }
 
 // ---------------------------------------------------------------------------
-// On-demand written-answer grading (used during the exam only; never for the
-// aggregate results summary).
+// On-demand written-answer grading. `sufficient_understanding` is the model's
+// judgement of whether the student actually grasps the concept; it is what
+// decides if the question counts as mastered, so it feeds topic performance and
+// the weak areas offered for a focused retake.
 // ---------------------------------------------------------------------------
 export const writtenGradeSchema = z.object({
   verdict: z.enum(["correct", "partially_correct", "incorrect"]),
+  sufficient_understanding: z.boolean(),
   feedback: z.string(),
 });
 export type WrittenGrade = z.infer<typeof writtenGradeSchema>;
@@ -167,13 +170,21 @@ export function buildGradingPrompt(input: {
     ? `\nMARKING RUBRIC:\n${input.rubric.map((r) => `- (${r.marks}) ${r.point}`).join("\n")}`
     : "";
   return [
-    "Evaluate the student's written answer against the model answer and rubric only. Accept accurate",
-    "paraphrases and tolerate typos; do not require exact wording. 'correct' = the essential points",
-    "are present; 'partially_correct' = some key points missing; 'incorrect' = central meaning wrong",
-    "or absent. Give concise, specific, encouraging feedback naming what was missed.",
+    "Evaluate the student's written answer against the expected answer and rubric only. Accept",
+    "accurate paraphrases and tolerate typos; do not require exact wording. 'correct' = the essential",
+    "points are present; 'partially_correct' = some key points missing; 'incorrect' = central meaning",
+    "wrong or absent. Give concise, specific, encouraging feedback naming what was missed.",
+    "",
+    "Then judge `sufficient_understanding`: true if the answer shows the student genuinely grasps the",
+    "concept being assessed — even where the wording is loose, the detail thin, or a minor point",
+    "missing — and false if there is a real gap, a misconception, or the core idea is absent. Judge",
+    "command of the concept, not completeness of phrasing. This flag alone decides whether the topic",
+    "counts as mastered or is surfaced back to the student as a weak area to revise, so be accurate",
+    "rather than generous: a 'partially_correct' answer can still show sufficient understanding, and",
+    "a fluent answer that misses the point does not.",
     "",
     `QUESTION:\n${input.question}`,
-    `\nMODEL ANSWER:\n${input.modelAnswer}${rubric}`,
+    `\nEXPECTED ANSWER:\n${input.modelAnswer}${rubric}`,
     `\nSTUDENT ANSWER:\n${input.studentAnswer}`,
   ].join("\n");
 }

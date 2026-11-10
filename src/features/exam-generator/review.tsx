@@ -41,6 +41,17 @@ export function ExamReview({ examId, onRetake }: { examId: string; onRetake: () 
 
   useEffect(() => void load(), [load]);
 
+  // Re-read after a written answer is graded so the summary, topic performance
+  // and weak areas pick up the new judgement. Kept separate from `load` so a
+  // failed refresh never replaces results the student is already reading.
+  const refresh = useCallback(async () => {
+    try {
+      setData(await getExamReview({ data: { examId } }));
+    } catch (err) {
+      logProblem("Exam review refresh", err);
+    }
+  }, [examId]);
+
   const retake = async () => {
     try {
       await resetAttempt({ data: { examId } });
@@ -67,6 +78,9 @@ export function ExamReview({ examId, onRetake }: { examId: string; onRetake: () 
 
   const s = data.summary;
   const answerByQ = new Map(data.answers.map((a) => [a.questionId, a]));
+  // Only MCQs and graded written answers can be judged correct, so the tile
+  // below reports against that subset rather than every question.
+  const graded = s.correct + s.incorrect;
 
   // Weak areas for a focused retake: topics the student scored below 70% on
   // (topicPerformance is already sorted weakest-first). If they aced everything,
@@ -86,8 +100,10 @@ export function ExamReview({ examId, onRetake }: { examId: string; onRetake: () 
       {/* Hero summary */}
       <div className="flex flex-wrap items-center gap-5">
         <div className="flex size-28 shrink-0 flex-col items-center justify-center rounded-[36px] bg-mint shadow-[0_8px_0_#99d8b6]">
-          <span className="font-display text-3xl font-black">{s.score}%</span>
-          <span className="text-[11px] font-bold text-[color:var(--case-mint-ink)]">correct</span>
+          <span className="font-display text-2xl font-black">
+            {s.answered}/{s.total}
+          </span>
+          <span className="text-[11px] font-bold text-[color:var(--case-mint-ink)]">answered</span>
         </div>
         <div>
           <p className="text-xs font-black uppercase tracking-widest text-[color:var(--case-mint-ink)]">
@@ -102,9 +118,9 @@ export function ExamReview({ examId, onRetake }: { examId: string; onRetake: () 
       <div className="mt-6 grid grid-cols-3 gap-3">
         <div className="clay-card bg-blue-soft p-5 text-center">
           <p className="font-display text-2xl font-black">
-            {s.correct} / {s.total}
+            {s.correct} / {graded}
           </p>
-          <p className="mt-1 text-xs font-bold text-ink-soft">Correct (graded)</p>
+          <p className="mt-1 text-xs font-bold text-ink-soft">Correct of graded</p>
         </div>
         <div className="clay-card bg-pink-soft p-5 text-center">
           <p className="font-display text-2xl font-black">{s.incorrect + s.unanswered}</p>
@@ -141,8 +157,9 @@ export function ExamReview({ examId, onRetake }: { examId: string; onRetake: () 
 
       {s.written > 0 && (
         <p className="mt-3 text-xs text-muted-foreground">
-          {s.written} written answer{s.written === 1 ? "" : "s"} aren’t auto-scored. Grade them
-          below for feedback.
+          {s.written} written answer{s.written === 1 ? "" : "s"} can’t be scored automatically.
+          Grade {s.written === 1 ? "it" : "them"} below so your weak areas account for
+          {s.written === 1 ? " it" : " them"} too.
         </p>
       )}
 
@@ -178,6 +195,7 @@ export function ExamReview({ examId, onRetake }: { examId: string; onRetake: () 
               index={i}
               question={q}
               answer={answerByQ.get(q.id) ?? null}
+              onGraded={() => void refresh()}
             />
           ))}
         </section>
@@ -191,14 +209,26 @@ function QuestionReview({
   index,
   question,
   answer,
+  onGraded,
 }: {
   examId: string;
   index: number;
   question: ExamQuestion;
   answer: ExamAnswer | null;
+  onGraded: () => void;
 }) {
-  const [grade, setGrade] = useState<{ verdict: string; feedback: string } | null>(
-    answer?.aiVerdict ? { verdict: answer.aiVerdict, feedback: answer.aiFeedback ?? "" } : null,
+  const [grade, setGrade] = useState<{
+    verdict: string;
+    feedback: string;
+    sufficientUnderstanding: boolean;
+  } | null>(
+    answer?.aiVerdict
+      ? {
+          verdict: answer.aiVerdict,
+          feedback: answer.aiFeedback ?? "",
+          sufficientUnderstanding: answer.isCorrect === true,
+        }
+      : null,
   );
   const [grading, setGrading] = useState(false);
   const [gradeError, setGradeError] = useState("");
@@ -208,7 +238,12 @@ function QuestionReview({
     setGradeError("");
     try {
       const res = await gradeWrittenAnswer({ data: { examId, questionId: question.id } });
-      setGrade({ verdict: res.verdict, feedback: res.feedback });
+      setGrade({
+        verdict: res.verdict,
+        feedback: res.feedback,
+        sufficientUnderstanding: res.sufficientUnderstanding,
+      });
+      onGraded();
     } catch (err) {
       logProblem("Grade written answer", err);
       setGradeError(err instanceof Error ? err.message : "Grading failed.");
@@ -234,6 +269,16 @@ function QuestionReview({
           ) : (
             <Chip tone="pink">
               <XCircle className="size-3" /> {answer?.selectedOption ? "Incorrect" : "Unanswered"}
+            </Chip>
+          )
+        ) : grade ? (
+          grade.sufficientUnderstanding ? (
+            <Chip tone="mint">
+              <CheckCircle2 className="size-3" /> Understood
+            </Chip>
+          ) : (
+            <Chip tone="pink">
+              <XCircle className="size-3" /> Needs review
             </Chip>
           )
         ) : null}
@@ -290,7 +335,9 @@ function QuestionReview({
           </div>
           {question.modelAnswer && (
             <div>
-              <p className="text-xs font-extrabold uppercase text-muted-foreground">Model answer</p>
+              <p className="text-xs font-extrabold uppercase text-muted-foreground">
+                Expected answer
+              </p>
               <p className="mt-1 whitespace-pre-line rounded-xl bg-mint-soft p-3">
                 {question.modelAnswer}
               </p>
@@ -311,16 +358,28 @@ function QuestionReview({
             </div>
           )}
           {grade ? (
-            <div className="rounded-xl bg-blue-soft p-3">
-              <p className="text-xs font-extrabold uppercase text-blue">
-                AI feedback · {grade.verdict.replace("_", " ")}
+            <div
+              className={`rounded-xl p-3 ${
+                grade.sufficientUnderstanding ? "bg-mint-soft" : "bg-pink-soft"
+              }`}
+            >
+              <p
+                className={`text-xs font-extrabold uppercase ${
+                  grade.sufficientUnderstanding
+                    ? "text-[color:var(--case-mint-ink)]"
+                    : "text-[color:var(--case-pink-ink)]"
+                }`}
+              >
+                {grade.sufficientUnderstanding
+                  ? "Sufficient understanding"
+                  : "Not yet sufficient"}{" "}
+                · {grade.verdict.replace("_", " ")}
               </p>
               <p className="mt-1">{grade.feedback}</p>
             </div>
           ) : answer?.responseText?.trim() ? (
             <Button variant="blue" size="sm" disabled={grading} onClick={() => void runGrade()}>
-              {grading ? <Loader2 className="animate-spin" /> : <Sparkles />} Grade my answer with
-              AI
+              {grading ? <Loader2 className="animate-spin" /> : <Sparkles />} Grade my answer
             </Button>
           ) : null}
           {gradeError && (

@@ -3,7 +3,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireAuth } from "@/features/auth/middleware";
 import { requireExamGeneratorEnabled } from "./feature-flag";
-import { computeResultsSummary, gradeMcq, toFlashcard, verdictToCorrect } from "./pipeline";
+import { computeResultsSummary, gradeMcq, toFlashcard } from "./pipeline";
 import type {
   AttemptPayload,
   ExamAnswer,
@@ -603,6 +603,55 @@ async function countSavedFlashcards(
   return new Set(rows.map((r: any) => r.question_id)).size;
 }
 
+/**
+ * Recompute the results summary from the answers currently stored and persist
+ * it. Called on submit and again whenever a written answer is graded, so topic
+ * performance and the weak areas always reflect the latest judgements rather
+ * than a snapshot frozen at submit time.
+ */
+async function persistAttemptSummary(
+  db: any,
+  examId: string,
+  attemptId: string,
+  student: string,
+  extraPatch: Record<string, unknown> = {},
+): Promise<ResultsSummary> {
+  const questions = await selectAll(() =>
+    db.from("exam_questions").select("id,type,topic").eq("exam_id", examId).order("position"),
+  );
+  const answerRows = await selectAll(() =>
+    db
+      .from("exam_answers")
+      .select("question_id,selected_option,response_text,is_correct")
+      .eq("attempt_id", attemptId),
+  );
+  const byId = new Map(answerRows.map((a: any) => [a.question_id, a]));
+  const answers = questions.map((q: any) => {
+    const a = byId.get(q.id);
+    return {
+      questionId: q.id,
+      selectedOption: a?.selected_option ?? null,
+      responseText: a?.response_text ?? null,
+      isCorrect: a?.is_correct ?? null,
+    };
+  });
+  const savedFlashcards = await countSavedFlashcards(
+    db,
+    student,
+    questions.map((q: any) => q.id),
+  );
+  const summary = computeResultsSummary(
+    questions.map((q: any) => ({ id: q.id, type: q.type, topic: q.topic })),
+    answers,
+    savedFlashcards,
+  );
+  await db
+    .from("exam_attempts")
+    .update({ score: summary.score, stats: summary, ...extraPatch })
+    .eq("id", attemptId);
+  return summary;
+}
+
 export const submitAttempt = createServerFn({ method: "POST" })
   .middleware([requireAuth])
   .inputValidator((d: unknown) => z.object({ examId: z.string().uuid() }).parse(d))
@@ -615,65 +664,41 @@ export const submitAttempt = createServerFn({ method: "POST" })
     const questions = await selectAll(() =>
       db
         .from("exam_questions")
-        .select("id,type,topic,correct_option")
+        .select("id,type,correct_option")
         .eq("exam_id", data.examId)
         .order("position"),
     );
     const answerRows = await selectAll(() =>
       db
         .from("exam_answers")
-        .select("question_id,selected_option,response_text,is_correct")
+        .select("question_id,selected_option,is_correct")
         .eq("attempt_id", attempt.id),
     );
     const byId = new Map(answerRows.map((a: any) => [a.question_id, a]));
 
-    // Authoritatively (re)grade MCQs; persist any corrections for the review.
+    // Authoritatively (re)grade MCQs and persist any corrections first, so the
+    // summary below is computed from the stored answers.
     const corrected: Promise<any>[] = [];
-    const answers = questions.map((q: any) => {
+    for (const q of questions as any[]) {
+      if (q.type !== "mcq") continue;
       const a = byId.get(q.id);
-      let isCorrect = a?.is_correct ?? null;
-      if (q.type === "mcq") {
-        const graded = gradeMcq(q.correct_option, a?.selected_option ?? null);
-        isCorrect = a?.selected_option ? graded : null;
-        if (a && a.is_correct !== isCorrect) {
-          corrected.push(
-            db
-              .from("exam_answers")
-              .update({ is_correct: isCorrect })
-              .eq("attempt_id", attempt.id)
-              .eq("question_id", q.id),
-          );
-        }
+      const isCorrect = a?.selected_option ? gradeMcq(q.correct_option, a.selected_option) : null;
+      if (a && a.is_correct !== isCorrect) {
+        corrected.push(
+          db
+            .from("exam_answers")
+            .update({ is_correct: isCorrect })
+            .eq("attempt_id", attempt.id)
+            .eq("question_id", q.id),
+        );
       }
-      return {
-        questionId: q.id,
-        selectedOption: a?.selected_option ?? null,
-        responseText: a?.response_text ?? null,
-        isCorrect,
-      };
-    });
+    }
     await Promise.all(corrected);
 
-    const savedFlashcards = await countSavedFlashcards(
-      db,
-      student,
-      questions.map((q: any) => q.id),
-    );
-    const summary = computeResultsSummary(
-      questions.map((q: any) => ({ id: q.id, type: q.type, topic: q.topic })),
-      answers,
-      savedFlashcards,
-    );
-    await db
-      .from("exam_attempts")
-      .update({
-        status: "submitted",
-        score: summary.score,
-        stats: summary,
-        submitted_at: new Date().toISOString(),
-      })
-      .eq("id", attempt.id);
-    return summary;
+    return persistAttemptSummary(db, data.examId, attempt.id, student, {
+      status: "submitted",
+      submitted_at: new Date().toISOString(),
+    });
   });
 
 export const resetAttempt = createServerFn({ method: "POST" })
@@ -779,7 +804,12 @@ export const gradeWrittenAnswer = createServerFn({ method: "POST" })
     async ({
       data,
       context,
-    }): Promise<{ verdict: string; feedback: string; isCorrect: boolean | null }> => {
+    }): Promise<{
+      verdict: string;
+      feedback: string;
+      sufficientUnderstanding: boolean;
+      isCorrect: boolean | null;
+    }> => {
       const db = await adminDb();
       const student = studentId(context);
       await ownedExam(db, data.examId, student, "id");
@@ -821,13 +851,24 @@ export const gradeWrittenAnswer = createServerFn({ method: "POST" })
         role: "grading",
         maxTokens: 1000,
       });
-      const isCorrect = verdictToCorrect(grade.verdict);
+      // The model's understanding judgement is what counts the question as
+      // mastered or not, so a graded written answer now contributes to topic
+      // performance (and therefore the weak areas) instead of sitting ungraded.
+      const isCorrect = grade.sufficient_understanding;
       await db
         .from("exam_answers")
         .update({ ai_verdict: grade.verdict, ai_feedback: grade.feedback, is_correct: isCorrect })
         .eq("attempt_id", attempt.id)
         .eq("question_id", data.questionId);
-      return { verdict: grade.verdict, feedback: grade.feedback, isCorrect };
+      // Fold the new judgement into the stored summary so topic performance and
+      // the weak areas pick it up on the next read of the review.
+      await persistAttemptSummary(db, data.examId, attempt.id, student);
+      return {
+        verdict: grade.verdict,
+        feedback: grade.feedback,
+        sufficientUnderstanding: grade.sufficient_understanding,
+        isCorrect,
+      };
     },
   );
 

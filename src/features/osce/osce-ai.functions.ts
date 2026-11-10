@@ -286,6 +286,31 @@ async function releaseRequestLock(db: any, sessionId: string, userId: string, re
     .eq("inflight_request_id", requestId);
 }
 
+// A commit raises `revision_or_lock_conflict` (SQLSTATE 40001) when the session
+// advanced between this request acquiring the lock and committing — the classic
+// loser of an optimistic-lock race. In practice this happens when a slow or
+// hung provider call lets the 45s lock reclaim fire and a retry/reload commits
+// the SAME action first. That outcome is benign: the action was persisted, so
+// the losing request should return the authoritative latest state rather than
+// surface a spurious "not saved" error. Returns null when nothing was committed
+// for this request, so the caller can fall through to its own failure handling.
+async function recoverIfCommittedElsewhere(
+  db: any,
+  sessionId: string,
+  userId: string,
+  requestId: string,
+): Promise<OsceAiMutationResult | null> {
+  const committed = await existingInteraction(db, sessionId, requestId);
+  if (committed?.status !== "complete") return null;
+  const latest = await ownedSession(db, sessionId, userId);
+  const latestStation = stationForId(latest.station_id);
+  return {
+    sessionId: latest.id,
+    revision: latest.revision,
+    state: parseState(latest.engine_state, latestStation),
+  };
+}
+
 interface StoredInteraction {
   sequence: number;
   sourceMode: "guided" | "free_form" | "nudge" | "system";
@@ -633,6 +658,13 @@ export const recordOsceGuidedAction = createServerFn({ method: "POST" })
       });
       return { sessionId: session.id, revision, state };
     } catch (error) {
+      const recovered = await recoverIfCommittedElsewhere(
+        db,
+        session.id,
+        context.userId,
+        data.clientRequestId,
+      );
+      if (recovered) return recovered;
       await releaseRequestLock(db, session.id, context.userId, data.clientRequestId);
       throw error;
     }
@@ -764,16 +796,13 @@ export const submitOsceFreeFormInteraction = createServerFn({ method: "POST" })
       );
       return { sessionId: session.id, revision, state };
     } catch (error) {
-      const committed = await existingInteraction(db, session.id, data.clientRequestId);
-      if (committed?.status === "complete") {
-        const latest = await ownedSession(db, session.id, context.userId);
-        const latestStation = stationForId(latest.station_id);
-        return {
-          sessionId: latest.id,
-          revision: latest.revision,
-          state: parseState(latest.engine_state, latestStation),
-        };
-      }
+      const recovered = await recoverIfCommittedElsewhere(
+        db,
+        session.id,
+        context.userId,
+        data.clientRequestId,
+      );
+      if (recovered) return recovered;
       const code = error instanceof GeminiGenerationError ? error.code : "invalid_effect";
       await db
         .from("osce_ai_interactions")
@@ -846,6 +875,13 @@ export const requestOsceAiNudge = createServerFn({ method: "POST" })
       });
       return { sessionId: session.id, revision, state };
     } catch (error) {
+      const recovered = await recoverIfCommittedElsewhere(
+        db,
+        session.id,
+        context.userId,
+        data.clientRequestId,
+      );
+      if (recovered) return recovered;
       await releaseRequestLock(db, session.id, context.userId, data.clientRequestId);
       throw error;
     }
@@ -890,6 +926,13 @@ export const endOsceAiConsultation = createServerFn({ method: "POST" })
       });
       return { sessionId: session.id, revision, state };
     } catch (error) {
+      const recovered = await recoverIfCommittedElsewhere(
+        db,
+        session.id,
+        context.userId,
+        data.clientRequestId,
+      );
+      if (recovered) return recovered;
       await releaseRequestLock(db, session.id, context.userId, data.clientRequestId);
       throw error;
     }
@@ -955,6 +998,13 @@ export const answerOsceAiExaminerQuestion = createServerFn({ method: "POST" })
       );
       return { sessionId: session.id, revision, state };
     } catch (error) {
+      const recovered = await recoverIfCommittedElsewhere(
+        db,
+        session.id,
+        context.userId,
+        data.clientRequestId,
+      );
+      if (recovered) return recovered;
       await releaseRequestLock(db, session.id, context.userId, data.clientRequestId);
       throw error;
     }

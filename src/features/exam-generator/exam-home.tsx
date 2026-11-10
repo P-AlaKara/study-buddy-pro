@@ -235,7 +235,11 @@ function StatusChip({ exam }: { exam: ExamListItem }) {
     );
   if (exam.status === "failed") return <Chip tone="pink">Failed</Chip>;
   if (exam.attempt?.status === "submitted")
-    return <Chip tone="mint">Completed · {exam.attempt.score ?? 0}%</Chip>;
+    return (
+      <Chip tone="mint">
+        Completed · {exam.attempt.answered} / {exam.attempt.total} answered
+      </Chip>
+    );
   if (exam.attempt?.status === "in_progress")
     return (
       <Chip tone="yellow">

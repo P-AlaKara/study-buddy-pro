@@ -322,13 +322,6 @@ export function gradeMcq(correctOption: string | null, selected: string | null):
   return correctOption.trim().toUpperCase() === selected.trim().toUpperCase();
 }
 
-/** Map a written-answer verdict to a scoreable boolean (partial → null). */
-export function verdictToCorrect(verdict: string): boolean | null {
-  if (verdict === "correct") return true;
-  if (verdict === "incorrect") return false;
-  return null;
-}
-
 // ---------------------------------------------------------------------------
 // Coverage summary for the exam overview.
 // ---------------------------------------------------------------------------
@@ -447,6 +440,7 @@ export function computeResultsSummary(
   let correct = 0;
   let incorrect = 0;
   let written = 0;
+  let ungradedWritten = 0;
   const topicAgg = new Map<string, { total: number; correct: number }>();
 
   for (const q of questions) {
@@ -464,6 +458,9 @@ export function computeResultsSummary(
     } else if (a?.isCorrect === false) {
       incorrect += 1;
     }
+    if (q.type !== "mcq" && a?.isCorrect !== true && a?.isCorrect !== false) {
+      ungradedWritten += 1;
+    }
     topicAgg.set(q.topic, agg);
   }
 
@@ -479,14 +476,18 @@ export function computeResultsSummary(
     }))
     .sort((a, b) => a.percent - b.percent);
 
+  // No overall verdict while written answers are still ungraded — judging the
+  // whole exam on the auto-graded questions alone would misrepresent it.
   const message =
     graded === 0
-      ? "Your exam is complete. Grade the written answers or review the explanations to see how you did."
-      : score >= 80
-        ? "Excellent work — strong command of this material. Review the few misses and keep them sharp."
-        : score >= 60
-          ? "Solid effort. Focus your revision on the lower-scoring topics below."
-          : "A good start. The topics below need the most attention — the saved flashcards will help.";
+      ? "Your exam is complete. Grade your written answers or review the explanations to see how you did."
+      : ungradedWritten > 0
+        ? `Your auto-graded questions are in. Grade your ${ungradedWritten} remaining written answer${ungradedWritten === 1 ? "" : "s"} below to complete the picture and sharpen your weak areas.`
+        : score >= 80
+          ? "Excellent work — strong command of this material. Review the few misses and keep them sharp."
+          : score >= 60
+            ? "Solid effort. Focus your revision on the lower-scoring topics below."
+            : "A good start. The topics below need the most attention — the saved flashcards will help.";
 
   return {
     total,
