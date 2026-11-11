@@ -113,46 +113,41 @@ function Sparkline({ color, seed }: { color: string; seed: number }) {
   );
 }
 
-export function VitalsStrip({ game }: { game: GameState }) {
+/**
+ * Monitor-style vitals for the stage HUD: a dark bedside-monitor panel. On
+ * phones it runs as a strip along the bottom of the viewport; from `sm` it is
+ * a column pinned to the right edge, leaving the patient clear.
+ */
+export function VitalsMonitor({ game, className = "" }: { game: GameState; className?: string }) {
   const vitals = buildVitals(game);
-
   return (
-    <div
-      className="grid grid-cols-2 gap-2.5 sm:grid-cols-3 lg:grid-cols-5"
-      role="group"
-      aria-label="Patient vital signs"
-    >
+    <div className={className} role="group" aria-label="Patient vital signs">
       {vitals.map((vital) => {
         const Icon = vital.icon;
-        // Healthy vitals read in their calm brand colour; abnormal ones draw the
-        // eye in-brand (warning) or in clinical red (critical).
-        const lineColor = vital.state === "critical" ? "var(--case-critical)" : vital.accent;
-        const valueColor =
+        const lineColor =
           vital.state === "critical"
-            ? "text-[var(--case-critical)]"
+            ? "var(--case-critical)"
             : vital.state === "warning"
-              ? ""
-              : "text-slate-900";
+              ? "var(--case-yellow)"
+              : vital.accent;
         return (
-          <div
-            key={vital.key}
-            data-state={vital.state}
-            className="case-vital-card flex flex-col px-3.5 py-3"
-          >
-            <div className="flex items-center gap-2">
+          <div key={vital.key} data-state={vital.state} className="case-monitor-vital">
+            <div className="flex items-center gap-1.5">
               <span style={{ color: lineColor }}>
-                <Icon className="size-4" />
+                <Icon className="size-3.5" />
               </span>
-              <p className="truncate text-[9px] font-black uppercase tracking-wider text-slate-400">
+              <p className="sr-only text-[9px] font-black uppercase tracking-wider text-white/55 sm:not-sr-only sm:truncate">
                 {vital.label}
               </p>
             </div>
             <p
-              className={`mt-1.5 font-mono text-xl font-black leading-none ${valueColor}`}
-              style={vital.state === "warning" ? { color: vital.accent } : undefined}
+              className="case-monitor-value mt-0.5 font-mono font-black leading-none"
+              style={{ color: vital.state === "normal" ? "#ffffff" : lineColor }}
             >
               {vital.value}
-              <span className="ml-1 text-[10px] font-bold text-slate-400">{vital.unit}</span>
+              <span className="ml-0.5 hidden text-[9px] font-bold text-white/50 sm:ml-1 sm:inline">
+                {vital.unit}
+              </span>
             </p>
             <Sparkline color={lineColor} seed={vital.seed} />
           </div>

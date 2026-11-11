@@ -1,14 +1,6 @@
-import { useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from "react";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { Link } from "@tanstack/react-router";
-import {
-  AlertTriangle,
-  ArrowLeft,
-  ArrowRight,
-  Check,
-  ChevronRight,
-  History,
-  X,
-} from "lucide-react";
+import { AlertTriangle, ArrowLeft, Check, ChevronRight, History, X } from "lucide-react";
 import {
   addToDifferential,
   applyAction,
@@ -30,22 +22,20 @@ import type { ActionCategory, CaseAction, MedicalCase } from "../schema.js";
 import { clearEncounter, loadEncounter, saveEncounter } from "../use-case-persistence.js";
 import { CaseDebrief } from "./case-debrief.js";
 import { CaseSidebar } from "./case-sidebar.js";
+import { ClinicalDock } from "./clinical-dock.js";
 import { ClinicalWorkspace, HintPanel } from "./clinical-workspace.js";
 import { CommitDialog } from "./commit-dialog.js";
 import { DR_AMBROSE, DrAmbrose } from "./dr-ambrose.js";
 import { InteractionHistory } from "./interaction-history.js";
 import { PatientStage } from "./patient-stage.js";
-import { VitalsStrip } from "./vitals-strip.js";
 import {
-  categoryMeta,
   engineMessage,
   typingDelay,
   workspaceToolMeta,
-  WORKSPACE_TOOLS,
   type AvatarReaction,
   type RightTab,
 } from "./case-constants.js";
-import { ActionCard, ScoreMeter } from "./case-ui.js";
+import { ScoreMeter } from "./case-ui.js";
 
 export function CaseChallengeScreen({ caseDefinition }: { caseDefinition: MedicalCase }) {
   const [game, setGame] = useState<GameState>(() => createInitialState(caseDefinition));
@@ -428,137 +418,29 @@ export function CaseChallengeScreen({ caseDefinition }: { caseDefinition: Medica
         {/* Zone A — clinical workspace tools (desktop) */}
         <aside className="case-zone-sticky hidden self-start lg:block">{sidebar}</aside>
 
-        {/* Zone B — patient interaction area */}
-        <main className="min-w-0 space-y-4">
+        {/* Zone B — the patient encounter: 3D ward with the clinical HUD over it */}
+        <main className="min-w-0">
           <PatientStage
             caseDefinition={caseDefinition}
             game={game}
             typing={Boolean(typingActionId)}
             reaction={avatarReaction}
+            dock={
+              <ClinicalDock
+                caseDefinition={caseDefinition}
+                game={game}
+                actions={actions}
+                actionCategory={actionCategory}
+                completedIds={completedIds}
+                busy={Boolean(typingActionId)}
+                unreadFindings={unreadFindings}
+                onCategory={setActionCategory}
+                onChoose={chooseAction}
+                onStart={startCase}
+                onOpenWorkspace={openWorkspace}
+              />
+            }
           />
-
-          <VitalsStrip game={game} />
-
-          {/* Clinical tools — inline where Zone A is folded away, so the chart,
-              notes and differentials are always one tap from the patient. */}
-          <section className="case-panel p-2 lg:hidden" aria-label="Clinical tools">
-            <div className="grid grid-cols-3 gap-1">
-              {WORKSPACE_TOOLS.map((tool) => {
-                const meta = workspaceToolMeta[tool];
-                const Icon = meta.icon;
-                const badge = tool === "chart" ? unreadFindings : 0;
-                return (
-                  <button
-                    key={tool}
-                    type="button"
-                    onClick={() => openWorkspace(tool)}
-                    className="relative flex min-w-0 flex-col items-center gap-1.5 rounded-xl px-1 py-2.5 text-[11px] font-black text-slate-600 transition-colors hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--case-accent)]"
-                  >
-                    <span className="relative grid size-9 place-items-center rounded-xl bg-[var(--case-accent-soft)] text-[var(--case-accent-ink)]">
-                      <Icon className="size-[18px]" />
-                      {badge > 0 && (
-                        <span className="absolute -right-1 -top-1 grid size-[18px] place-items-center rounded-full bg-[var(--case-pink)] text-[9px] font-black text-white ring-2 ring-white">
-                          {badge}
-                          <span className="sr-only"> new findings</span>
-                        </span>
-                      )}
-                    </span>
-                    <span className="max-w-full truncate">{meta.label}</span>
-                  </button>
-                );
-              })}
-            </div>
-          </section>
-
-          <section className="case-panel overflow-hidden" aria-labelledby="clinical-actions-title">
-            {game.phase === "hook" ? (
-              <div className="p-5 sm:p-6">
-                <p className="text-[10px] font-black uppercase tracking-[0.16em] text-[var(--case-accent-ink)]">
-                  Handover
-                </p>
-                <h2 id="clinical-actions-title" className="mt-1 text-lg font-black text-slate-900">
-                  You’re taking over this patient
-                </h2>
-                <p className="mt-2 text-sm font-bold leading-relaxed text-slate-700">
-                  {caseDefinition.intro}
-                </p>
-                <button
-                  type="button"
-                  onClick={startCase}
-                  className="case-primary-button mt-4 px-5 py-3 text-sm"
-                >
-                  Take over the case <ArrowRight className="size-4" />
-                </button>
-              </div>
-            ) : (
-              <>
-                <div className="flex items-start justify-between gap-3 px-4 pb-2 pt-4 sm:px-5">
-                  <div className="min-w-0">
-                    <p className="text-[10px] font-black uppercase tracking-[0.15em] text-slate-400">
-                      Your next move
-                    </p>
-                    <h2 id="clinical-actions-title" className="text-base font-black text-slate-900">
-                      Clinical actions
-                    </h2>
-                    {completedIds.size === 0 && (
-                      <p className="mt-1 text-[11px] font-bold leading-snug text-slate-500">
-                        Pick a category below, then an action. Each one costs clinical time.
-                      </p>
-                    )}
-                  </div>
-                  <span className="shrink-0 pt-1 text-[10px] font-bold text-slate-400">
-                    {completedIds.size}/{caseDefinition.actions.length} completed
-                  </span>
-                </div>
-                <div
-                  className="grid grid-cols-4 gap-1 border-y border-[var(--case-border)] bg-slate-50/70 p-2"
-                  role="tablist"
-                  aria-label="Clinical interaction categories"
-                >
-                  {(Object.keys(categoryMeta) as ActionCategory[]).map((category) => {
-                    const meta = categoryMeta[category];
-                    const Icon = meta.icon;
-                    const active = actionCategory === category;
-                    return (
-                      <button
-                        key={category}
-                        type="button"
-                        role="tab"
-                        aria-selected={active}
-                        onClick={() => setActionCategory(category)}
-                        style={
-                          {
-                            "--cat": meta.color,
-                            color: active ? meta.ink : undefined,
-                          } as CSSProperties
-                        }
-                        className={`case-interaction-category flex min-w-0 flex-col items-center gap-1 rounded-xl border border-transparent px-1 py-2 text-[11px] font-black text-slate-500 sm:flex-row sm:justify-center sm:text-xs ${active ? "is-active" : "hover:bg-white/70"}`}
-                      >
-                        <Icon className="size-4" /> {meta.label}
-                      </button>
-                    );
-                  })}
-                </div>
-                <div className="grid max-h-[320px] gap-2 overflow-y-auto p-3 sm:grid-cols-2">
-                  {actions.map((action) => (
-                    <ActionCard
-                      key={action.id}
-                      action={action}
-                      used={completedIds.has(action.id)}
-                      busy={Boolean(typingActionId)}
-                      disabled={game.phase !== "investigate"}
-                      onChoose={() => chooseAction(action)}
-                    />
-                  ))}
-                  {actions.length === 0 && (
-                    <p className="col-span-full py-6 text-center text-xs font-bold text-slate-400">
-                      No {categoryMeta[actionCategory].label.toLowerCase()} options in this case.
-                    </p>
-                  )}
-                </div>
-              </>
-            )}
-          </section>
         </main>
 
         {/* Zone C — persistent complete interaction history (desktop) */}

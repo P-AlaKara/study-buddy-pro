@@ -31,6 +31,12 @@ export interface CasePatient {
    * when absent.
    */
   presentingTags?: string[];
+  /**
+   * Explicit 3D patient model for the hospital scene. When absent the model is
+   * chosen from `sex`; unrecognised values fall back deliberately (see
+   * `scene/patient-model.ts`).
+   */
+  model?: "female" | "male";
   initialExpression: PatientExpression;
 }
 

@@ -225,7 +225,13 @@ function nodesForEvent(
           : Syringe;
 
     return [
-      <TimelineNode key={`${event.id}-you`} color={you.color} icon={you.icon} label={you.label} time={time}>
+      <TimelineNode
+        key={`${event.id}-you`}
+        color={you.color}
+        icon={you.icon}
+        label={you.label}
+        time={time}
+      >
         <p className="text-[13px] font-bold leading-relaxed text-slate-700">{action.label}</p>
       </TimelineNode>,
       <TimelineNode
@@ -254,7 +260,9 @@ function nodesForEvent(
     <TimelineNode key={event.id} color={color} icon={Icon} label={meta.label} time={time}>
       <p className="text-[13px] font-black leading-snug text-slate-800">{event.title}</p>
       {event.detail && (
-        <p className="mt-0.5 text-[12px] font-bold leading-relaxed text-slate-600">{event.detail}</p>
+        <p className="mt-0.5 text-[12px] font-bold leading-relaxed text-slate-600">
+          {event.detail}
+        </p>
       )}
       {event.type === "clue" && (
         <p className="mt-0.5 text-[10px] font-black text-[var(--case-mint-ink)]">
