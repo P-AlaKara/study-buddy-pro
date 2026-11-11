@@ -240,7 +240,6 @@
   margin-inline: auto;
 }
 
-
 @media (min-width: 768px) {
   .app-container {
     width: min(calc(100% - 3rem), var(--app-max-width));
@@ -1256,13 +1255,15 @@
   }
 }
 
-@media (min-width: 640px) and (max-width: 1279px) {
+/* From tablet up the clinical tool slides in from the right as a side panel, so
+   the patient, vitals and action list stay visible beside it. */
+@media (min-width: 640px) {
   .case-workspace-drawer {
     top: 0;
     right: 0;
     bottom: 0;
     left: auto;
-    width: min(27rem, 88vw);
+    width: min(30rem, 88vw);
     height: 100%;
     padding-top: 0;
     border-radius: 1.75rem 0 0 1.75rem;

@@ -1,4 +1,6 @@
+import { AlertTriangle } from "lucide-react";
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog";
+import type { CommitReadiness } from "../engine.js";
 import type { MedicalCase } from "../schema.js";
 
 export function CommitDialog({
@@ -6,6 +8,7 @@ export function CommitDialog({
   caseDefinition,
   diagnosisId,
   treatmentIds,
+  readiness,
   onDiagnosis,
   onToggleTreatment,
   onClose,
@@ -15,12 +18,18 @@ export function CommitDialog({
   caseDefinition: MedicalCase;
   diagnosisId: string;
   treatmentIds: string[];
+  readiness: CommitReadiness;
   onDiagnosis: (id: string) => void;
   onToggleTreatment: (id: string) => void;
   onClose: () => void;
   onSubmit: () => void;
 }) {
   const treatments = caseDefinition.actions.filter((action) => action.category === "treat");
+  const gaps = [
+    readiness.hasInvestigation ? null : "you have not ordered any investigations",
+    readiness.hasDifferential ? null : "your differential list is empty",
+  ].filter((gap): gap is string => gap !== null);
+
   return (
     <Dialog open={open} onOpenChange={(next) => !next && onClose()}>
       <DialogContent className="max-h-[88vh] max-w-2xl overflow-y-auto rounded-[28px] border-0 bg-white p-5 shadow-2xl sm:p-7">
@@ -28,6 +37,15 @@ export function CommitDialog({
         <DialogDescription>
           Choose one final diagnosis and the treatment plan you would initiate. This ends the case.
         </DialogDescription>
+        {gaps.length > 0 && (
+          <p className="mt-3 flex items-start gap-2 rounded-2xl bg-[var(--case-yellow-soft)] px-3.5 py-3 text-xs font-bold leading-relaxed text-[var(--case-yellow-ink)]">
+            <AlertTriangle className="mt-0.5 size-4 shrink-0" />
+            <span>
+              You can still commit, but {gaps.join(" and ")}. Choose “Keep investigating” if you
+              want to gather more first.
+            </span>
+          </p>
+        )}
         <fieldset className="mt-3 space-y-2">
           <legend className="mb-2 text-xs font-black uppercase tracking-wider text-slate-500">
             Final diagnosis

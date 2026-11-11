@@ -1,9 +1,56 @@
 import { type ComponentType } from "react";
-import { FlaskConical, MessageCircleMore, Stethoscope, Syringe } from "lucide-react";
+import {
+  ClipboardList,
+  FlaskConical,
+  ListOrdered,
+  MessageCircleMore,
+  NotebookPen,
+  Stethoscope,
+  Syringe,
+} from "lucide-react";
 import type { ActionCategory } from "../schema.js";
 
 export type RightTab = "chart" | "notes" | "differential";
 export type AvatarReaction = ActionCategory | null;
+
+/**
+ * The three clinical tools. Each one opens on its own — the workspace shows a
+ * single tool at a time rather than a tab strip, so a first-time user is never
+ * asked to choose between three screens they have not seen yet.
+ */
+export const WORKSPACE_TOOLS: RightTab[] = ["chart", "notes", "differential"];
+
+export const workspaceToolMeta: Record<
+  RightTab,
+  {
+    /** Short label for the launcher. */
+    label: string;
+    /** One line explaining what the tool is for. */
+    blurb: string;
+    /** Names what the launcher's count refers to, for screen readers. */
+    unit: string;
+    icon: ComponentType<{ className?: string }>;
+  }
+> = {
+  chart: {
+    label: "Patient chart",
+    blurb: "Everything you have found so far",
+    unit: "findings recorded",
+    icon: ClipboardList,
+  },
+  notes: {
+    label: "Clinical notes",
+    blurb: "Your own scratchpad for this case",
+    unit: "",
+    icon: NotebookPen,
+  },
+  differential: {
+    label: "Differentials",
+    blurb: "List and rank your working diagnoses",
+    unit: "diagnoses listed",
+    icon: ListOrdered,
+  },
+};
 
 /**
  * Per-category presentation. `color`/`soft`/`ink` are CSS custom-property

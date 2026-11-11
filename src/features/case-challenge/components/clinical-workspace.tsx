@@ -1,34 +1,33 @@
 import { useId, type ComponentType, type DragEvent } from "react";
 import {
+  ArrowLeft,
   Check,
   ChevronDown,
   ChevronUp,
-  ClipboardList,
-  FileText,
   FlaskConical,
   HelpCircle,
   MessageCircleMore,
-  NotebookPen,
   Plus,
   Stethoscope,
   Syringe,
   Trash2,
-  X,
 } from "lucide-react";
 import type { GameState } from "../engine.js";
 import type { ActionCategory, MedicalCase } from "../schema.js";
 import { DR_AMBROSE, DrAmbrose, type AmbroseExpression } from "./dr-ambrose.js";
-import type { RightTab } from "./case-constants.js";
+import { workspaceToolMeta, type RightTab } from "./case-constants.js";
 
+/**
+ * Shows exactly one clinical tool — the one the student asked for. There is no
+ * tab strip: opening "Clinical notes" lands on the notes, and nothing else.
+ */
 export function ClinicalWorkspace({
   game,
   caseDefinition,
-  activeTab,
+  tool,
   notes,
   draggedDiagnosis,
-  showClose,
   onClose,
-  onTab,
   onNotes,
   onDragStart,
   onDrop,
@@ -37,17 +36,13 @@ export function ClinicalWorkspace({
   onRemove,
   onConfidence,
   onTag,
-  nextHint,
-  onHint,
 }: {
   game: GameState;
   caseDefinition: MedicalCase;
-  activeTab: RightTab;
+  tool: RightTab;
   notes: string;
   draggedDiagnosis: string | null;
-  showClose: boolean;
   onClose: () => void;
-  onTab: (tab: RightTab) => void;
   onNotes: (notes: string) => void;
   onDragStart: (id: string | null) => void;
   onDrop: (id: string) => void;
@@ -56,77 +51,35 @@ export function ClinicalWorkspace({
   onRemove: (id: string) => void;
   onConfidence: (id: string, confidence: number) => void;
   onTag: (diagnosisId: string, evidenceId: string, relationship: "supports" | "against") => void;
-  nextHint: MedicalCase["hints"][number] | undefined;
-  onHint: () => void;
 }) {
-  const tabs: Array<{
-    id: RightTab;
-    label: string;
-    icon: ComponentType<{ className?: string }>;
-    count?: number;
-  }> = [
-    { id: "chart", label: "Chart", icon: ClipboardList, count: game.discoveredEvidence.length },
-    { id: "notes", label: "Notes", icon: NotebookPen },
-    { id: "differential", label: "Differentials", icon: FileText, count: game.differential.length },
-  ];
+  const meta = workspaceToolMeta[tool];
+  const Icon = meta.icon;
 
   return (
     <section className="case-panel case-workspace-panel flex h-full min-h-0 flex-col overflow-hidden">
-      <div className="flex items-start gap-3 border-b border-[var(--case-border)] px-4 py-4">
+      <div className="flex items-center gap-3 border-b border-[var(--case-border)] px-4 py-4">
+        <button
+          type="button"
+          onClick={onClose}
+          className="grid size-9 shrink-0 place-items-center rounded-full bg-slate-100 text-slate-600 transition-colors hover:bg-slate-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--case-accent)]"
+          aria-label="Back to the patient"
+        >
+          <ArrowLeft className="size-4" />
+        </button>
         <span className="grid size-10 shrink-0 place-items-center rounded-2xl bg-[var(--case-accent-soft)] text-[var(--case-accent-ink)]">
-          <ClipboardList className="size-5" />
+          <Icon className="size-5" />
         </span>
         <div className="min-w-0 flex-1">
-          <h2 className="text-base font-black text-slate-900">Clinical workspace</h2>
-          <p className="mt-0.5 text-[10px] font-bold text-slate-500">
-            Chart · Notes · Differentials
-          </p>
+          <h2 className="truncate text-base font-black text-slate-900">{meta.label}</h2>
+          <p className="mt-0.5 truncate text-[10px] font-bold text-slate-500">{meta.blurb}</p>
         </div>
-        {showClose && (
-          <button
-            type="button"
-            onClick={onClose}
-            className="grid size-9 place-items-center rounded-full bg-slate-100 text-slate-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--case-accent)]"
-            aria-label="Close clinical workspace"
-          >
-            <X className="size-4" />
-          </button>
-        )}
       </div>
       <div
-        className="grid grid-cols-3 gap-1 border-b border-[var(--case-border)] bg-slate-50/70 p-2"
-        role="tablist"
+        className={`min-h-0 flex-1 overflow-y-auto ${tool === "notes" ? "flex flex-col p-4" : "p-4"}`}
       >
-        {tabs.map((tab) => {
-          const Icon = tab.icon;
-          return (
-            <button
-              key={tab.id}
-              type="button"
-              role="tab"
-              aria-selected={activeTab === tab.id}
-              onClick={() => onTab(tab.id)}
-              className={`min-w-0 rounded-xl px-1 py-2 text-[10px] font-black transition-colors ${
-                activeTab === tab.id
-                  ? "bg-white text-[var(--case-accent-ink)] shadow-sm"
-                  : "text-slate-500 hover:bg-white/70"
-              }`}
-            >
-              <Icon className="mx-auto mb-1 size-4" />
-              <span className="block truncate">{tab.label}</span>
-              {tab.count !== undefined && tab.count > 0 && (
-                <span className="mt-1 inline-block rounded-full bg-slate-100 px-1.5 text-[8px] text-slate-500">
-                  {tab.count}
-                </span>
-              )}
-            </button>
-          );
-        })}
-      </div>
-      <div className="min-h-0 flex-1 overflow-y-auto p-4">
-        {activeTab === "chart" && <ChartPanel game={game} caseDefinition={caseDefinition} />}
-        {activeTab === "notes" && <NotesPanel notes={notes} onNotes={onNotes} />}
-        {activeTab === "differential" && (
+        {tool === "chart" && <ChartPanel game={game} caseDefinition={caseDefinition} />}
+        {tool === "notes" && <NotesPanel notes={notes} onNotes={onNotes} />}
+        {tool === "differential" && (
           <DifferentialBoard
             game={game}
             caseDefinition={caseDefinition}
@@ -141,7 +94,6 @@ export function ClinicalWorkspace({
           />
         )}
       </div>
-      <HintPanel game={game} nextHint={nextHint} onHint={onHint} />
     </section>
   );
 }
@@ -254,23 +206,20 @@ function ChartPanel({ game, caseDefinition }: { game: GameState; caseDefinition:
 function NotesPanel({ notes, onNotes }: { notes: string; onNotes: (notes: string) => void }) {
   const notesId = useId();
   return (
-    <div>
-      <label htmlFor={notesId} className="text-sm font-black text-slate-900">
-        Clinical notes
+    <div className="flex min-h-0 flex-1 flex-col">
+      <label htmlFor={notesId} className="text-[11px] leading-relaxed text-slate-500">
+        Jot down your reasoning, questions and management priorities. Notes are saved automatically
+        and stay with this case.
       </label>
-      <p className="mt-1 text-[11px] leading-relaxed text-slate-500">
-        Capture your reasoning, questions, and management priorities. Notes stay available while you
-        work through this case.
-      </p>
       <textarea
         id={notesId}
         value={notes}
         onChange={(event) => onNotes(event.target.value)}
-        placeholder="Write your clinical notes…"
-        className="mt-3 min-h-72 w-full resize-y rounded-2xl border border-slate-200 bg-slate-50 p-3 text-sm leading-relaxed text-slate-800 outline-none transition focus:border-[var(--case-accent)] focus:bg-white focus:ring-4 focus:ring-[var(--case-accent)]/15"
+        placeholder="e.g. Tearing chest pain radiating to the back — widened mediastinum on CXR. Rule out dissection before anticoagulating…"
+        className="mt-3 min-h-64 w-full flex-1 resize-none rounded-2xl border border-slate-200 bg-slate-50 p-3.5 text-sm leading-relaxed text-slate-800 outline-none transition placeholder:text-slate-400 focus:border-[var(--case-accent)] focus:bg-white focus:ring-4 focus:ring-[var(--case-accent)]/15"
       />
-      <p className="mt-2 text-right text-[10px] font-bold text-slate-400">
-        {notes.length} characters
+      <p className="mt-2 shrink-0 text-right text-[10px] font-bold text-slate-400">
+        {notes.length > 0 ? `${notes.length} characters · saved` : "Nothing written yet"}
       </p>
     </div>
   );
@@ -310,8 +259,11 @@ function DifferentialBoard({
         className="text-xs font-black uppercase tracking-wider text-slate-500"
         htmlFor={diagnosisSelectId}
       >
-        Add hypothesis
+        Add a diagnosis
       </label>
+      <p className="mt-1 text-[11px] leading-relaxed text-slate-500">
+        Pick a diagnosis, then drag or use the arrows to put your most likely one first.
+      </p>
       <div className="mt-2 flex gap-2">
         <select
           id={diagnosisSelectId}
@@ -401,6 +353,10 @@ function DifferentialBoard({
               />
               {game.discoveredEvidence.length > 0 && (
                 <div className="mt-2 space-y-1.5 border-t border-slate-200 pt-2">
+                  <p className="text-[9px] font-black uppercase tracking-wider text-slate-400">
+                    Does each finding fit?{" "}
+                    <span className="normal-case">+ supports · − against</span>
+                  </p>
                   {game.discoveredEvidence.map((evidence) => {
                     const tag = entry.evidenceTags.find(
                       (candidate) => candidate.evidenceActionId === evidence.actionId,

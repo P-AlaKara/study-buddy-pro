@@ -18,6 +18,14 @@ The differential API records add, remove, rank, confidence, and evidence-tag cha
 
 Run `npm test` after changing the schema, validator, cases, or engine. Tests cover action application, deterioration, interrupted actions, safe-treatment gates, differential history, hints, scoring, win/loss/penalised paths for both cases, and validation failures.
 
+## Encounter UI
+
+`components/case-challenge-screen.tsx` owns the encounter shell: Zone A (`case-sidebar.tsx`, desktop-only case context plus the clinical-tool launchers), Zone B (patient stage, vitals, clinical actions) and Zone C (`interaction-history.tsx`, the full timeline).
+
+There are exactly three clinical tools — patient chart, clinical notes, differentials — declared once in `WORKSPACE_TOOLS` / `workspaceToolMeta` (`components/case-constants.ts`) and consumed by both the sidebar launchers and `clinical-workspace.tsx`. The workspace deliberately has **no tab strip**: it renders the single tool that was requested, with a back button to the patient, so opening "Clinical notes" never also presents the chart and differentials. Below `lg` the same three launchers appear inline under the vitals instead of behind a drawer.
+
+Hints have one home: the floating Dr. Ambrose button (all breakpoints) opens `HintPanel`. Do not re-add a second hint surface inside the workspace.
+
 ## Character components
 
 `components/patient-avatar.tsx` renders the authored patient as an accessible inline SVG. Skin tone, hair, outfit, age cues, sex, expression and live respiratory rate all affect the portrait; breathing cadence is derived from the current RR. `components/dr-ambrose.tsx` provides the shared mentor in avatar and logo variants with six expressions. His identity lives in `config.ts` so hints, onboarding, loading states and debriefs use one source of truth.

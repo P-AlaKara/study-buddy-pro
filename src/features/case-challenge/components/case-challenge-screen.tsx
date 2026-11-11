@@ -7,7 +7,6 @@ import {
   Check,
   ChevronRight,
   History,
-  PanelLeft,
   X,
 } from "lucide-react";
 import {
@@ -41,6 +40,8 @@ import {
   categoryMeta,
   engineMessage,
   typingDelay,
+  workspaceToolMeta,
+  WORKSPACE_TOOLS,
   type AvatarReaction,
   type RightTab,
 } from "./case-constants.js";
@@ -49,7 +50,7 @@ import { ActionCard, ScoreMeter } from "./case-ui.js";
 export function CaseChallengeScreen({ caseDefinition }: { caseDefinition: MedicalCase }) {
   const [game, setGame] = useState<GameState>(() => createInitialState(caseDefinition));
   const [actionCategory, setActionCategory] = useState<ActionCategory>("ask");
-  const [rightTab, setRightTab] = useState<RightTab>("chart");
+  const [activeTool, setActiveTool] = useState<RightTab>("chart");
   const [workspaceOpen, setWorkspaceOpen] = useState(false);
   const [clinicalNotes, setClinicalNotes] = useState("");
   const [unreadFindings, setUnreadFindings] = useState(0);
@@ -62,7 +63,6 @@ export function CaseChallengeScreen({ caseDefinition }: { caseDefinition: Medica
   const [commitTreatments, setCommitTreatments] = useState<string[]>([]);
   const [draggedDiagnosis, setDraggedDiagnosis] = useState<string | null>(null);
   const [historyExpanded, setHistoryExpanded] = useState(false);
-  const [sidebarOpen, setSidebarOpen] = useState(false);
   const [historyOpen, setHistoryOpen] = useState(false);
   const [coachOpen, setCoachOpen] = useState(false);
 
@@ -77,7 +77,7 @@ export function CaseChallengeScreen({ caseDefinition }: { caseDefinition: Medica
 
   function resetEphemeralUi() {
     setActionCategory("ask");
-    setRightTab("chart");
+    setActiveTool("chart");
     setWorkspaceOpen(false);
     setUnreadFindings(0);
     setFindingNotice(false);
@@ -85,7 +85,6 @@ export function CaseChallengeScreen({ caseDefinition }: { caseDefinition: Medica
     setAvatarReaction(null);
     setError("");
     setCommitOpen(false);
-    setSidebarOpen(false);
     setHistoryOpen(false);
     setCoachOpen(false);
     if (typingTimer.current) clearTimeout(typingTimer.current);
@@ -137,12 +136,12 @@ export function CaseChallengeScreen({ caseDefinition }: { caseDefinition: Medica
     if (newlyAdded <= 0) return;
 
     setFindingNotice(true);
-    if (!(workspaceOpen && rightTab === "chart")) {
+    if (!(workspaceOpen && activeTool === "chart")) {
       setUnreadFindings((count) => count + newlyAdded);
     }
     if (noticeTimer.current) clearTimeout(noticeTimer.current);
     noticeTimer.current = setTimeout(() => setFindingNotice(false), 4200);
-  }, [caseDefinition.id, game.caseId, game.discoveredEvidence.length, rightTab, workspaceOpen]);
+  }, [caseDefinition.id, game.caseId, game.discoveredEvidence.length, activeTool, workspaceOpen]);
 
   const actions = useMemo(
     () => caseDefinition.actions.filter((action) => action.category === actionCategory),
@@ -264,11 +263,10 @@ export function CaseChallengeScreen({ caseDefinition }: { caseDefinition: Medica
     setDraggedDiagnosis(null);
   }
 
-  function openWorkspace(tab: RightTab = rightTab) {
-    setRightTab(tab);
+  function openWorkspace(tool: RightTab = activeTool) {
+    setActiveTool(tool);
     setWorkspaceOpen(true);
-    setSidebarOpen(false);
-    if (tab === "chart") setUnreadFindings(0);
+    if (tool === "chart") setUnreadFindings(0);
   }
 
   function closeWorkspace() {
@@ -279,24 +277,14 @@ export function CaseChallengeScreen({ caseDefinition }: { caseDefinition: Medica
     safelyUpdate((current) => requestNextHint(current, caseDefinition));
   }
 
-  function selectStage(category: ActionCategory) {
-    setActionCategory(category);
-    setSidebarOpen(false);
-  }
-
-  const workspacePanel = (showClose: boolean) => (
+  const workspacePanel = (
     <ClinicalWorkspace
       game={game}
       caseDefinition={caseDefinition}
-      activeTab={rightTab}
+      tool={activeTool}
       notes={clinicalNotes}
       draggedDiagnosis={draggedDiagnosis}
-      showClose={showClose}
       onClose={closeWorkspace}
-      onTab={(tab) => {
-        setRightTab(tab);
-        if (tab === "chart") setUnreadFindings(0);
-      }}
       onNotes={setClinicalNotes}
       onDragStart={setDraggedDiagnosis}
       onDrop={dropDiagnosis}
@@ -315,8 +303,6 @@ export function CaseChallengeScreen({ caseDefinition }: { caseDefinition: Medica
           tagEvidence(current, caseDefinition, diagnosisId, evidenceId, relationship),
         )
       }
-      nextHint={nextHint}
-      onHint={askForHint}
     />
   );
 
@@ -340,8 +326,6 @@ export function CaseChallengeScreen({ caseDefinition }: { caseDefinition: Medica
     <CaseSidebar
       caseDefinition={caseDefinition}
       game={game}
-      activeCategory={actionCategory}
-      onSelectStage={selectStage}
       onOpenWorkspace={openWorkspace}
       unreadFindings={unreadFindings}
     />
@@ -371,15 +355,6 @@ export function CaseChallengeScreen({ caseDefinition }: { caseDefinition: Medica
           >
             <ArrowLeft className="size-4" />
           </Link>
-
-          <button
-            type="button"
-            onClick={() => setSidebarOpen(true)}
-            className="grid size-10 shrink-0 place-items-center rounded-full bg-slate-50 text-slate-700 shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--case-accent)] lg:hidden"
-            aria-label="Open case tools"
-          >
-            <PanelLeft className="size-4" />
-          </button>
 
           <div className="min-w-0 flex-1">
             <p className="text-[10px] font-black uppercase tracking-[0.14em] text-[var(--case-accent-ink)]">
@@ -464,6 +439,37 @@ export function CaseChallengeScreen({ caseDefinition }: { caseDefinition: Medica
 
           <VitalsStrip game={game} />
 
+          {/* Clinical tools — inline where Zone A is folded away, so the chart,
+              notes and differentials are always one tap from the patient. */}
+          <section className="case-panel p-2 lg:hidden" aria-label="Clinical tools">
+            <div className="grid grid-cols-3 gap-1">
+              {WORKSPACE_TOOLS.map((tool) => {
+                const meta = workspaceToolMeta[tool];
+                const Icon = meta.icon;
+                const badge = tool === "chart" ? unreadFindings : 0;
+                return (
+                  <button
+                    key={tool}
+                    type="button"
+                    onClick={() => openWorkspace(tool)}
+                    className="relative flex min-w-0 flex-col items-center gap-1.5 rounded-xl px-1 py-2.5 text-[11px] font-black text-slate-600 transition-colors hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--case-accent)]"
+                  >
+                    <span className="relative grid size-9 place-items-center rounded-xl bg-[var(--case-accent-soft)] text-[var(--case-accent-ink)]">
+                      <Icon className="size-[18px]" />
+                      {badge > 0 && (
+                        <span className="absolute -right-1 -top-1 grid size-[18px] place-items-center rounded-full bg-[var(--case-pink)] text-[9px] font-black text-white ring-2 ring-white">
+                          {badge}
+                          <span className="sr-only"> new findings</span>
+                        </span>
+                      )}
+                    </span>
+                    <span className="max-w-full truncate">{meta.label}</span>
+                  </button>
+                );
+              })}
+            </div>
+          </section>
+
           <section className="case-panel overflow-hidden" aria-labelledby="clinical-actions-title">
             {game.phase === "hook" ? (
               <div className="p-5 sm:p-6">
@@ -486,16 +492,21 @@ export function CaseChallengeScreen({ caseDefinition }: { caseDefinition: Medica
               </div>
             ) : (
               <>
-                <div className="flex items-center justify-between px-4 pb-2 pt-4 sm:px-5">
-                  <div>
+                <div className="flex items-start justify-between gap-3 px-4 pb-2 pt-4 sm:px-5">
+                  <div className="min-w-0">
                     <p className="text-[10px] font-black uppercase tracking-[0.15em] text-slate-400">
                       Your next move
                     </p>
                     <h2 id="clinical-actions-title" className="text-base font-black text-slate-900">
                       Clinical actions
                     </h2>
+                    {completedIds.size === 0 && (
+                      <p className="mt-1 text-[11px] font-bold leading-snug text-slate-500">
+                        Pick a category below, then an action. Each one costs clinical time.
+                      </p>
+                    )}
                   </div>
-                  <span className="text-[10px] font-bold text-slate-400">
+                  <span className="shrink-0 pt-1 text-[10px] font-bold text-slate-400">
                     {completedIds.size}/{caseDefinition.actions.length} completed
                   </span>
                 </div>
@@ -560,10 +571,10 @@ export function CaseChallengeScreen({ caseDefinition }: { caseDefinition: Medica
         Educational use only, not medical advice
       </footer>
 
-      {/* Dr. Ambrose coach — bottom-left on desktop */}
-      <div className="fixed bottom-4 left-4 z-40 hidden lg:block">
+      {/* Dr. Ambrose coach — the single home for hints, at every breakpoint */}
+      <div className="fixed bottom-4 left-4 z-40">
         {coachOpen && (
-          <div className="case-coach-popover mb-2 !static w-80 overflow-hidden rounded-2xl">
+          <div className="case-coach-popover mb-2 !static w-[min(20rem,calc(100vw-2rem))] overflow-hidden rounded-2xl">
             <HintPanel game={game} nextHint={nextHint} onHint={askForHint} />
           </div>
         )}
@@ -571,19 +582,15 @@ export function CaseChallengeScreen({ caseDefinition }: { caseDefinition: Medica
           type="button"
           onClick={() => setCoachOpen((open) => !open)}
           aria-expanded={coachOpen}
-          className="flex items-center gap-2 rounded-full border border-[var(--case-yellow)] bg-[var(--case-yellow-soft)] py-1 pl-1 pr-3 shadow-lg transition-transform hover:-translate-y-0.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--case-yellow)]"
+          aria-label={`Ask ${DR_AMBROSE.name} for a hint`}
+          className="flex items-center gap-2 rounded-full border border-[var(--case-yellow)] bg-[var(--case-yellow-soft)] py-1 pl-1 pr-2 shadow-lg transition-transform hover:-translate-y-0.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--case-yellow)] sm:pr-3"
         >
           <DrAmbrose expression="thinking" variant="logo" className="w-10 shrink-0" />
-          <span className="text-xs font-black text-[var(--case-yellow-ink)]">
+          <span className="hidden text-xs font-black text-[var(--case-yellow-ink)] sm:inline">
             Ask {DR_AMBROSE.name}
           </span>
         </button>
       </div>
-
-      {/* Zone A drawer (tablet / mobile) */}
-      <MobileSheet open={sidebarOpen} label="Case tools" onClose={() => setSidebarOpen(false)}>
-        <div className="h-full overflow-y-auto p-4">{sidebar}</div>
-      </MobileSheet>
 
       {/* Zone C drawer (tablet / mobile) */}
       <MobileSheet
@@ -594,9 +601,14 @@ export function CaseChallengeScreen({ caseDefinition }: { caseDefinition: Medica
         {historyPanel(false, "h-full rounded-none border-0 shadow-none")}
       </MobileSheet>
 
-      {/* Clinical workspace drawer */}
-      <MobileSheet open={workspaceOpen} label="Clinical workspace" onClose={closeWorkspace}>
-        {workspacePanel(false)}
+      {/* Clinical workspace drawer — one tool at a time */}
+      <MobileSheet
+        open={workspaceOpen}
+        label={workspaceToolMeta[activeTool].label}
+        onClose={closeWorkspace}
+        withCloseRow={false}
+      >
+        {workspacePanel}
       </MobileSheet>
 
       <CommitDialog
@@ -604,6 +616,7 @@ export function CaseChallengeScreen({ caseDefinition }: { caseDefinition: Medica
         caseDefinition={caseDefinition}
         diagnosisId={commitDiagnosis}
         treatmentIds={commitTreatments}
+        readiness={commitReadiness}
         onDiagnosis={setCommitDiagnosis}
         onToggleTreatment={(id) =>
           setCommitTreatments((current) =>
@@ -622,11 +635,14 @@ function MobileSheet({
   open,
   label,
   onClose,
+  withCloseRow = true,
   children,
 }: {
   open: boolean;
   label: string;
   onClose: () => void;
+  /** Panels that render their own header/back button opt out of this row. */
+  withCloseRow?: boolean;
   children: ReactNode;
 }) {
   const dialogRef = useRef<HTMLDivElement>(null);
@@ -664,16 +680,18 @@ function MobileSheet({
         aria-modal="true"
         aria-label={label}
       >
-        <div className="flex justify-end px-3 pt-4">
-          <button
-            type="button"
-            onClick={onClose}
-            className="grid size-8 place-items-center rounded-full bg-slate-100 text-slate-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--case-accent)]"
-            aria-label={`Close ${label.toLowerCase()}`}
-          >
-            <X className="size-4" />
-          </button>
-        </div>
+        {withCloseRow && (
+          <div className="flex justify-end px-3 pt-4">
+            <button
+              type="button"
+              onClick={onClose}
+              className="grid size-8 place-items-center rounded-full bg-slate-100 text-slate-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--case-accent)]"
+              aria-label={`Close ${label.toLowerCase()}`}
+            >
+              <X className="size-4" />
+            </button>
+          </div>
+        )}
         <div className="min-h-0 flex-1 overflow-hidden">{children}</div>
       </div>
     </div>

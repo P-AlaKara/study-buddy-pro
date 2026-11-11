@@ -1,77 +1,35 @@
-import { type ComponentType } from "react";
-import {
-  BookOpen,
-  Check,
-  ClipboardList,
-  FileText,
-  FlaskConical,
-  MessageCircleMore,
-  Network,
-  NotebookPen,
-  Pill,
-  Stethoscope,
-  Syringe,
-} from "lucide-react";
+import { ChevronRight, FileText } from "lucide-react";
 import type { GameState } from "../engine.js";
-import type { ActionCategory, MedicalCase } from "../schema.js";
-import type { RightTab } from "./case-constants.js";
+import type { MedicalCase } from "../schema.js";
+import { WORKSPACE_TOOLS, workspaceToolMeta, type RightTab } from "./case-constants.js";
 
 function caseNumberLabel(id: string): string {
   const match = id.match(/(\d+)/);
   return match?.[1] ? `Case ${match[1].padStart(2, "0")}` : "Case";
 }
 
-const STAGES: Array<{
-  category: ActionCategory;
-  label: string;
-  icon: ComponentType<{ className?: string }>;
-}> = [
-  { category: "ask", label: "History", icon: MessageCircleMore },
-  { category: "examine", label: "Examination", icon: Stethoscope },
-  { category: "test", label: "Investigations", icon: FlaskConical },
-  { category: "treat", label: "Management", icon: Syringe },
-];
-
-const TOOLS: Array<{
-  tab: RightTab;
-  label: string;
-  icon: ComponentType<{ className?: string }>;
-  withBadge?: boolean;
-}> = [
-  { tab: "chart", label: "Patient chart", icon: ClipboardList, withBadge: true },
-  { tab: "notes", label: "Clinical notes", icon: NotebookPen },
-  { tab: "chart", label: "Order investigations", icon: FlaskConical },
-  { tab: "chart", label: "Drug reference", icon: Pill },
-  { tab: "chart", label: "Clinical guidelines", icon: BookOpen },
-  { tab: "differential", label: "Differential builder", icon: Network },
-];
-
 /**
- * Zone A — case context, a non-locking progression indicator (clicking a stage
- * simply focuses that interaction category; students may revisit any stage),
- * and launchers that open the clinical workspace without leaving the encounter.
+ * Zone A — case context plus the three clinical-tool launchers. Each launcher
+ * opens that one tool in the workspace; progression through the interaction
+ * categories lives on the action panel itself, so there is no second, competing
+ * stage list here.
  */
 export function CaseSidebar({
   caseDefinition,
   game,
-  activeCategory,
-  onSelectStage,
   onOpenWorkspace,
   unreadFindings,
 }: {
   caseDefinition: MedicalCase;
   game: GameState;
-  activeCategory: ActionCategory;
-  onSelectStage: (category: ActionCategory) => void;
-  onOpenWorkspace: (tab: RightTab) => void;
+  onOpenWorkspace: (tool: RightTab) => void;
   unreadFindings: number;
 }) {
-  const completedCategories = new Set(
-    game.completedActions.flatMap((entry) => {
-      const action = caseDefinition.actions.find((candidate) => candidate.id === entry.actionId);
-      return action ? [action.category] : [];
-    }),
-  );
+  const toolCounts: Record<RightTab, number> = {
+    chart: game.discoveredEvidence.length,
+    notes: 0,
+    differential: game.differential.length,
+  };
 
   return (
     <nav className="space-y-3" aria-label="Case workspace">
@@ -97,67 +55,47 @@ export function CaseSidebar({
 
       <section className="case-panel p-3">
         <p className="px-1 pb-2 text-[10px] font-black uppercase tracking-wider text-slate-400">
-          Encounter progress
-        </p>
-        <ol className="space-y-0.5">
-          {STAGES.map((stage, index) => {
-            const Icon = stage.icon;
-            const done = completedCategories.has(stage.category);
-            const active = activeCategory === stage.category;
-            return (
-              <li key={stage.category}>
-                <button
-                  type="button"
-                  onClick={() => onSelectStage(stage.category)}
-                  aria-current={active ? "step" : undefined}
-                  className={`flex w-full items-center gap-2.5 rounded-xl px-2 py-2 text-left text-xs font-black transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--case-accent)] ${
-                    active
-                      ? "bg-[var(--case-accent-soft)] text-[var(--case-accent-ink)]"
-                      : "text-slate-600 hover:bg-slate-50"
-                  }`}
-                >
-                  <span
-                    className={`grid size-6 shrink-0 place-items-center rounded-full text-[11px] ${
-                      done
-                        ? "bg-[var(--case-mint)] text-white"
-                        : active
-                          ? "bg-[var(--case-accent)] text-white"
-                          : "bg-slate-100 text-slate-500"
-                    }`}
-                  >
-                    {done ? <Check className="size-3.5" /> : index + 1}
-                  </span>
-                  <Icon className="size-4 shrink-0 opacity-70" />
-                  <span className="flex-1 truncate">{stage.label}</span>
-                </button>
-              </li>
-            );
-          })}
-        </ol>
-      </section>
-
-      <section className="case-panel p-3">
-        <p className="px-1 pb-2 text-[10px] font-black uppercase tracking-wider text-slate-400">
           Clinical tools
         </p>
-        <ul className="space-y-0.5">
-          {TOOLS.map((tool) => {
-            const Icon = tool.icon;
-            const badge = tool.withBadge && unreadFindings > 0 ? unreadFindings : 0;
+        <ul className="space-y-1">
+          {WORKSPACE_TOOLS.map((tool) => {
+            const meta = workspaceToolMeta[tool];
+            const Icon = meta.icon;
+            const badge = tool === "chart" ? unreadFindings : 0;
+            const count = toolCounts[tool];
             return (
-              <li key={tool.label}>
+              <li key={tool}>
                 <button
                   type="button"
-                  onClick={() => onOpenWorkspace(tool.tab)}
-                  className="flex w-full items-center gap-3 rounded-xl px-2.5 py-2.5 text-left text-[13px] font-bold text-slate-700 transition-colors hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--case-accent)]"
+                  onClick={() => onOpenWorkspace(tool)}
+                  className="group flex w-full items-center gap-3 rounded-xl px-2.5 py-2.5 text-left transition-colors hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--case-accent)]"
                 >
-                  <Icon className="size-[18px] shrink-0 text-slate-500" />
-                  <span className="flex-1 truncate">{tool.label}</span>
-                  {badge > 0 && (
-                    <span className="grid size-5 shrink-0 place-items-center rounded-full bg-[var(--case-pink)] text-[10px] font-black text-white">
-                      {badge}
+                  <span className="relative grid size-9 shrink-0 place-items-center rounded-xl bg-[var(--case-accent-soft)] text-[var(--case-accent-ink)]">
+                    <Icon className="size-[18px]" />
+                    {badge > 0 && (
+                      <span className="absolute -right-1 -top-1 grid size-[18px] place-items-center rounded-full bg-[var(--case-pink)] text-[9px] font-black text-white ring-2 ring-white">
+                        {badge}
+                        <span className="sr-only"> new findings</span>
+                      </span>
+                    )}
+                  </span>
+                  <span className="min-w-0 flex-1">
+                    <span className="flex items-baseline gap-1.5">
+                      <span className="truncate text-[13px] font-black text-slate-800">
+                        {meta.label}
+                      </span>
+                      {count > 0 && (
+                        <span className="shrink-0 text-[10px] font-black text-slate-400">
+                          {count}
+                          <span className="sr-only"> {meta.unit}</span>
+                        </span>
+                      )}
                     </span>
-                  )}
+                    <span className="mt-0.5 block truncate text-[10px] font-bold text-slate-500">
+                      {meta.blurb}
+                    </span>
+                  </span>
+                  <ChevronRight className="size-4 shrink-0 text-slate-300 transition-transform group-hover:translate-x-0.5" />
                 </button>
               </li>
             );
