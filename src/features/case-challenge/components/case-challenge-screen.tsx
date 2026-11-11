@@ -1,6 +1,5 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
-import { Link } from "@tanstack/react-router";
-import { AlertTriangle, ArrowLeft, Check, ChevronRight, History, X } from "lucide-react";
+import { AlertTriangle, Check, ChevronRight, X } from "lucide-react";
 import {
   addToDifferential,
   applyAction,
@@ -8,7 +7,6 @@ import {
   cancelCommit,
   commitCase,
   createInitialState,
-  formatCaseClock,
   getCommitReadiness,
   openCommit,
   rankDifferential,
@@ -21,13 +19,15 @@ import {
 import type { ActionCategory, CaseAction, MedicalCase } from "../schema.js";
 import { clearEncounter, loadEncounter, saveEncounter } from "../use-case-persistence.js";
 import { CaseDebrief } from "./case-debrief.js";
-import { CaseSidebar } from "./case-sidebar.js";
+import { CasePanel } from "./case-panel.js";
 import { ClinicalDock } from "./clinical-dock.js";
 import { ClinicalWorkspace, HintPanel } from "./clinical-workspace.js";
 import { CommitDialog } from "./commit-dialog.js";
 import { DR_AMBROSE, DrAmbrose } from "./dr-ambrose.js";
+import { EncounterTopBar } from "./encounter-top-bar.js";
 import { InteractionHistory } from "./interaction-history.js";
-import { PatientStage } from "./patient-stage.js";
+import { SceneBackdrop, SceneStatusChips, useSceneView } from "./scene-backdrop.js";
+import { VitalsMonitor } from "./vitals-strip.js";
 import {
   engineMessage,
   typingDelay,
@@ -35,7 +35,6 @@ import {
   type AvatarReaction,
   type RightTab,
 } from "./case-constants.js";
-import { ScoreMeter } from "./case-ui.js";
 
 export function CaseChallengeScreen({ caseDefinition }: { caseDefinition: MedicalCase }) {
   const [game, setGame] = useState<GameState>(() => createInitialState(caseDefinition));
@@ -55,6 +54,9 @@ export function CaseChallengeScreen({ caseDefinition }: { caseDefinition: Medica
   const [historyExpanded, setHistoryExpanded] = useState(false);
   const [historyOpen, setHistoryOpen] = useState(false);
   const [coachOpen, setCoachOpen] = useState(false);
+  const [trayOpen, setTrayOpen] = useState(false);
+  const [casePanelOpen, setCasePanelOpen] = useState(false);
+  const sceneView = useSceneView();
 
   const typingTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const reactionTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -77,6 +79,8 @@ export function CaseChallengeScreen({ caseDefinition }: { caseDefinition: Medica
     setCommitOpen(false);
     setHistoryOpen(false);
     setCoachOpen(false);
+    setTrayOpen(false);
+    setCasePanelOpen(false);
     if (typingTimer.current) clearTimeout(typingTimer.current);
     if (reactionTimer.current) clearTimeout(reactionTimer.current);
     if (noticeTimer.current) clearTimeout(noticeTimer.current);
@@ -90,9 +94,13 @@ export function CaseChallengeScreen({ caseDefinition }: { caseDefinition: Medica
     const saved = loadEncounter(caseDefinition.id);
     const firstMount = hydratedCaseRef.current === null;
     if (saved) {
-      setGame(saved.game);
+      // A reload mid-commit would otherwise leave the encounter frozen with the
+      // dialog closed; reopen investigation instead.
+      const restored =
+        saved.game.phase === "commit" ? cancelCommit(saved.game, caseDefinition) : saved.game;
+      setGame(restored);
       setClinicalNotes(saved.notes);
-      previousEvidenceCount.current = saved.game.discoveredEvidence.length;
+      previousEvidenceCount.current = restored.discoveredEvidence.length;
     } else if (!firstMount) {
       setGame(createInitialState(caseDefinition));
       setClinicalNotes("");
@@ -267,6 +275,16 @@ export function CaseChallengeScreen({ caseDefinition }: { caseDefinition: Medica
     safelyUpdate((current) => requestNextHint(current, caseDefinition));
   }
 
+  /** Tap a dock category to open its tray; tap it again to put the ward back. */
+  function selectCategory(category: ActionCategory) {
+    if (trayOpen && actionCategory === category) {
+      setTrayOpen(false);
+      return;
+    }
+    setActionCategory(category);
+    setTrayOpen(true);
+  }
+
   const workspacePanel = (
     <ClinicalWorkspace
       game={game}
@@ -312,12 +330,16 @@ export function CaseChallengeScreen({ caseDefinition }: { caseDefinition: Medica
     );
   }
 
-  const sidebar = (
-    <CaseSidebar
+  const casePanel = (className: string) => (
+    <CasePanel
       caseDefinition={caseDefinition}
       game={game}
-      onOpenWorkspace={openWorkspace}
+      onOpenWorkspace={(tool) => {
+        setCasePanelOpen(false);
+        openWorkspace(tool);
+      }}
       unreadFindings={unreadFindings}
+      className={className}
     />
   );
 
@@ -335,55 +357,115 @@ export function CaseChallengeScreen({ caseDefinition }: { caseDefinition: Medica
   );
 
   return (
-    <div className="case-cockpit -mx-1 pb-8 md:-mx-2">
-      <header className="case-command-bar sticky top-0 z-30 mb-4 rounded-[22px] bg-white/95 p-3 shadow-[0_12px_32px_-20px_rgb(37_48_68/35%)] backdrop-blur md:top-[84px]">
-        <div className="flex items-center gap-2.5">
-          <Link
-            to="/cases"
-            className="grid size-10 shrink-0 place-items-center rounded-full bg-slate-50 text-slate-700 shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--case-accent)]"
-            aria-label="Back to all cases"
-          >
-            <ArrowLeft className="size-4" />
-          </Link>
+    <div className="case-cockpit case-immersive">
+      {/* The ward itself — everything below floats over it */}
+      <SceneBackdrop
+        caseDefinition={caseDefinition}
+        game={game}
+        typing={Boolean(typingActionId)}
+        sceneView={sceneView}
+      />
 
-          <div className="min-w-0 flex-1">
-            <p className="text-[10px] font-black uppercase tracking-[0.14em] text-[var(--case-accent-ink)]">
-              {caseDefinition.setting}
-            </p>
-            <h1 className="truncate font-display text-base font-black text-slate-900 md:text-lg">
-              {caseDefinition.title}
-            </h1>
-          </div>
+      <div className="case-immersive-ui" data-history={historyExpanded ? "expanded" : "normal"}>
+        <div className="case-ui-top">
+          <EncounterTopBar
+            caseDefinition={caseDefinition}
+            game={game}
+            sceneView={sceneView}
+            commitReady={commitReadiness.ready}
+            onCommit={showCommit}
+            onOpenHistory={() => setHistoryOpen(true)}
+            onToggleCoach={() => setCoachOpen((open) => !open)}
+            coachOpen={coachOpen}
+          />
+        </div>
 
-          <div className="hidden items-center gap-2 md:flex">
-            <ScoreMeter score={game.score.total} maximum={game.score.maximum} />
-            <span className="rounded-full border border-[var(--case-border)] bg-white px-3 py-2 text-xs font-extrabold text-slate-700 shadow-sm">
-              {game.hintsUsed.length} hints
-            </span>
-            <span className="rounded-full bg-slate-900 px-3 py-2 font-mono text-sm font-black text-white">
-              {formatCaseClock(game.timeMinute)}
-            </span>
-          </div>
+        {/* Case identity + tools (desktop) */}
+        <aside className="case-ui-left">{casePanel("min-h-0 overflow-y-auto")}</aside>
 
+        {/* Over the patient: status, errors, and the phone-sized patient chip */}
+        <div className="case-ui-center">
+          <SceneStatusChips
+            caseDefinition={caseDefinition}
+            game={game}
+            typing={Boolean(typingActionId)}
+            sceneView={sceneView}
+          />
+          {error && (
+            <div
+              role="alert"
+              className="case-float-panel flex items-center gap-2 px-4 py-3 text-sm font-bold text-[var(--case-critical)]"
+            >
+              <AlertTriangle className="size-4 shrink-0" /> {error}
+              <button
+                type="button"
+                onClick={() => setError("")}
+                className="ml-auto"
+                aria-label="Dismiss"
+              >
+                <X className="size-4" />
+              </button>
+            </div>
+          )}
           <button
             type="button"
-            onClick={() => setHistoryOpen(true)}
-            className="relative grid size-10 shrink-0 place-items-center rounded-full bg-slate-50 text-slate-700 shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--case-accent)] xl:hidden"
-            aria-label="Open interaction history"
+            onClick={() => setCasePanelOpen(true)}
+            className="case-float-panel case-patient-chip lg:hidden"
+            aria-label={`Patient ${caseDefinition.patient.name}: open case details`}
           >
-            <History className="size-4" />
+            <span className="flex items-baseline gap-2">
+              <span className="font-display text-base font-black text-slate-900">
+                {caseDefinition.patient.name}
+              </span>
+              <span className="text-[11px] font-bold text-slate-500">
+                {caseDefinition.patient.age} · {caseDefinition.patient.sex}
+              </span>
+            </span>
+            <span className="mt-0.5 line-clamp-2 block text-[12px] font-bold leading-snug text-slate-600">
+              {caseDefinition.patient.chiefComplaint}
+            </span>
           </button>
+        </div>
 
+        {/* Vitals monitor + complete history */}
+        <aside className="case-ui-right">
+          <VitalsMonitor game={game} title="Patient vitals" />
+          <div className="hidden min-h-0 flex-1 flex-col lg:flex">
+            {historyPanel(true, "min-h-0 flex-1")}
+          </div>
+        </aside>
+
+        {/* Clinical actions */}
+        <div className="case-ui-bottom">
+          <ClinicalDock
+            caseDefinition={caseDefinition}
+            game={game}
+            actions={actions}
+            category={actionCategory}
+            trayOpen={trayOpen}
+            completedIds={completedIds}
+            busy={Boolean(typingActionId)}
+            onSelectCategory={selectCategory}
+            onCloseTray={() => setTrayOpen(false)}
+            onChoose={chooseAction}
+            onStart={startCase}
+          />
+        </div>
+
+        <div className="case-ui-commit">
           <button
             type="button"
             onClick={showCommit}
             disabled={game.phase !== "investigate"}
-            className={`case-primary-button shrink-0 px-3 py-2.5 text-xs sm:px-4 sm:text-sm ${commitReadiness.ready ? "case-commit-ready" : ""}`}
+            className={`case-primary-button px-6 py-3.5 text-base ${commitReadiness.ready ? "case-commit-ready" : ""}`}
           >
-            Commit <span className="hidden sm:inline">diagnosis</span>
+            <span className="grid size-6 place-items-center rounded-full bg-white/20">
+              <Check className="size-4" />
+            </span>
+            Commit diagnosis
           </button>
         </div>
-      </header>
+      </div>
 
       {findingNotice && (
         <div className="case-finding-notice" role="status" aria-live="polite">
@@ -397,62 +479,6 @@ export function CaseChallengeScreen({ caseDefinition }: { caseDefinition: Medica
         </div>
       )}
 
-      {error && (
-        <div
-          role="alert"
-          className="mb-3 flex items-center gap-2 rounded-2xl bg-[var(--case-critical-soft)] px-4 py-3 text-sm font-bold text-[var(--case-critical)]"
-        >
-          <AlertTriangle className="size-4 shrink-0" /> {error}
-          <button
-            type="button"
-            onClick={() => setError("")}
-            className="ml-auto"
-            aria-label="Dismiss"
-          >
-            <X className="size-4" />
-          </button>
-        </div>
-      )}
-
-      <div className="case-shell" data-history={historyExpanded ? "expanded" : "normal"}>
-        {/* Zone A — clinical workspace tools (desktop) */}
-        <aside className="case-zone-sticky hidden self-start lg:block">{sidebar}</aside>
-
-        {/* Zone B — the patient encounter: 3D ward with the clinical HUD over it */}
-        <main className="min-w-0">
-          <PatientStage
-            caseDefinition={caseDefinition}
-            game={game}
-            typing={Boolean(typingActionId)}
-            reaction={avatarReaction}
-            dock={
-              <ClinicalDock
-                caseDefinition={caseDefinition}
-                game={game}
-                actions={actions}
-                actionCategory={actionCategory}
-                completedIds={completedIds}
-                busy={Boolean(typingActionId)}
-                unreadFindings={unreadFindings}
-                onCategory={setActionCategory}
-                onChoose={chooseAction}
-                onStart={startCase}
-                onOpenWorkspace={openWorkspace}
-              />
-            }
-          />
-        </main>
-
-        {/* Zone C — persistent complete interaction history (desktop) */}
-        <aside className="case-zone-sticky hidden self-start xl:block">
-          {historyPanel(true, "h-[calc(100vh-7.5rem)] max-h-[48rem]")}
-        </aside>
-      </div>
-
-      <footer className="mt-5 text-center text-[11px] font-bold text-slate-500">
-        Educational use only, not medical advice
-      </footer>
-
       {/* Dr. Ambrose coach — the single home for hints, at every breakpoint */}
       <div className="fixed bottom-4 left-4 z-40">
         {coachOpen && (
@@ -465,7 +491,7 @@ export function CaseChallengeScreen({ caseDefinition }: { caseDefinition: Medica
           onClick={() => setCoachOpen((open) => !open)}
           aria-expanded={coachOpen}
           aria-label={`Ask ${DR_AMBROSE.name} for a hint`}
-          className="flex items-center gap-2 rounded-full border border-[var(--case-yellow)] bg-[var(--case-yellow-soft)] py-1 pl-1 pr-2 shadow-lg transition-transform hover:-translate-y-0.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--case-yellow)] sm:pr-3"
+          className="hidden items-center gap-2 rounded-full border border-[var(--case-yellow)] lg:flex bg-[var(--case-yellow-soft)] py-1 pl-1 pr-2 shadow-lg transition-transform hover:-translate-y-0.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--case-yellow)] sm:pr-3"
         >
           <DrAmbrose expression="thinking" variant="logo" className="w-10 shrink-0" />
           <span className="hidden text-xs font-black text-[var(--case-yellow-ink)] sm:inline">
@@ -474,7 +500,16 @@ export function CaseChallengeScreen({ caseDefinition }: { caseDefinition: Medica
         </button>
       </div>
 
-      {/* Zone C drawer (tablet / mobile) */}
+      {/* Case panel sheet (tablet / mobile) */}
+      <MobileSheet
+        open={casePanelOpen}
+        label="Case details"
+        onClose={() => setCasePanelOpen(false)}
+      >
+        {casePanel("h-full overflow-y-auto rounded-none border-0 bg-white shadow-none")}
+      </MobileSheet>
+
+      {/* History drawer (tablet / mobile) */}
       <MobileSheet
         open={historyOpen}
         label="Interaction history"

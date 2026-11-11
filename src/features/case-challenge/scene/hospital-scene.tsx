@@ -96,7 +96,7 @@ export default function HospitalScene({
       className="case-stage-canvas"
       frameloop="demand"
       shadows={full ? "soft" : true}
-      dpr={full ? [1, 2] : 1}
+      dpr={full ? [1, 1.5] : 1}
       camera={{ fov: initial.fov, position: initial.position, near: 0.1, far: 40 }}
       gl={{ antialias: true, alpha: false, powerPreference: "high-performance" }}
       onCreated={({ gl }) => {

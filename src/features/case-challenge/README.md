@@ -20,11 +20,20 @@ Run `npm test` after changing the schema, validator, cases, or engine. Tests cov
 
 ## Encounter UI
 
-`components/case-challenge-screen.tsx` owns the encounter shell: Zone A (`case-sidebar.tsx`, desktop-only case context plus the clinical-tool launchers), Zone B (`patient-stage.tsx`, the immersive patient encounter) and Zone C (`interaction-history.tsx`, the full timeline).
+`components/case-challenge-screen.tsx` owns the encounter. While a case is being played it renders a fixed, full-viewport layer (`.case-immersive`): the 3D hospital ward (`scene-backdrop.tsx`) fills the whole screen and every clinical control floats above it as ordinary DOM, HUD-style. Nothing clinical is rendered inside WebGL. The debrief renders normally inside the app shell.
 
-Zone B is a 3D hospital ward with the clinical HUD floating over it. The stage hosts the scene (`scene/hospital-scene-host.tsx`) and layers ordinary React DOM on top: the patient identity panel (top-left, collapsible), status chips and the look-around / photo-view toggles (top-right), the bedside-monitor vitals panel (`VitalsMonitor` in `vitals-strip.tsx`; a strip along the bottom on phones) and the clinical-actions dock (`clinical-dock.tsx`), which overlays the bottom of the scene from `sm` and sits below the viewport on phones. Nothing clinical is rendered inside WebGL.
+From `lg` the floating layer is a three-column grid:
 
-There are exactly three clinical tools — patient chart, clinical notes, differentials — declared once in `WORKSPACE_TOOLS` / `workspaceToolMeta` (`components/case-constants.ts`) and consumed by both the sidebar launchers and `clinical-workspace.tsx`. The workspace deliberately has **no tab strip**: it renders the single tool that was requested, with a back button to the patient, so opening "Clinical notes" never also presents the chart and differentials. Below `lg` the same three launchers live in the dock header instead of behind a drawer.
+- **Top bar** (`encounter-top-bar.tsx`): back, logo, case chip + title, simulated clock, efficiency, hints, look-around / photo-view toggles, signed-in initials.
+- **Left**: `case-panel.tsx` — setting, title, patient identity, chief complaint, presenting tags, then the three clinical-tool launchers.
+- **Centre**: the patient, with status chips (distress, speaking, scene loading / retry) at the top.
+- **Right**: the dark `VitalsMonitor` panel (`vitals-strip.tsx`) above the complete `interaction-history.tsx` timeline (its enlarge toggle widens the column).
+- **Bottom centre**: `clinical-dock.tsx` — the handover before the case starts, then four category buttons (Ask / Examine / Test / Treat). Tapping one raises a tray of that category's actions (one scrolling row, "Show all" for a grid); tapping it again puts the ward back.
+- **Bottom corners**: Dr. Ambrose (hints) on the left, **Commit diagnosis** on the right.
+
+Below `lg` the layer stacks: compact top bar (back, title, clock, Ambrose, history, commit), a tappable patient chip (opens the case panel as a sheet), the ward, a compact vitals strip and the dock. The action tray opens as a sheet above the dock; the case panel, history and clinical tools open in `MobileSheet`s. The app's own header and tab bar are hidden while the encounter is up.
+
+There are exactly three clinical tools — patient chart, clinical notes, differentials — declared once in `WORKSPACE_TOOLS` / `workspaceToolMeta` (`components/case-constants.ts`) and consumed by both the case panel launchers and `clinical-workspace.tsx`. The workspace deliberately has **no tab strip**: it renders the single tool that was requested, with a back button to the patient, so opening "Clinical notes" never also presents the chart and differentials.
 
 ## 3D hospital scene (`scene/`)
 
@@ -35,7 +44,7 @@ There are exactly three clinical tools — patient chart, clinical notes, differ
 - `ward-props.tsx` — bed (with the head section re-pivoted on its documented hinge), procedural room shell, ward props and the procedural sheet over the patient.
 - `camera-rig.tsx` — eases between presets on resize; limited `OrbitControls` only while "look around" is on.
 - `hospital-scene.tsx` — the `Canvas` (demand frameloop, shadows, lights, environment), code-split via `lazy`.
-- `hospital-scene-host.tsx` — client-only shell: render-tier detection (`render-tier.ts`), loading poster, slow/failed timeline, error boundary, WebGL-context-loss and the photo-view toggle. The photographic images in `public/patients/` are the poster and the fallback.
+- `hospital-scene-host.tsx` — client-only shell: render-tier detection (`render-tier.ts`), loading poster, slow/failed timeline (ready is tracked in a ref so a long first frame never races the give-up timer), error boundary, WebGL-context-loss and the photo view. `scene-backdrop.tsx` owns the view state (`useSceneView`: 3D/photo, look-around, status, retry) and renders the full-viewport backdrop, status chips and toggles. The photographic images in `public/patients/` are the poster and the fallback.
 
 Assets live in `public/models/` (CC0; see `public/models/ATTRIBUTION.md`). Patient GLBs are meshopt + WebP compressed (~0.55 MB each); ward props are ~20 KB each.
 

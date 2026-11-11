@@ -21,8 +21,8 @@ export type SceneStatus =
 
 export type SceneView = "scene" | "photo";
 
-const SLOW_AFTER_MS = 12_000;
-const GIVE_UP_AFTER_MS = 40_000;
+const SLOW_AFTER_MS = 15_000;
+const GIVE_UP_AFTER_MS = 120_000;
 
 class SceneErrorBoundary extends Component<
   { onError: (reason: string) => void; children: ReactNode },
@@ -49,6 +49,8 @@ export interface HospitalSceneHostProps {
   orbit: boolean;
   /** Still image used while loading, when WebGL is unavailable and in photo view. */
   poster: { src: string; alt: string };
+  /** Bump to remount the scene after a failure. */
+  attempt?: number;
   onStatusChange?: (status: SceneStatus) => void;
 }
 
@@ -65,13 +67,16 @@ export function HospitalSceneHost({
   view,
   orbit,
   poster,
+  attempt = 0,
   onStatusChange,
 }: HospitalSceneHostProps) {
   const [tier, setTier] = useState<RenderTier | null>(null);
   const [status, setStatus] = useState<SceneStatus>("idle");
-  const [attempt, setAttempt] = useState(0);
   const statusRef = useRef(status);
   statusRef.current = status;
+  // Set synchronously from the first drawn frame, so a long first frame on a
+  // slow GPU can never race the give-up timer into a false failure.
+  const readyRef = useRef(false);
 
   useEffect(() => {
     setTier(detectRenderTier());
@@ -89,12 +94,15 @@ export function HospitalSceneHost({
       setStatus(tier === "off" ? "unavailable" : view === "photo" ? "photo" : "idle");
       return;
     }
+    readyRef.current = false;
     setStatus("loading");
+    const stillLoading = () =>
+      !readyRef.current && (statusRef.current === "loading" || statusRef.current === "slow");
     const slow = window.setTimeout(() => {
-      if (statusRef.current === "loading") setStatus("slow");
+      if (stillLoading()) setStatus("slow");
     }, SLOW_AFTER_MS);
     const giveUp = window.setTimeout(() => {
-      if (statusRef.current === "loading" || statusRef.current === "slow") setStatus("failed");
+      if (stillLoading()) setStatus("failed");
     }, GIVE_UP_AFTER_MS);
     return () => {
       window.clearTimeout(slow);
@@ -103,6 +111,7 @@ export function HospitalSceneHost({
   }, [sceneEnabled, tier, view, model.id, attempt]);
 
   const handleReady = useCallback(() => {
+    readyRef.current = true;
     if (statusRef.current === "loading" || statusRef.current === "slow") setStatus("ready");
   }, []);
   const handleFail = useCallback((reason: string) => {
@@ -138,15 +147,6 @@ export function HospitalSceneHost({
             </Suspense>
           </SceneErrorBoundary>
         </div>
-      )}
-      {status === "failed" && view === "scene" && (
-        <button
-          type="button"
-          className="case-stage-retry"
-          onClick={() => setAttempt((count) => count + 1)}
-        >
-          Retry 3D view
-        </button>
       )}
     </div>
   );

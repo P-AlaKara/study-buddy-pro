@@ -147,15 +147,16 @@ export interface CameraPreset {
 
 /**
  * Three-quarter bedside framing from the foot of the bed on the patient's
- * left, slightly elevated. The face lands around a third in from the left and
- * a third down, leaving the bottom band for the actions dock and the right
- * edge for the vitals monitor; the tall (phone) preset pulls back so the face
- * stays above the bottom vitals strip.
+ * left, slightly elevated, for a scene that fills the whole viewport. The
+ * patient lands in the centre band between the floating left and right
+ * panels, with the face a little above centre so the bottom dock covers only
+ * the foot of the bed; the tall (phone) preset pulls back and uses a wider
+ * field of view so the face clears the top panels and the bottom dock.
  */
 export const CAMERA_PRESETS: Record<"wide" | "standard" | "tall", CameraPreset> = {
-  wide: { position: [2.55, 1.85, -0.75], target: [-0.25, 0.8, 0.4], fov: 33 },
-  standard: { position: [2.3, 1.75, -0.6], target: [-0.1, 0.78, 0.4], fov: 36 },
-  tall: { position: [2.7, 1.95, -0.8], target: [-0.05, 0.95, 0.45], fov: 44 },
+  wide: { position: [3.05, 2.05, -1.05], target: [-0.35, 0.8, 0.3], fov: 34 },
+  standard: { position: [2.75, 1.95, -0.9], target: [-0.2, 0.85, 0.35], fov: 38 },
+  tall: { position: [2.9, 2.0, -0.95], target: [-0.05, 0.9, 0.45], fov: 48 },
 };
 
 export function cameraPresetForAspect(aspect: number): CameraPreset {
