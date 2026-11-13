@@ -26,8 +26,8 @@ import { CommitDialog } from "./commit-dialog.js";
 import { DR_AMBROSE, DrAmbrose } from "./dr-ambrose.js";
 import { EncounterTopBar } from "./encounter-top-bar.js";
 import { InteractionHistory } from "./interaction-history.js";
-import { SceneBackdrop, SceneStatusChips, useSceneView } from "./scene-backdrop.js";
 import { VitalsMonitor } from "./vitals-strip.js";
+import { PatientStatusChips, WardBackdrop } from "./ward-backdrop.js";
 import {
   engineMessage,
   typingDelay,
@@ -56,7 +56,6 @@ export function CaseChallengeScreen({ caseDefinition }: { caseDefinition: Medica
   const [coachOpen, setCoachOpen] = useState(false);
   const [trayOpen, setTrayOpen] = useState(false);
   const [casePanelOpen, setCasePanelOpen] = useState(false);
-  const sceneView = useSceneView();
 
   const typingTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const reactionTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -358,20 +357,14 @@ export function CaseChallengeScreen({ caseDefinition }: { caseDefinition: Medica
 
   return (
     <div className="case-cockpit case-immersive">
-      {/* The ward itself — everything below floats over it */}
-      <SceneBackdrop
-        caseDefinition={caseDefinition}
-        game={game}
-        typing={Boolean(typingActionId)}
-        sceneView={sceneView}
-      />
+      {/* The ward itself — a static render; everything below floats over it */}
+      <WardBackdrop caseDefinition={caseDefinition} />
 
       <div className="case-immersive-ui" data-history={historyExpanded ? "expanded" : "normal"}>
         <div className="case-ui-top">
           <EncounterTopBar
             caseDefinition={caseDefinition}
             game={game}
-            sceneView={sceneView}
             commitReady={commitReadiness.ready}
             onCommit={showCommit}
             onOpenHistory={() => setHistoryOpen(true)}
@@ -385,12 +378,7 @@ export function CaseChallengeScreen({ caseDefinition }: { caseDefinition: Medica
 
         {/* Over the patient: status, errors, and the phone-sized patient chip */}
         <div className="case-ui-center">
-          <SceneStatusChips
-            caseDefinition={caseDefinition}
-            game={game}
-            typing={Boolean(typingActionId)}
-            sceneView={sceneView}
-          />
+          <PatientStatusChips game={game} typing={Boolean(typingActionId)} />
           {error && (
             <div
               role="alert"
@@ -480,7 +468,7 @@ export function CaseChallengeScreen({ caseDefinition }: { caseDefinition: Medica
       )}
 
       {/* Dr. Ambrose coach — the single home for hints, at every breakpoint */}
-      <div className="fixed bottom-4 left-4 z-40">
+      <div className="case-coach-anchor">
         {coachOpen && (
           <div className="case-coach-popover mb-2 !static w-[min(20rem,calc(100vw-2rem))] overflow-hidden rounded-2xl">
             <HintPanel game={game} nextHint={nextHint} onHint={askForHint} />

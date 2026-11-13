@@ -151,7 +151,7 @@ export function VitalsMonitor({
                 <span style={{ color: lineColor }}>
                   <Icon className="size-3.5" />
                 </span>
-                <p className="sr-only text-[9px] font-black uppercase tracking-wider text-white/55 sm:not-sr-only sm:truncate">
+                <p className="case-monitor-label text-[9px] font-black uppercase tracking-wider text-white/55">
                   {vital.label}
                 </p>
               </div>
@@ -160,7 +160,7 @@ export function VitalsMonitor({
                 style={{ color: vital.state === "normal" ? "#ffffff" : lineColor }}
               >
                 {vital.value}
-                <span className="ml-0.5 hidden text-[9px] font-bold text-white/50 sm:ml-1 sm:inline">
+                <span className="case-monitor-unit text-[9px] font-bold text-white/50">
                   {vital.unit}
                 </span>
               </p>

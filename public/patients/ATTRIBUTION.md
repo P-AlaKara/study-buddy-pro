@@ -1,10 +1,18 @@
-# Patient viewport fallback images
+# Case Challenge ward backgrounds
 
-- `female.webp` — female patient, semi-reclined in a hospital bed. Used for cases where `patient.sex` is female.
-- `male.webp` — male patient, semi-reclined in a hospital bed. Used for all other cases.
+Pre-rendered hospital-ward scenes used as the full-viewport background of the
+clinical encounter. The clinical HUD floats over them; nothing is drawn in
+WebGL.
 
-Project-provided illustrative renders. Since the 3D hospital scene landed they
-serve as the loading poster, the no-WebGL / failure fallback and the optional
-"photo view" of the case stage. Resolved in code by
-`src/features/case-challenge/components/patient-media.ts`; the 3D models live in
-`public/models/` (see `public/models/ATTRIBUTION.md`).
+| File                    | Use                                                       |
+| ----------------------- | --------------------------------------------------------- |
+| `ward-female.webp`      | Female patient, semi-reclined in bed (1344 × 768)         |
+| `ward-female-1080.webp` | 1080 px wide variant, picked by `srcset` on small screens |
+| `ward-male.webp`        | Male patient, semi-reclined in bed (1672 × 941)           |
+| `ward-male-1080.webp`   | 1080 px wide variant, picked by `srcset` on small screens |
+
+Project-provided renders, encoded as WebP (quality 84 / 82) from the original
+PNGs. Resolved in code by `src/features/case-challenge/components/patient-media.ts`
+(an explicit `patient.model` wins, otherwise `patient.sex`), which also records
+each image's focal point (the patient's face) so cover-cropping keeps the
+patient in frame on every viewport.

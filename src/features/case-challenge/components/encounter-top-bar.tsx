@@ -6,7 +6,6 @@ import { formatCaseClock, type GameState } from "../engine.js";
 import type { MedicalCase } from "../schema.js";
 import { caseNumberLabel } from "./case-panel.js";
 import { ScoreMeter } from "./case-ui.js";
-import { SceneViewControls, type SceneViewState } from "./scene-backdrop.js";
 
 function initials(name: string): string {
   return (
@@ -21,14 +20,12 @@ function initials(name: string): string {
 
 /**
  * The floating command bar over the ward: way home, case identity, the
- * simulated clock, scene controls and the student's standing. Below `lg` it
- * also carries the history and commit actions, since the side panels fold
- * into sheets there.
+ * simulated clock and the student's standing. Below `lg` it also carries the
+ * history and commit actions, since the side panels fold into sheets there.
  */
 export function EncounterTopBar({
   caseDefinition,
   game,
-  sceneView,
   commitReady,
   onCommit,
   onOpenHistory,
@@ -37,7 +34,6 @@ export function EncounterTopBar({
 }: {
   caseDefinition: MedicalCase;
   game: GameState;
-  sceneView: SceneViewState;
   commitReady: boolean;
   onCommit: () => void;
   onOpenHistory: () => void;
@@ -100,9 +96,6 @@ export function EncounterTopBar({
           <Lightbulb className="size-4 text-[var(--case-yellow-ink)]" />
           {game.hintsUsed.length} hints
         </span>
-        <div className="hidden items-center gap-1.5 sm:flex">
-          <SceneViewControls sceneView={sceneView} />
-        </div>
         <span
           className="case-float-pill hidden size-11 place-items-center bg-[var(--case-mint-soft)] text-xs font-black text-[var(--case-mint-ink)] lg:grid"
           aria-label={name ? `Signed in as ${name}` : "Signed in"}
