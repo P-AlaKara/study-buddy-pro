@@ -7,6 +7,8 @@ type VitalState = "normal" | "warning" | "critical";
 interface VitalDescriptor {
   key: string;
   label: string;
+  /** Monitor-style abbreviation shown on the strip; `label` stays for screen readers. */
+  short: string;
   value: string;
   unit: string;
   icon: ComponentType<{ className?: string }>;
@@ -30,6 +32,7 @@ function buildVitals(game: GameState): VitalDescriptor[] {
     {
       key: "hr",
       label: "Heart rate",
+      short: "HR",
       value: String(hr),
       unit: "bpm",
       icon: HeartPulse,
@@ -40,6 +43,7 @@ function buildVitals(game: GameState): VitalDescriptor[] {
     {
       key: "bp",
       label: "Blood pressure",
+      short: "BP",
       value: formatBloodPressure(game.vitals),
       unit: "mmHg",
       icon: Activity,
@@ -49,7 +53,8 @@ function buildVitals(game: GameState): VitalDescriptor[] {
     },
     {
       key: "rr",
-      label: "Resp. rate",
+      label: "Respiratory rate",
+      short: "RR",
       value: String(rr),
       unit: "/min",
       icon: Wind,
@@ -59,7 +64,8 @@ function buildVitals(game: GameState): VitalDescriptor[] {
     },
     {
       key: "spo2",
-      label: "SpO₂",
+      label: "Oxygen saturation",
+      short: "SpO₂",
       value: `${spo2}`,
       unit: "%",
       icon: Droplet,
@@ -70,6 +76,7 @@ function buildVitals(game: GameState): VitalDescriptor[] {
     {
       key: "temp",
       label: "Temperature",
+      short: "Temp",
       value: temp.toFixed(1),
       unit: "°C",
       icon: Thermometer,
@@ -114,61 +121,45 @@ function Sparkline({ color, seed }: { color: string; seed: number }) {
 }
 
 /**
- * Monitor-style vitals: a dark bedside-monitor panel floating over the ward.
- * On phones it runs as a compact strip; from `sm` it is a two-column grid with
- * a title row, pinned to the right edge of the encounter.
+ * Monitor-style vitals: a slim, dark bedside-monitor strip of the five
+ * essential readouts (HR, BP, RR, SpO₂, temperature), each with its
+ * waveform. It runs across the top of the encounter under the top bar; on
+ * phones the waveforms and units drop away and only the readouts remain.
  */
-export function VitalsMonitor({
-  game,
-  className = "",
-  title,
-}: {
-  game: GameState;
-  className?: string;
-  title?: string;
-}) {
+export function VitalsMonitor({ game, className = "" }: { game: GameState; className?: string }) {
   const vitals = buildVitals(game);
   return (
-    <div className={`case-vitals-panel ${className}`} role="group" aria-label="Patient vital signs">
-      {title && (
-        <p className="case-vitals-title">
-          <Activity className="size-4 text-[var(--case-accent)]" />
-          {title}
-        </p>
-      )}
-      <div className="case-vitals-grid">
-        {vitals.map((vital) => {
-          const Icon = vital.icon;
-          const lineColor =
-            vital.state === "critical"
-              ? "var(--case-critical)"
-              : vital.state === "warning"
-                ? "var(--case-yellow)"
-                : vital.accent;
-          return (
-            <div key={vital.key} data-state={vital.state} className="case-monitor-vital">
-              <div className="flex items-center gap-1.5">
+    <div className={`case-vitals-strip ${className}`} role="group" aria-label="Patient vital signs">
+      {vitals.map((vital) => {
+        const Icon = vital.icon;
+        const lineColor =
+          vital.state === "critical"
+            ? "var(--case-critical)"
+            : vital.state === "warning"
+              ? "var(--case-yellow)"
+              : vital.accent;
+        return (
+          <div key={vital.key} data-state={vital.state} className="case-vital">
+            <div className="case-vital-readout">
+              <p className="case-vital-label">
                 <span style={{ color: lineColor }}>
                   <Icon className="size-3.5" />
                 </span>
-                <p className="case-monitor-label text-[9px] font-black uppercase tracking-wider text-white/55">
-                  {vital.label}
-                </p>
-              </div>
+                <span aria-hidden="true">{vital.short}</span>
+                <span className="sr-only">{vital.label}</span>
+              </p>
               <p
-                className="case-monitor-value mt-0.5 font-mono font-black leading-none"
+                className="case-vital-value font-mono font-black leading-none"
                 style={{ color: vital.state === "normal" ? "#ffffff" : lineColor }}
               >
                 {vital.value}
-                <span className="case-monitor-unit text-[9px] font-bold text-white/50">
-                  {vital.unit}
-                </span>
+                <span className="case-vital-unit">{vital.unit}</span>
               </p>
-              <Sparkline color={lineColor} seed={vital.seed} />
             </div>
-          );
-        })}
-      </div>
+            <Sparkline color={lineColor} seed={vital.seed} />
+          </div>
+        );
+      })}
     </div>
   );
 }

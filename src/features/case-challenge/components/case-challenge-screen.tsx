@@ -373,6 +373,11 @@ export function CaseChallengeScreen({ caseDefinition }: { caseDefinition: Medica
           />
         </div>
 
+        {/* Bedside monitor strip under the top bar */}
+        <div className="case-ui-vitals">
+          <VitalsMonitor game={game} />
+        </div>
+
         {/* Case identity + tools (desktop) */}
         <aside className="case-ui-left">{casePanel("min-h-0 overflow-y-auto")}</aside>
 
@@ -415,13 +420,8 @@ export function CaseChallengeScreen({ caseDefinition }: { caseDefinition: Medica
           </button>
         </div>
 
-        {/* Vitals monitor + complete history */}
-        <aside className="case-ui-right">
-          <VitalsMonitor game={game} title="Patient vitals" />
-          <div className="hidden min-h-0 flex-1 flex-col lg:flex">
-            {historyPanel(true, "min-h-0 flex-1")}
-          </div>
-        </aside>
+        {/* Complete history (desktop) */}
+        <aside className="case-ui-right">{historyPanel(true, "min-h-0 flex-1")}</aside>
 
         {/* Clinical actions */}
         <div className="case-ui-bottom">
