@@ -40,9 +40,13 @@ export function CaseImageViewer({
 
   function onPointerMove(event: ReactPointerEvent<HTMLDivElement>) {
     if (!drag.current) return;
+    // The encounter HUD is scaled with CSS `zoom`; convert the cursor's
+    // on-screen delta into the panel's own pixels so the image tracks it.
+    const cssZoom =
+      (event.currentTarget as HTMLElement & { currentCSSZoom?: number }).currentCSSZoom || 1;
     setPan({
-      x: drag.current.panX + event.clientX - drag.current.x,
-      y: drag.current.panY + event.clientY - drag.current.y,
+      x: drag.current.panX + (event.clientX - drag.current.x) / cssZoom,
+      y: drag.current.panY + (event.clientY - drag.current.y) / cssZoom,
     });
   }
 

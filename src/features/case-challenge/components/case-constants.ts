@@ -66,6 +66,8 @@ export const categoryMeta: Record<
     color: string;
     soft: string;
     ink: string;
+    /** Saturated pastel for the dock's clay buttons (soft is for light surfaces). */
+    pastel: string;
   }
 > = {
   ask: {
@@ -74,6 +76,7 @@ export const categoryMeta: Record<
     color: "var(--case-blue)",
     soft: "var(--case-blue-soft)",
     ink: "var(--case-blue-ink)",
+    pastel: "#bde8ff",
   },
   examine: {
     label: "Examine",
@@ -81,6 +84,7 @@ export const categoryMeta: Record<
     color: "var(--case-accent)",
     soft: "var(--case-accent-soft)",
     ink: "var(--case-accent-ink)",
+    pastel: "#e9c7ff",
   },
   test: {
     label: "Test",
@@ -88,6 +92,7 @@ export const categoryMeta: Record<
     color: "var(--case-mint)",
     soft: "var(--case-mint-soft)",
     ink: "var(--case-mint-ink)",
+    pastel: "#b9f5e4",
   },
   treat: {
     label: "Treat",
@@ -95,6 +100,7 @@ export const categoryMeta: Record<
     color: "var(--case-pink)",
     soft: "var(--case-pink-soft)",
     ink: "var(--case-pink-ink)",
+    pastel: "#ffd0e8",
   },
 };
 

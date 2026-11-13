@@ -12,7 +12,7 @@ interface VitalDescriptor {
   value: string;
   unit: string;
   icon: ComponentType<{ className?: string }>;
-  /** Brand accent (CSS variable) used for the icon + sparkline when healthy. */
+  /** Monitor accent (golden / violet / mint) for the icon + sparkline when healthy. */
   accent: string;
   state: VitalState;
   /** 0–1 waviness used to vary the sparkline shape per vital. */
@@ -36,7 +36,7 @@ function buildVitals(game: GameState): VitalDescriptor[] {
       value: String(hr),
       unit: "bpm",
       icon: HeartPulse,
-      accent: "var(--case-pink)",
+      accent: "#ffc928",
       state: hrState,
       seed: 0.95,
     },
@@ -47,7 +47,7 @@ function buildVitals(game: GameState): VitalDescriptor[] {
       value: formatBloodPressure(game.vitals),
       unit: "mmHg",
       icon: Activity,
-      accent: "var(--case-blue)",
+      accent: "#ffc928",
       state: bpState,
       seed: 0.45,
     },
@@ -58,7 +58,7 @@ function buildVitals(game: GameState): VitalDescriptor[] {
       value: String(rr),
       unit: "/min",
       icon: Wind,
-      accent: "var(--case-orange)",
+      accent: "#ffc928",
       state: rrState,
       seed: 0.7,
     },
@@ -69,7 +69,7 @@ function buildVitals(game: GameState): VitalDescriptor[] {
       value: `${spo2}`,
       unit: "%",
       icon: Droplet,
-      accent: "var(--case-accent)",
+      accent: "#c86bfa",
       state: spo2State,
       seed: 0.3,
     },
@@ -80,7 +80,7 @@ function buildVitals(game: GameState): VitalDescriptor[] {
       value: temp.toFixed(1),
       unit: "°C",
       icon: Thermometer,
-      accent: "var(--case-mint)",
+      accent: "#3de3c0",
       state: tempState,
       seed: 0.18,
     },
@@ -132,11 +132,13 @@ export function VitalsMonitor({ game, className = "" }: { game: GameState; class
     <div className={`case-vitals-strip ${className}`} role="group" aria-label="Patient vital signs">
       {vitals.map((vital) => {
         const Icon = vital.icon;
+        // Monitor palette on the dark strip: golden for warnings, a lighter
+        // red than the app's critical token so it stays legible on smoke.
         const lineColor =
           vital.state === "critical"
-            ? "var(--case-critical)"
+            ? "#ff6161"
             : vital.state === "warning"
-              ? "var(--case-yellow)"
+              ? "#ffc928"
               : vital.accent;
         return (
           <div key={vital.key} data-state={vital.state} className="case-vital">
@@ -150,7 +152,7 @@ export function VitalsMonitor({ game, className = "" }: { game: GameState; class
               </p>
               <p
                 className="case-vital-value font-mono font-black leading-none"
-                style={{ color: vital.state === "normal" ? "#ffffff" : lineColor }}
+                style={{ color: vital.state === "normal" ? "#faf9ff" : lineColor }}
               >
                 {vital.value}
                 <span className="case-vital-unit">{vital.unit}</span>

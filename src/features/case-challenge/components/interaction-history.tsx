@@ -52,14 +52,16 @@ function TimelineNode({
       <div className="min-w-0">
         <div className="flex items-baseline justify-between gap-2">
           <p
-            className="truncate text-[10px] font-black uppercase tracking-[0.12em]"
+            className="case-tl-label truncate text-[10px] font-black uppercase tracking-[0.12em]"
             style={{ color }}
           >
             {label}
           </p>
-          <time className="shrink-0 font-mono text-[10px] font-bold text-slate-400">{time}</time>
+          <time className="case-tl-time shrink-0 font-mono text-[10px] font-bold text-slate-400">
+            {time}
+          </time>
         </div>
-        <div className="mt-1.5">{children}</div>
+        <div className="case-tl-body mt-1.5">{children}</div>
       </div>
     </li>
   );
@@ -321,7 +323,7 @@ export function InteractionHistory({
       className={`case-panel case-history-panel ${className}`}
       aria-label="Patient interaction history"
     >
-      <header className="flex items-center gap-3 border-b border-[var(--case-border)] px-4 py-3">
+      <header className="case-history-header flex items-center gap-3 border-b border-[var(--case-border)] px-4 py-3">
         <span className="grid size-9 shrink-0 place-items-center rounded-2xl bg-[var(--case-accent-soft)] text-[var(--case-accent-ink)]">
           <HeartPulse className="size-4" />
         </span>

@@ -39,33 +39,34 @@ export function CasePanel({
   return (
     <nav className={`case-float-panel flex flex-col ${className}`} aria-label="Case workspace">
       <section className="px-4 pb-3.5 pt-4">
-        <p className="text-[11px] font-black uppercase tracking-[0.14em] text-[var(--case-accent-ink)]">
+        <p className="text-[11px] font-black uppercase tracking-[0.14em] text-[var(--hud-brand)]">
           {caseDefinition.setting}
         </p>
-        <h1 className="mt-0.5 font-display text-[22px] font-black leading-tight text-slate-900">
+        <h1 className="mt-0.5 font-display text-[22px] font-black leading-tight text-[var(--hud-navy)]">
           {caseDefinition.title}
         </h1>
-        <p className="mt-2 text-[15px] font-black text-[var(--case-accent-ink)]">
-          {patient.name}, {patient.age} <span className="text-slate-400">•</span> {patient.sex}
+        <p className="mt-2 text-[15px] font-black text-[var(--hud-brand)]">
+          {patient.name}, {patient.age} <span className="text-[var(--hud-muted)]">•</span>{" "}
+          {patient.sex}
         </p>
-        <p className="mt-1 text-[13px] font-bold leading-snug text-slate-700">
+        <p className="mt-1 text-[13px] font-bold leading-snug text-[var(--hud-navy)]">
           {patient.chiefComplaint}
         </p>
         <div className="mt-2.5 flex flex-wrap gap-1.5">
           {tags.map((tag) => (
             <span
               key={tag}
-              className="inline-flex items-center gap-1 rounded-full bg-white/60 px-2.5 py-1 text-[10px] font-black uppercase tracking-wider text-[var(--case-accent-ink)]"
+              className="inline-flex items-center gap-1 rounded-full bg-white/45 px-2.5 py-1 text-[10px] font-black uppercase tracking-wider text-[var(--hud-brand)]"
             >
-              <span className="size-1.5 rounded-full bg-[var(--case-accent)]" aria-hidden="true" />
+              <span className="size-1.5 rounded-full bg-[var(--hud-brand)]" aria-hidden="true" />
               {tag}
             </span>
           ))}
         </div>
       </section>
 
-      <section className="border-t border-white/70 px-3 pb-2.5 pt-2.5">
-        <p className="px-1.5 pb-1.5 text-[10px] font-black uppercase tracking-[0.14em] text-slate-500">
+      <section className="border-t border-white/60 px-3 pb-2.5 pt-2.5">
+        <p className="px-1.5 pb-1.5 text-[10px] font-black uppercase tracking-[0.14em] text-[var(--hud-muted)]">
           Case tools
         </p>
         <ul className="space-y-1.5">
@@ -79,9 +80,9 @@ export function CasePanel({
                 <button
                   type="button"
                   onClick={() => onOpenWorkspace(tool)}
-                  className="group flex w-full items-center gap-3 rounded-2xl bg-white/60 px-3 py-2.5 text-left transition-colors hover:bg-white/85 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--case-accent)]"
+                  className="group flex w-full items-center gap-3 rounded-2xl bg-white/40 px-3 py-2.5 text-left transition-colors hover:bg-white/65 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--hud-brand)]"
                 >
-                  <span className="relative grid size-9 shrink-0 place-items-center rounded-xl bg-[var(--case-accent-soft)] text-[var(--case-accent-ink)]">
+                  <span className="relative grid size-9 shrink-0 place-items-center rounded-xl bg-white/70 text-[var(--hud-brand)]">
                     <Icon className="size-[18px]" />
                     {badge > 0 && (
                       <span className="absolute -right-1 -top-1 grid size-[18px] place-items-center rounded-full bg-[var(--case-pink)] text-[9px] font-black text-white ring-2 ring-white">
@@ -92,27 +93,27 @@ export function CasePanel({
                   </span>
                   <span className="min-w-0 flex-1">
                     <span className="flex items-baseline gap-1.5">
-                      <span className="truncate text-[14px] font-black text-slate-800">
+                      <span className="truncate text-[14px] font-black text-[var(--hud-navy)]">
                         {meta.label}
                       </span>
                       {count > 0 && (
-                        <span className="shrink-0 text-[10px] font-black text-slate-400">
+                        <span className="shrink-0 text-[10px] font-black text-[var(--hud-muted)]">
                           {count}
                           <span className="sr-only"> {meta.unit}</span>
                         </span>
                       )}
                     </span>
-                    <span className="mt-0.5 block truncate text-[11px] font-bold text-slate-500">
+                    <span className="mt-0.5 block truncate text-[11px] font-bold text-[var(--hud-muted)]">
                       {meta.blurb}
                     </span>
                   </span>
-                  <ChevronRight className="size-4 shrink-0 text-slate-300 transition-transform group-hover:translate-x-0.5" />
+                  <ChevronRight className="size-4 shrink-0 text-[var(--hud-muted)]/60 transition-transform group-hover:translate-x-0.5" />
                 </button>
               </li>
             );
           })}
         </ul>
-        <p className="mt-2.5 flex items-center gap-1.5 px-1.5 text-[10px] font-bold text-slate-500">
+        <p className="mt-2.5 flex items-center gap-1.5 px-1.5 text-[10px] font-bold text-[var(--hud-muted)]">
           <FileText className="size-3.5" />
           {caseDefinition.reviewStatus === "clinician_reviewed"
             ? "Clinician reviewed"

@@ -178,7 +178,14 @@ export function ClinicalDock({
               role="tab"
               aria-selected={active}
               onClick={() => onSelectCategory(item)}
-              style={{ "--cat": itemMeta.color, "--cat-soft": itemMeta.soft } as CSSProperties}
+              style={
+                {
+                  "--cat": itemMeta.color,
+                  "--cat-soft": itemMeta.soft,
+                  "--cat-ink": itemMeta.ink,
+                  "--cat-pastel": itemMeta.pastel,
+                } as CSSProperties
+              }
               className="case-dock-category"
               data-active={active ? "true" : "false"}
             >

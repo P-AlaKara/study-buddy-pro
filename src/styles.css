@@ -94,6 +94,16 @@
   --case-critical-soft: #fee9e9;
   --case-success: #2e8a66;
   --case-monitor: #1f2a3d;
+  /* Encounter HUD surfaces (see case-challenge README): lightest → darkest. */
+  --hud-lavender: #e9e2f1;
+  --hud-mid: #9b94b5;
+  --hud-dock: #77718f;
+  --hud-smoke: #514d6b;
+  --hud-navy: #191b36;
+  --hud-muted: #63708d;
+  --hud-brand: #8400e8;
+  --hud-label: #d5d0e2;
+  --hud-bubble: #e9ddf6;
   --app-max-width: 93.75rem;
 }
 
@@ -777,33 +787,39 @@ body:has(.case-immersive) .feedback-fab {
 .case-hud-chip,
 .case-hud-icon,
 .case-vitals-strip,
+.case-history-panel,
 .case-ui-commit {
   pointer-events: auto;
 }
-/* HUD surfaces: softly lavender-tinted, semi-transparent clay slabs with a
-   light hairline, a top highlight and a soft drop shadow. The tint keeps them
-   part of the ward rather than white cards on top of it; the blur is modest
-   so the scene reads through without the text ever sitting on raw detail. */
+/* HUD surfaces, lightest to darkest: the lavender case panel, the smoky
+   history card, the dock and the vitals strip. All are soft, semi-transparent
+   clay slabs with a thin white hairline and a diffused shadow; the blur is
+   modest so the ward reads through without text ever sitting on raw detail. */
 .case-float-panel {
-  border-radius: 1.4rem;
-  border: 1px solid rgb(255 255 255 / 0.6);
-  background: linear-gradient(180deg, rgb(245 242 253 / 0.82) 0%, rgb(238 234 251 / 0.76) 100%);
+  border-radius: 1.6rem;
+  border: 1px solid rgb(255 255 255 / 0.55);
+  background: linear-gradient(
+    180deg,
+    color-mix(in srgb, var(--hud-lavender) 90%, transparent) 0%,
+    color-mix(in srgb, var(--hud-lavender) 85%, transparent) 100%
+  );
+  color: var(--hud-navy);
   box-shadow:
-    0 1px 2px rgb(44 38 80 / 0.05),
-    0 14px 34px -18px rgb(44 38 80 / 0.38),
-    inset 0 1px 0 rgb(255 255 255 / 0.75);
-  backdrop-filter: blur(10px) saturate(1.15);
+    0 1px 2px rgb(99 92 140 / 0.08),
+    0 16px 36px -20px rgb(99 92 140 / 0.45),
+    inset 0 1px 0 rgb(255 255 255 / 0.6);
+  backdrop-filter: blur(8px) saturate(1.1);
 }
 .case-float-pill {
   align-items: center;
   border-radius: 999px;
-  border: 1px solid rgb(255 255 255 / 0.6);
-  background: linear-gradient(180deg, rgb(245 242 253 / 0.84) 0%, rgb(238 234 251 / 0.78) 100%);
+  border: 1px solid rgb(255 255 255 / 0.55);
+  background: color-mix(in srgb, var(--hud-lavender) 88%, transparent);
   box-shadow:
-    0 1px 2px rgb(44 38 80 / 0.05),
-    0 10px 24px -14px rgb(44 38 80 / 0.34),
-    inset 0 1px 0 rgb(255 255 255 / 0.75);
-  backdrop-filter: blur(10px) saturate(1.15);
+    0 1px 2px rgb(99 92 140 / 0.08),
+    0 10px 24px -14px rgb(99 92 140 / 0.4),
+    inset 0 1px 0 rgb(255 255 255 / 0.6);
+  backdrop-filter: blur(8px) saturate(1.1);
 }
 /* Phones stack: top bar, vitals strip, patient (free space), dock. */
 .case-ui-top {
@@ -894,6 +910,44 @@ body:has(.case-immersive) .feedback-fab {
   }
 }
 
+/* HUD scale. The whole floating layer (and the Ambrose button that sits in
+   its corner) is scaled with CSS `zoom`, the same effect as zooming the
+   browser out: fonts, padding, card widths, the vitals strip and the dock
+   all shrink together and the arrangement is untouched. The layer is
+   absolutely positioned with `inset: 0`, so it still fills the viewport.
+   The "finding added" toast takes the same factor so it matches the cards.
+   The factor steps down on bigger screens, where there is room to give the
+   ward, and stays at 1 on phones, where touch targets come first. Media
+   queries read the real viewport, so breakpoints are unaffected. */
+@media (min-width: 40rem) {
+  .case-immersive-ui,
+  .case-coach-anchor,
+  .case-immersive .case-finding-notice {
+    zoom: 0.9;
+  }
+}
+@media (min-width: 64rem) {
+  .case-immersive-ui,
+  .case-coach-anchor,
+  .case-immersive .case-finding-notice {
+    zoom: 0.84;
+  }
+}
+@media (min-width: 90rem) {
+  .case-immersive-ui,
+  .case-coach-anchor,
+  .case-immersive .case-finding-notice {
+    zoom: 0.8;
+  }
+}
+@media (min-width: 110rem) {
+  .case-immersive-ui,
+  .case-coach-anchor,
+  .case-immersive .case-finding-notice {
+    zoom: 0.78;
+  }
+}
+
 /* Dr. Ambrose: button + popover in the bottom-left corner from lg. Below lg
    the button lives in the top bar, so the popover drops in beneath it on the
    right, clear of the vitals strip and the dock. */
@@ -961,8 +1015,8 @@ body:has(.case-immersive) .feedback-fab {
   align-items: center;
   gap: 0.4rem;
   border-radius: 999px;
-  border: 1px solid rgb(255 255 255 / 0.6);
-  background: rgb(245 242 253 / 0.88);
+  border: 1px solid rgb(255 255 255 / 0.55);
+  background: color-mix(in srgb, var(--hud-lavender) 90%, transparent);
   padding: 0.45rem 0.75rem;
   font-size: 10px;
   font-weight: 900;
@@ -979,14 +1033,14 @@ body:has(.case-immersive) .feedback-fab {
   width: 2.5rem;
   height: 2.5rem;
   border-radius: 999px;
-  border: 1px solid rgb(255 255 255 / 0.6);
-  background: linear-gradient(180deg, rgb(245 242 253 / 0.84) 0%, rgb(238 234 251 / 0.78) 100%);
+  border: 1px solid rgb(255 255 255 / 0.55);
+  background: color-mix(in srgb, var(--hud-lavender) 88%, transparent);
   color: #475569;
   box-shadow:
-    0 1px 2px rgb(44 38 80 / 0.05),
-    0 10px 24px -14px rgb(44 38 80 / 0.34),
-    inset 0 1px 0 rgb(255 255 255 / 0.75);
-  backdrop-filter: blur(10px);
+    0 1px 2px rgb(99 92 140 / 0.08),
+    0 10px 24px -14px rgb(99 92 140 / 0.4),
+    inset 0 1px 0 rgb(255 255 255 / 0.6);
+  backdrop-filter: blur(8px);
   transition:
     transform 160ms ease,
     background-color 160ms ease,
@@ -1034,12 +1088,15 @@ body:has(.case-immersive) .feedback-fab {
 }
 @media (min-width: 64rem) {
   .case-immersive .case-finding-notice {
-    top: 11.75rem; /* below the top bar, vitals strip and status chips */
+    /* Below the top bar, vitals strip and status chips (zoomed units).
+       Centred with auto margins rather than left: 50%, which zoom skews. */
+    top: 11.75rem;
     bottom: auto;
-    right: auto;
-    left: 50%;
+    right: 0;
+    left: 0;
+    width: max-content;
     max-width: calc(100vw - 2rem);
-    translate: -50% 0;
+    margin-inline: auto;
   }
 }
 
@@ -1051,15 +1108,20 @@ body:has(.case-immersive) .feedback-fab {
   display: grid;
   grid-template-columns: repeat(5, minmax(0, 1fr));
   gap: 0.2rem;
-  padding: 0.3rem 0.35rem;
-  border-radius: 1rem;
-  border: 1px solid rgb(255 255 255 / 0.14);
-  background: linear-gradient(180deg, rgb(60 54 92 / 0.78) 0%, rgb(46 42 74 / 0.74) 100%);
+  padding: 0.3rem 0.5rem;
+  border-radius: 1.9rem;
+  border: 1px solid rgb(226 220 245 / 0.28);
+  /* Smoky purple, a touch lighter toward the right where the window is. */
+  background: linear-gradient(
+    90deg,
+    color-mix(in srgb, var(--hud-smoke) 86%, transparent) 0%,
+    color-mix(in srgb, #625e80 84%, transparent) 100%
+  );
   box-shadow:
-    0 1px 2px rgb(0 0 0 / 0.12),
-    0 14px 32px -18px rgb(20 16 40 / 0.6),
-    inset 0 1px 0 rgb(255 255 255 / 0.1);
-  backdrop-filter: blur(10px) saturate(1.1);
+    0 1px 2px rgb(20 16 40 / 0.12),
+    0 14px 32px -18px rgb(20 16 40 / 0.55),
+    inset 0 1px 0 rgb(255 255 255 / 0.12);
+  backdrop-filter: blur(8px) saturate(1.1);
 }
 .case-vital {
   position: relative;
@@ -1078,7 +1140,7 @@ body:has(.case-immersive) .feedback-fab {
   bottom: 18%;
   left: -0.1rem;
   width: 1px;
-  background: rgb(255 255 255 / 0.14);
+  background: rgb(255 255 255 / 0.2);
 }
 .case-vital-readout {
   min-width: 0;
@@ -1092,7 +1154,7 @@ body:has(.case-immersive) .feedback-fab {
   letter-spacing: 0.06em;
   text-transform: uppercase;
   white-space: nowrap;
-  color: rgb(255 255 255 / 0.62);
+  color: var(--hud-label);
 }
 .case-vital-value {
   margin-top: 0.15rem;
@@ -1104,7 +1166,7 @@ body:has(.case-immersive) .feedback-fab {
   margin-left: 0.3rem;
   font-size: 10px;
   font-weight: 700;
-  color: rgb(255 255 255 / 0.5);
+  color: color-mix(in srgb, var(--hud-label) 80%, transparent);
 }
 .case-vital-spark {
   display: none;
@@ -1141,10 +1203,10 @@ body:has(.case-immersive) .feedback-fab {
   }
 }
 .case-vital[data-state="warning"] {
-  background: color-mix(in srgb, var(--case-yellow) 16%, transparent);
+  background: rgb(255 201 40 / 0.14);
 }
 .case-vital[data-state="critical"] {
-  background: color-mix(in srgb, var(--case-critical) 26%, transparent);
+  background: rgb(255 97 97 / 0.22);
   animation: case-monitor-alert 1.8s ease-in-out infinite;
 }
 @keyframes case-monitor-alert {
@@ -1166,19 +1228,31 @@ body:has(.case-immersive) .feedback-fab {
   padding: 1rem 1.1rem;
 }
 /* Compact floating dock: four small category buttons separated by hairlines. */
+/* Smoky gray-purple, a step lighter than the vitals strip, with the bed still
+   faintly visible through it. Labels go white on it. */
 .case-dock-bar {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 0.25rem;
   padding: 0.35rem 0.4rem;
-  border-radius: 1.5rem;
-  /* The dock is the most-touched control and sits over the bed, so it gets
-     the strongest lift of the HUD. */
+  border-radius: 1.9rem;
+  border-color: rgb(226 220 245 / 0.35);
+  background: linear-gradient(
+    180deg,
+    color-mix(in srgb, var(--hud-dock) 84%, transparent) 0%,
+    color-mix(in srgb, #6a6486 82%, transparent) 100%
+  );
+  color: #fff;
   box-shadow:
-    0 1px 2px rgb(44 38 80 / 0.06),
-    0 16px 34px -16px rgb(44 38 80 / 0.42),
-    0 40px 70px -40px rgb(44 38 80 / 0.45),
-    inset 0 1px 0 rgb(255 255 255 / 0.8);
+    0 1px 2px rgb(20 16 40 / 0.1),
+    0 16px 34px -16px rgb(20 16 40 / 0.5),
+    inset 0 1px 0 rgb(255 255 255 / 0.18);
+}
+.case-dock-bar .case-dock-category > span:nth-of-type(2) {
+  color: #fff;
+}
+.case-dock-bar .case-dock-category > span:nth-of-type(3) {
+  color: var(--hud-label);
 }
 .case-dock-category {
   position: relative;
@@ -1199,18 +1273,19 @@ body:has(.case-immersive) .feedback-fab {
   bottom: 20%;
   left: -0.125rem;
   width: 1px;
-  background: rgb(90 68 181 / 0.14);
+  background: rgb(255 255 255 / 0.22);
 }
 .case-dock-category:hover {
-  background: color-mix(in srgb, var(--cat-soft) 70%, #fff);
+  background: rgb(255 255 255 / 0.12);
 }
 .case-dock-category:focus-visible {
   outline: 2px solid var(--cat);
   outline-offset: 2px;
 }
 .case-dock-category[data-active="true"] {
-  background: var(--cat-soft);
+  background: rgb(255 255 255 / 0.18);
 }
+/* Pastel clay buttons: a soft top highlight and a darker lower lip. */
 .case-dock-category-icon {
   position: relative;
   display: grid;
@@ -1218,9 +1293,12 @@ body:has(.case-immersive) .feedback-fab {
   width: 2.75rem;
   height: 2.75rem;
   border-radius: 999px;
-  background: var(--cat-soft);
-  color: var(--cat);
-  box-shadow: inset 0 0 0 2px color-mix(in srgb, var(--cat) 40%, transparent);
+  background: var(--cat-pastel, var(--cat-soft));
+  color: var(--cat-ink, var(--cat));
+  box-shadow:
+    inset 0 1px 0 rgb(255 255 255 / 0.85),
+    inset 0 -2px 0 rgb(20 16 40 / 0.1),
+    0 4px 10px -4px rgb(20 16 40 / 0.45);
   transition:
     background-color 160ms ease,
     color 160ms ease,
@@ -1347,17 +1425,88 @@ body:has(.case-immersive) .feedback-fab {
 /* The floating instance (right column, from lg) takes the HUD glass treatment;
    inside the mobile sheet it stays a plain white panel. */
 .case-ui-right .case-history-panel {
-  border: 1px solid rgb(255 255 255 / 0.6);
-  border-radius: 1.4rem;
-  background: linear-gradient(180deg, rgb(245 242 253 / 0.82) 0%, rgb(238 234 251 / 0.76) 100%);
+  border: 1px solid rgb(255 255 255 / 0.45);
+  border-radius: 1.6rem;
+  background: linear-gradient(
+    180deg,
+    color-mix(in srgb, var(--hud-mid) 82%, transparent) 0%,
+    color-mix(in srgb, var(--hud-mid) 78%, transparent) 100%
+  );
   box-shadow:
-    0 1px 2px rgb(44 38 80 / 0.05),
-    0 14px 34px -18px rgb(44 38 80 / 0.38),
-    inset 0 1px 0 rgb(255 255 255 / 0.75);
-  backdrop-filter: blur(10px) saturate(1.15);
+    0 1px 2px rgb(60 52 100 / 0.08),
+    0 16px 36px -20px rgb(60 52 100 / 0.5),
+    inset 0 1px 0 rgb(255 255 255 / 0.35);
+  backdrop-filter: blur(8px) saturate(1.1);
 }
 .case-ui-right .case-history-scroll {
   background: transparent;
+  scrollbar-color: rgb(132 0 232 / 0.42) transparent;
+}
+.case-ui-right .case-history-scroll::-webkit-scrollbar-thumb {
+  background: rgb(132 0 232 / 0.42);
+  background-clip: padding-box;
+}
+/* Smoky header, white type, pale icon tile / toggle. */
+.case-ui-right .case-history-header {
+  border-bottom-color: rgb(255 255 255 / 0.22);
+  background: color-mix(in srgb, var(--hud-dock) 72%, transparent);
+  color: #fff;
+}
+.case-ui-right .case-history-header h2 {
+  color: #fff;
+}
+.case-ui-right .case-history-header p {
+  color: rgb(255 255 255 / 0.75);
+}
+.case-ui-right .case-history-header > span,
+.case-ui-right .case-history-header button {
+  background: rgb(255 255 255 / 0.18);
+  color: #fff;
+}
+.case-ui-right .case-history-header button:hover {
+  background: rgb(255 255 255 / 0.3);
+}
+/* Each event body becomes a pale lavender bubble; the rail, dots, labels and
+   time pills are re-tinted for the smoky surface. */
+.case-ui-right .case-tl::before {
+  border-color: rgb(255 255 255 / 0.4);
+}
+.case-ui-right .case-tl-dot {
+  background: color-mix(in srgb, var(--hud-bubble) 95%, transparent);
+  box-shadow: 0 0 0 2px rgb(255 255 255 / 0.35);
+}
+.case-ui-right .case-tl-label {
+  color: rgb(255 255 255 / 0.92) !important; /* beats the per-category inline colour */
+}
+.case-ui-right .case-tl-time {
+  border-radius: 999px;
+  padding: 0.1rem 0.45rem;
+  background: color-mix(in srgb, var(--hud-bubble) 92%, transparent);
+  color: var(--hud-brand);
+}
+.case-ui-right .case-tl-body {
+  border-radius: 1rem;
+  padding: 0.6rem 0.75rem;
+  background: color-mix(in srgb, var(--hud-bubble) 93%, transparent);
+  color: #20213b;
+  box-shadow: 0 1px 0 rgb(255 255 255 / 0.5) inset;
+}
+.case-ui-right .case-tl-body > p {
+  padding: 0;
+  border-radius: 0;
+  background: transparent;
+}
+.case-ui-right .case-tl-body p {
+  color: #20213b;
+}
+.case-ui-right .case-tl-divider span {
+  border-radius: 999px;
+  padding: 0.15rem 0.6rem;
+  background: color-mix(in srgb, var(--hud-bubble) 92%, transparent);
+  color: var(--hud-brand);
+}
+.case-ui-right .case-tl > li.text-center {
+  color: rgb(255 255 255 / 0.85);
 }
 /* Vertical encounter timeline — a dotted rail threads coloured event dots, with
    each node's label, time and body to its right. */
