@@ -6,7 +6,7 @@ WebGL.
 
 | File                    | Use                                                       |
 | ----------------------- | --------------------------------------------------------- |
-| `ward-female.webp`      | Female patient, semi-reclined in bed (1344 × 768)         |
+| `ward-female.webp`      | Female patient, semi-reclined in bed (1671 × 941)         |
 | `ward-female-1080.webp` | 1080 px wide variant, picked by `srcset` on small screens |
 | `ward-male.webp`        | Male patient, semi-reclined in bed (1672 × 941)           |
 | `ward-male-1080.webp`   | 1080 px wide variant, picked by `srcset` on small screens |

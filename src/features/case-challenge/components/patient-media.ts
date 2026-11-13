@@ -30,11 +30,11 @@ export interface WardImage {
 const WARD_IMAGES: Record<WardImageId, Omit<WardImage, "id" | "alt">> = {
   female: {
     src: "/patients/ward-female.webp",
-    srcSet: "/patients/ward-female-1080.webp 1080w, /patients/ward-female.webp 1344w",
-    width: 1344,
-    height: 768,
-    focus: { x: 37, y: 56 },
-    phoneFocusX: 37,
+    srcSet: "/patients/ward-female-1080.webp 1080w, /patients/ward-female.webp 1671w",
+    width: 1671,
+    height: 941,
+    focus: { x: 40, y: 48 },
+    phoneFocusX: 38,
   },
   male: {
     src: "/patients/ward-male.webp",
