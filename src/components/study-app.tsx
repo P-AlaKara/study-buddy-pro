@@ -8,6 +8,7 @@ import {
   Bell,
   BookOpen,
   FileText,
+  FlaskConical,
   Brain,
   ChevronDown,
   ChevronRight,
@@ -20,7 +21,6 @@ import {
   Layers3,
   LogOut,
   Medal,
-  PersonStanding,
   Sparkles,
   Stethoscope,
   Target,
@@ -28,6 +28,7 @@ import {
   X,
 } from "lucide-react";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { AppNavDrawer, type AppNavItem } from "@/components/app-nav-drawer";
 import { Button } from "@/components/ui/button";
 import type { Database } from "@/integrations/supabase/types";
 import { useAuth } from "@/features/auth/auth-context";
@@ -42,7 +43,6 @@ import { DR_AMBROSE, DrAmbrose } from "@/features/case-challenge/components/dr-a
 import { PatientAvatar } from "@/features/case-challenge/components/patient-avatar";
 import { FEATURED_CASE } from "@/features/case-challenge/featured-case";
 import { EXAM_GENERATOR_ENABLED } from "@/features/exam-generator/feature-flag";
-import { ANATOMY_LAB_ENABLED } from "@/features/anatomy-lab/feature-flag";
 
 type Student = Pick<
   Database["public"]["Tables"]["students"]["Row"],
@@ -67,27 +67,24 @@ type Student = Pick<
   | "longest_streak"
   | "created_at"
 >;
-type View = "home" | "cases" | "practice" | "usmle" | "profile" | "leaderboards" | "exams";
-type PracticeTab = "OSCE" | "Quizzes" | "Flashcards";
-type NavItem = { key: View | "misc"; label: string; to: string; icon: typeof Home };
-// Students get the full study shell; coaches only need their coaching space and
-// their profile.
-const studentNav: NavItem[] = [
+type NavKey = "home" | "exams" | "cases" | "osce" | "flashcards" | "usmle" | "labs";
+// Pages that live in the shell but aren't main-nav destinations (profile is
+// reached from the account menu, leaderboards from the header trophy button).
+type View = NavKey | "profile" | "leaderboards" | "quiz";
+// Students get the full study shell; coaches only need their coaching space.
+const studentNav: AppNavItem<NavKey>[] = [
   { key: "home", label: "Home", to: "/", icon: Home },
   ...(EXAM_GENERATOR_ENABLED
     ? [{ key: "exams" as const, label: "Exam Generator", to: "/exams", icon: FileText }]
     : []),
   { key: "cases", label: "Cases", to: "/cases", icon: HeartPulse },
-  ...(ANATOMY_LAB_ENABLED
-    ? [{ key: "misc" as const, label: "Anatomy", to: "/anatomy", icon: PersonStanding }]
-    : []),
-  { key: "practice", label: "Practice", to: "/practice", icon: Stethoscope },
+  { key: "osce", label: "OSCE", to: "/osce", icon: Stethoscope },
+  { key: "flashcards", label: "Flashcards", to: "/flashcards", icon: Layers3 },
   { key: "usmle", label: "USMLE Prep", to: "/usmle", icon: GraduationCap },
-  { key: "profile", label: "Profile", to: "/profile", icon: Activity },
+  { key: "labs", label: "Labs", to: "/labs", icon: FlaskConical },
 ];
-const coachNav: NavItem[] = [
+const coachNav: AppNavItem<NavKey>[] = [
   { key: "usmle", label: "USMLE Prep", to: "/usmle", icon: GraduationCap },
-  { key: "profile", label: "Profile", to: "/profile", icon: Activity },
 ];
 const FEATURED_CASE_AVATAR_SIZE = "!w-14 sm:!w-20";
 const subjects = [
@@ -129,7 +126,7 @@ function SectionHeading({
 }: {
   title: string;
   action?: string;
-  to?: "/cases" | "/practice" | "/usmle";
+  to?: "/cases" | "/usmle";
 }) {
   return (
     <div className="mb-4 flex items-center justify-between gap-3">
@@ -159,7 +156,6 @@ export function StudyApp({ view, children }: { view: View; children?: ReactNode 
   const isMobile = useIsMobile();
   const { profile, isCoach, isLoading: loading, signOut, refresh } = useAuth();
   const [menuOpen, setMenuOpen] = useState(false);
-  const [practiceTab, setPracticeTab] = useState<PracticeTab>("OSCE");
   const [activity, setActivity] = useState<string | null>(null);
   // Each account owns exactly one profile; it comes from the auth context.
   const student = profile as Student | undefined;
@@ -236,32 +232,44 @@ export function StudyApp({ view, children }: { view: View; children?: ReactNode 
   ];
 
   return (
-    <div className="app-shell pb-28 lg:pb-10">
+    <div className="app-shell pb-24 lg:pb-10">
       <header className="sticky top-0 z-30 border-b border-border/70 bg-background/85 backdrop-blur-md lg:border-b-0 lg:bg-background/95 lg:backdrop-blur-sm">
         <div className="app-container flex items-center justify-between gap-2 pb-3 pt-[max(0.75rem,env(safe-area-inset-top))] sm:gap-3 md:py-5">
-          <Link
-            to="/"
-            className="flex shrink-0 items-center gap-2.5 font-display text-[26px] font-black text-foreground"
-            aria-label="Medley home"
+          <div className="flex shrink-0 items-center gap-2">
+            <AppNavDrawer
+              items={navItems}
+              active={view}
+              account={{ name: student?.name, initials: student ? initials(student.name) : "?" }}
+              onSignOut={() => void handleSignOut()}
+            />
+            <Link
+              to="/"
+              className="flex shrink-0 items-center gap-2.5 font-display text-[26px] font-black text-foreground"
+              aria-label="Medley home"
+            >
+              <span className="flex size-10 items-center justify-center rounded-2xl bg-pink text-foreground shadow-sm">
+                <HeartPulse size={23} strokeWidth={2.5} />
+              </span>
+              <span className="hidden sm:inline">
+                medley<span className="text-pink">.</span>
+              </span>
+            </Link>
+          </div>
+          <nav
+            aria-label="Main navigation"
+            className="hidden items-center gap-0.5 lg:flex xl:gap-1"
           >
-            <span className="flex size-10 items-center justify-center rounded-2xl bg-pink text-foreground shadow-sm">
-              <HeartPulse size={23} strokeWidth={2.5} />
-            </span>
-            <span className="hidden sm:inline">
-              medley<span className="text-pink">.</span>
-            </span>
-          </Link>
-          <div className="hidden items-center gap-1 lg:flex">
             {navItems.map((item) => (
               <Link
-                key={item.label}
+                key={item.key}
                 to={item.to}
-                className={`rounded-full px-4 py-2 text-sm font-extrabold transition-colors ${view === item.key ? "bg-lavender-soft text-foreground" : "text-muted-foreground hover:bg-muted hover:text-foreground"}`}
+                aria-current={view === item.key ? "page" : undefined}
+                className={`whitespace-nowrap rounded-full px-3 py-2 text-sm font-extrabold transition-colors xl:px-4 ${view === item.key ? "bg-lavender-soft text-foreground" : "text-muted-foreground hover:bg-muted hover:text-foreground"}`}
               >
                 {item.label}
               </Link>
             ))}
-          </div>
+          </nav>
           <div className="flex min-w-0 items-center gap-1.5 sm:gap-2">
             <StudentUtilities student={student} />
             <div className="relative min-w-0">
@@ -270,18 +278,18 @@ export function StudyApp({ view, children }: { view: View; children?: ReactNode 
                 onClick={() => setMenuOpen(!menuOpen)}
                 aria-expanded={menuOpen}
                 aria-label="Account menu"
-                className="h-11 max-w-[190px] gap-2 bg-card px-2 pr-3 shadow-sm hover:bg-card md:max-w-none"
+                className="size-11 gap-2 bg-card p-0 shadow-sm hover:bg-card sm:w-auto sm:max-w-[190px] sm:px-2 sm:pr-3 md:max-w-none lg:w-11 lg:p-0 xl:w-auto xl:px-2 xl:pr-3"
               >
                 <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-mint text-xs font-black">
                   {student ? initials(student.name) : "?"}
                 </span>
-                <span className="min-w-0 truncate text-left text-xs md:text-sm">
+                <span className="hidden min-w-0 truncate text-left text-xs sm:block md:text-sm lg:hidden xl:block">
                   <span className="block text-[10px] font-bold leading-none text-muted-foreground">
                     SIGNED IN
                   </span>
                   {loading ? "Loading..." : firstName(student?.name)}
                 </span>
-                <ChevronDown size={15} className="shrink-0" />
+                <ChevronDown size={15} className="hidden shrink-0 sm:block lg:hidden xl:block" />
               </Button>
               {menuOpen &&
                 (() => {
@@ -451,11 +459,7 @@ export function StudyApp({ view, children }: { view: View; children?: ReactNode 
                   </div>
                 </section>
                 <section>
-                  <SectionHeading
-                    title="Recommended for you"
-                    action="Explore practice"
-                    to="/practice"
-                  />
+                  <SectionHeading title="Recommended for you" />
                   <div className="grid gap-3 sm:grid-cols-2 2xl:grid-cols-4">
                     {recommendations.map((item) => (
                       <button
@@ -609,134 +613,8 @@ export function StudyApp({ view, children }: { view: View; children?: ReactNode 
             </div>
           </>
         )}
-        {view === "cases" && (
-          <StudentContext.Provider value={student}>{children}</StudentContext.Provider>
-        )}
-        {view === "practice" && children && (
-          <StudentContext.Provider value={student}>{children}</StudentContext.Provider>
-        )}
-        {view === "practice" && !children && (
-          <div>
-            <PageIntro
-              eyebrow="YOUR PRACTICE SPACE"
-              title="Practice your way"
-              description="Short, focused sessions for every part of your learning."
-              icon={Stethoscope}
-              color="pink"
-            />
-            <div className="mt-8 flex gap-2 overflow-x-auto pb-2">
-              {(["OSCE", "Quizzes", "Flashcards"] as PracticeTab[]).map((tab) => (
-                <Button
-                  key={tab}
-                  variant={
-                    practiceTab === tab
-                      ? tab === "OSCE"
-                        ? "pink"
-                        : tab === "Quizzes"
-                          ? "blue"
-                          : "yellow"
-                      : "secondary"
-                  }
-                  onClick={() => setPracticeTab(tab)}
-                  className="shrink-0"
-                >
-                  {tab === "OSCE" ? <Stethoscope /> : tab === "Quizzes" ? <Brain /> : <Layers3 />}
-                  {tab}
-                </Button>
-              ))}
-            </div>
-            <section
-              className={`clay-card mt-5 bg-${practiceTab === "OSCE" ? "pink" : practiceTab === "Quizzes" ? "blue" : "yellow"}-soft p-6 md:p-9`}
-            >
-              <div className="flex items-start gap-4">
-                <IconBubble
-                  icon={
-                    practiceTab === "OSCE"
-                      ? Stethoscope
-                      : practiceTab === "Quizzes"
-                        ? Brain
-                        : Layers3
-                  }
-                  color={
-                    practiceTab === "OSCE" ? "pink" : practiceTab === "Quizzes" ? "blue" : "yellow"
-                  }
-                />
-                <div>
-                  <h2 className="font-display text-2xl font-black">
-                    {practiceTab === "OSCE"
-                      ? "OSCE stations"
-                      : practiceTab === "Quizzes"
-                        ? "Quick quizzes"
-                        : "Flashcard decks"}
-                  </h2>
-                  <p className="mt-2 max-w-xl text-sm leading-relaxed text-ink-soft">
-                    {practiceTab === "OSCE" ? (
-                      <>
-                        Conduct the available history station, with more station types coming soon.{" "}
-                        <Link to="/osce" className="font-extrabold text-pink underline">
-                          Open the station bank →
-                        </Link>
-                      </>
-                    ) : practiceTab === "Quizzes" ? (
-                      <>
-                        Test your understanding with bite-sized questions.{" "}
-                        <Link to="/quiz" className="font-extrabold text-blue underline">
-                          Open quizzes →
-                        </Link>
-                      </>
-                    ) : (
-                      <>
-                        Keep the important details fresh with quick review sessions.{" "}
-                        <Link to="/flashcards" className="font-extrabold underline">
-                          Open decks →
-                        </Link>
-                      </>
-                    )}
-                  </p>
-                </div>
-              </div>
-              <div className="mt-8 rounded-2xl bg-card/70 p-5">
-                <p className="text-sm font-bold">
-                  {practiceTab === "OSCE"
-                    ? "Focused history taking"
-                    : practiceTab === "Quizzes"
-                      ? `${weakAreas[0]} essentials`
-                      : `${personalizedSubjects[0]} quick recall`}
-                </p>
-                <p className="mt-1 text-xs text-muted-foreground">
-                  {practiceTab === "OSCE"
-                    ? "History taking · 8 min"
-                    : practiceTab === "Quizzes"
-                      ? "10 questions · 8 min"
-                      : "18 cards · 8 min"}
-                </p>
-                <Button
-                  variant={
-                    practiceTab === "OSCE" ? "pink" : practiceTab === "Quizzes" ? "blue" : "yellow"
-                  }
-                  className="mt-5"
-                  onClick={() => {
-                    window.location.href =
-                      practiceTab === "OSCE"
-                        ? "/osce"
-                        : practiceTab === "Quizzes"
-                          ? "/quiz"
-                          : "/flashcards";
-                  }}
-                >
-                  Start practice <ArrowRight />
-                </Button>
-              </div>
-            </section>
-          </div>
-        )}
-        {view === "usmle" && (
-          <StudentContext.Provider value={student}>{children}</StudentContext.Provider>
-        )}
-        {view === "exams" && (
-          <StudentContext.Provider value={student}>{children}</StudentContext.Provider>
-        )}
-        {view === "leaderboards" && (
+        {/* Every other view is a routed page rendered through <Outlet />. */}
+        {view !== "home" && view !== "profile" && (
           <StudentContext.Provider value={student}>{children}</StudentContext.Provider>
         )}
         {view === "profile" && isCoach && (
@@ -893,32 +771,6 @@ export function StudyApp({ view, children }: { view: View; children?: ReactNode 
           </div>
         )}
       </main>
-      <nav
-        aria-label="Main navigation"
-        className="app-main-nav app-tabbar fixed bottom-0 left-0 right-0 z-20 rounded-t-[24px] border-t border-border/70 bg-card/90 px-2 pt-1.5 shadow-[0_-8px_30px_-14px_var(--border)] backdrop-blur-md lg:hidden"
-      >
-        <div className="mx-auto flex max-w-lg items-stretch justify-around">
-          {navItems.map((item) => {
-            const Icon = item.icon;
-            const active = view === item.key;
-            return (
-              <Link
-                key={item.label}
-                to={item.to}
-                aria-current={active ? "page" : undefined}
-                className={`app-tabitem flex min-w-[56px] flex-1 flex-col items-center justify-center gap-1 rounded-2xl px-1 py-1.5 text-[10px] font-extrabold transition-colors active:scale-95 ${active ? "text-foreground" : "text-muted-foreground"}`}
-              >
-                <span
-                  className={`flex h-8 w-14 items-center justify-center rounded-full transition-colors ${active ? "bg-lavender-soft" : "bg-transparent"}`}
-                >
-                  <Icon size={22} strokeWidth={active ? 2.6 : 2} />
-                </span>
-                {item.label}
-              </Link>
-            );
-          })}
-        </div>
-      </nav>
       {activity && (
         <div
           className="sheet-scrim fixed inset-0 z-50 flex items-end justify-center bg-foreground/25 backdrop-blur-sm sm:items-center sm:p-5"

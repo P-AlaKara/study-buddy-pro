@@ -295,7 +295,7 @@ export function AnatomyLab() {
             <span className="hidden sm:inline">Sources &amp; credits</span>
           </Button>
           <Button variant="secondary" size="icon" className="bg-card shadow-sm" asChild>
-            <Link to="/" aria-label="Exit the Anatomy Lab">
+            <Link to="/labs" aria-label="Exit the Anatomy Lab">
               <X size={18} />
             </Link>
           </Button>

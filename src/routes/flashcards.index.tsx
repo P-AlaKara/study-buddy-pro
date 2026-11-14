@@ -1,6 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
-import { ArrowLeft, Heart, Layers3, Plus, ShieldCheck } from "lucide-react";
+import { Heart, Layers3, Plus, ShieldCheck } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useActingStudent } from "@/components/study-app";
 import { SuggestionPrompt } from "@/components/suggestion-prompt";
@@ -93,13 +93,6 @@ function DeckBrowser() {
 
   return (
     <div className="space-y-6">
-      <Link
-        to="/practice"
-        className="inline-flex items-center gap-1 text-sm font-extrabold text-muted-foreground"
-      >
-        <ArrowLeft className="h-4 w-4" /> Practice
-      </Link>
-
       {/* Hero */}
       <div className="clay-card overflow-hidden bg-gradient-to-br from-yellow-soft to-peach/50 p-6 md:p-8">
         <div className="flex items-center justify-between gap-6">

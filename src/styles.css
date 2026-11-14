@@ -273,14 +273,6 @@
   min-height: 100dvh;
 }
 
-/* Native-feeling bottom tab bar */
-.app-tabbar {
-  padding-bottom: max(0.5rem, env(safe-area-inset-bottom));
-}
-.app-tabitem {
-  min-height: 52px;
-}
-
 /* Bottom-sheet animation for mobile dropdowns/modals */
 @keyframes sheet-up {
   from {
@@ -699,7 +691,6 @@
 body:has(.case-immersive) {
   overflow: hidden;
 }
-body:has(.case-immersive) .app-main-nav,
 body:has(.case-immersive) .feedback-fab {
   display: none;
 }
@@ -2044,9 +2035,7 @@ body:has(.case-immersive) .feedback-fab {
 }
 
 @media (max-width: 1023px) {
-  body:has(.case-cockpit) .app-main-nav,
   body:has(.case-cockpit) .feedback-fab,
-  body:has(.osce-room) .app-main-nav,
   body:has(.osce-room) .feedback-fab {
     display: none;
   }

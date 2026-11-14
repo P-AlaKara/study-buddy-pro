@@ -111,7 +111,7 @@ export function FeedbackWidget() {
           type="button"
           onClick={() => openForm("button")}
           aria-label="Give feedback"
-          className="feedback-fab clay-button fixed bottom-[calc(5.25rem+env(safe-area-inset-bottom))] right-4 z-40 flex items-center gap-2 bg-lavender px-4 py-3 text-sm font-black text-white lg:bottom-6 lg:right-6"
+          className="feedback-fab clay-button fixed bottom-[max(1rem,env(safe-area-inset-bottom))] right-4 z-40 flex items-center gap-2 bg-lavender px-4 py-3 text-sm font-black text-white lg:bottom-6 lg:right-6"
         >
           <MessageSquarePlus size={18} strokeWidth={2.5} />
           <span className="hidden sm:inline">Feedback</span>
@@ -123,7 +123,7 @@ export function FeedbackWidget() {
         <div
           role="dialog"
           aria-label="Quick check-in"
-          className="mobile-sheet sheet-scrim fixed inset-x-4 bottom-[calc(5.25rem+env(safe-area-inset-bottom))] z-40 rounded-[22px] bg-card p-4 shadow-xl sm:inset-x-auto sm:right-6 sm:w-[22rem] lg:bottom-6"
+          className="mobile-sheet sheet-scrim fixed inset-x-4 bottom-[max(1rem,env(safe-area-inset-bottom))] z-40 rounded-[22px] bg-card p-4 shadow-xl sm:inset-x-auto sm:right-6 sm:w-[22rem] lg:bottom-6"
         >
           <button
             type="button"

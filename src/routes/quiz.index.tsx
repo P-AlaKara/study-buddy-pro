@@ -94,10 +94,10 @@ function QuizHome() {
   return (
     <div className="space-y-7">
       <Link
-        to="/practice"
+        to="/"
         className="inline-flex items-center gap-1 text-sm font-extrabold text-muted-foreground"
       >
-        <ArrowLeft className="h-4 w-4" /> Practice
+        <ArrowLeft className="h-4 w-4" /> Home
       </Link>
       <div>
         <p className="text-xs font-extrabold tracking-widest text-blue">QUIZZES</p>

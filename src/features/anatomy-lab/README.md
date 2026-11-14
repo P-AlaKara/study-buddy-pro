@@ -9,7 +9,8 @@ system toggles, isolation, exploded views — without leaving Medley.
 
 - **Modular.** Everything lives under `src/features/anatomy-lab/` plus
   `/public/models/anatomy/`. The only touch points outside the module are the route
-  (`src/routes/anatomy.tsx`) and one nav entry in `src/components/study-app.tsx`.
+  (`src/routes/labs.anatomy.tsx`; the old `/anatomy` URL redirects there) and one card on
+  the Labs hub (`src/features/labs/labs-hub.tsx`).
   No backend, database or shared-state changes. You can work on the rest of the app
   without any Anatomy Lab context.
 - **Faithful engine.** The Three.js engine is preserved from upstream (see

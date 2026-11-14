@@ -3,7 +3,7 @@ import { StudyApp } from "@/components/study-app";
 
 export const Route = createFileRoute("/osce")({
   component: () => (
-    <StudyApp view="practice">
+    <StudyApp view="osce">
       <Outlet />
     </StudyApp>
   ),

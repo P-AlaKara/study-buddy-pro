@@ -17,7 +17,6 @@ import { Route as FlashcardsRouteImport } from './routes/flashcards'
 import { Route as LeaderboardsRouteImport } from './routes/leaderboards'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as OsceRouteImport } from './routes/osce'
-import { Route as PracticeRouteImport } from './routes/practice'
 import { Route as ProfileRouteImport } from './routes/profile'
 import { Route as QuizRouteImport } from './routes/quiz'
 import { Route as RegisterRouteImport } from './routes/register'
@@ -30,6 +29,8 @@ import { Route as ExamsNewRouteImport } from './routes/exams.new'
 import { Route as FlashcardsIndexRouteImport } from './routes/flashcards.index'
 import { Route as FlashcardsDeckIdRouteImport } from './routes/flashcards.$deckId'
 import { Route as FlashcardsReviewRouteImport } from './routes/flashcards.review'
+import { Route as LabsIndexRouteImport } from './routes/labs.index'
+import { Route as LabsAnatomyRouteImport } from './routes/labs.anatomy'
 import { Route as OsceIndexRouteImport } from './routes/osce.index'
 import { Route as OsceStationIdRouteImport } from './routes/osce.$stationId'
 import { Route as QuizIndexRouteImport } from './routes/quiz.index'
@@ -76,11 +77,6 @@ const LoginRoute = LoginRouteImport.update({
 const OsceRoute = OsceRouteImport.update({
   id: '/osce',
   path: '/osce',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const PracticeRoute = PracticeRouteImport.update({
-  id: '/practice',
-  path: '/practice',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ProfileRoute = ProfileRouteImport.update({
@@ -143,6 +139,16 @@ const FlashcardsReviewRoute = FlashcardsReviewRouteImport.update({
   path: '/review',
   getParentRoute: () => FlashcardsRoute,
 } as any)
+const LabsIndexRoute = LabsIndexRouteImport.update({
+  id: '/labs/',
+  path: '/labs/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const LabsAnatomyRoute = LabsAnatomyRouteImport.update({
+  id: '/labs/anatomy',
+  path: '/labs/anatomy',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const OsceIndexRoute = OsceIndexRouteImport.update({
   id: '/',
   path: '/',
@@ -188,7 +194,6 @@ export interface FileRoutesByFullPath {
   '/leaderboards': typeof LeaderboardsRoute
   '/login': typeof LoginRoute
   '/osce': typeof OsceRouteWithChildren
-  '/practice': typeof PracticeRoute
   '/profile': typeof ProfileRoute
   '/quiz': typeof QuizRouteWithChildren
   '/register': typeof RegisterRoute
@@ -198,12 +203,14 @@ export interface FileRoutesByFullPath {
   '/exams/new': typeof ExamsNewRoute
   '/flashcards/$deckId': typeof FlashcardsDeckIdRoute
   '/flashcards/review': typeof FlashcardsReviewRoute
+  '/labs/anatomy': typeof LabsAnatomyRoute
   '/osce/$stationId': typeof OsceStationIdRoute
   '/quiz/play': typeof QuizPlayRoute
   '/usmle/$coachId': typeof UsmleCoachIdRoute
   '/cases/': typeof CasesIndexRoute
   '/exams/': typeof ExamsIndexRoute
   '/flashcards/': typeof FlashcardsIndexRoute
+  '/labs/': typeof LabsIndexRoute
   '/osce/': typeof OsceIndexRoute
   '/quiz/': typeof QuizIndexRoute
   '/usmle/': typeof UsmleIndexRoute
@@ -214,7 +221,6 @@ export interface FileRoutesByTo {
   '/anatomy': typeof AnatomyRoute
   '/leaderboards': typeof LeaderboardsRoute
   '/login': typeof LoginRoute
-  '/practice': typeof PracticeRoute
   '/profile': typeof ProfileRoute
   '/register': typeof RegisterRoute
   '/cases/$caseId': typeof CasesCaseIdRoute
@@ -222,12 +228,14 @@ export interface FileRoutesByTo {
   '/exams/new': typeof ExamsNewRoute
   '/flashcards/$deckId': typeof FlashcardsDeckIdRoute
   '/flashcards/review': typeof FlashcardsReviewRoute
+  '/labs/anatomy': typeof LabsAnatomyRoute
   '/osce/$stationId': typeof OsceStationIdRoute
   '/quiz/play': typeof QuizPlayRoute
   '/usmle/$coachId': typeof UsmleCoachIdRoute
   '/cases': typeof CasesIndexRoute
   '/exams': typeof ExamsIndexRoute
   '/flashcards': typeof FlashcardsIndexRoute
+  '/labs': typeof LabsIndexRoute
   '/osce': typeof OsceIndexRoute
   '/quiz': typeof QuizIndexRoute
   '/usmle': typeof UsmleIndexRoute
@@ -243,7 +251,6 @@ export interface FileRoutesById {
   '/leaderboards': typeof LeaderboardsRoute
   '/login': typeof LoginRoute
   '/osce': typeof OsceRouteWithChildren
-  '/practice': typeof PracticeRoute
   '/profile': typeof ProfileRoute
   '/quiz': typeof QuizRouteWithChildren
   '/register': typeof RegisterRoute
@@ -253,12 +260,14 @@ export interface FileRoutesById {
   '/exams/new': typeof ExamsNewRoute
   '/flashcards/$deckId': typeof FlashcardsDeckIdRoute
   '/flashcards/review': typeof FlashcardsReviewRoute
+  '/labs/anatomy': typeof LabsAnatomyRoute
   '/osce/$stationId': typeof OsceStationIdRoute
   '/quiz/play': typeof QuizPlayRoute
   '/usmle/$coachId': typeof UsmleCoachIdRoute
   '/cases/': typeof CasesIndexRoute
   '/exams/': typeof ExamsIndexRoute
   '/flashcards/': typeof FlashcardsIndexRoute
+  '/labs/': typeof LabsIndexRoute
   '/osce/': typeof OsceIndexRoute
   '/quiz/': typeof QuizIndexRoute
   '/usmle/': typeof UsmleIndexRoute
@@ -275,7 +284,6 @@ export interface FileRouteTypes {
     | '/leaderboards'
     | '/login'
     | '/osce'
-    | '/practice'
     | '/profile'
     | '/quiz'
     | '/register'
@@ -285,12 +293,14 @@ export interface FileRouteTypes {
     | '/exams/new'
     | '/flashcards/$deckId'
     | '/flashcards/review'
+    | '/labs/anatomy'
     | '/osce/$stationId'
     | '/quiz/play'
     | '/usmle/$coachId'
     | '/cases/'
     | '/exams/'
     | '/flashcards/'
+    | '/labs/'
     | '/osce/'
     | '/quiz/'
     | '/usmle/'
@@ -301,7 +311,6 @@ export interface FileRouteTypes {
     | '/anatomy'
     | '/leaderboards'
     | '/login'
-    | '/practice'
     | '/profile'
     | '/register'
     | '/cases/$caseId'
@@ -309,12 +318,14 @@ export interface FileRouteTypes {
     | '/exams/new'
     | '/flashcards/$deckId'
     | '/flashcards/review'
+    | '/labs/anatomy'
     | '/osce/$stationId'
     | '/quiz/play'
     | '/usmle/$coachId'
     | '/cases'
     | '/exams'
     | '/flashcards'
+    | '/labs'
     | '/osce'
     | '/quiz'
     | '/usmle'
@@ -329,7 +340,6 @@ export interface FileRouteTypes {
     | '/leaderboards'
     | '/login'
     | '/osce'
-    | '/practice'
     | '/profile'
     | '/quiz'
     | '/register'
@@ -339,12 +349,14 @@ export interface FileRouteTypes {
     | '/exams/new'
     | '/flashcards/$deckId'
     | '/flashcards/review'
+    | '/labs/anatomy'
     | '/osce/$stationId'
     | '/quiz/play'
     | '/usmle/$coachId'
     | '/cases/'
     | '/exams/'
     | '/flashcards/'
+    | '/labs/'
     | '/osce/'
     | '/quiz/'
     | '/usmle/'
@@ -360,11 +372,12 @@ export interface RootRouteChildren {
   LeaderboardsRoute: typeof LeaderboardsRoute
   LoginRoute: typeof LoginRoute
   OsceRoute: typeof OsceRouteWithChildren
-  PracticeRoute: typeof PracticeRoute
   ProfileRoute: typeof ProfileRoute
   QuizRoute: typeof QuizRouteWithChildren
   RegisterRoute: typeof RegisterRoute
   UsmleRoute: typeof UsmleRouteWithChildren
+  LabsAnatomyRoute: typeof LabsAnatomyRoute
+  LabsIndexRoute: typeof LabsIndexRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -423,13 +436,6 @@ declare module '@tanstack/react-router' {
       path: '/osce'
       fullPath: '/osce'
       preLoaderRoute: typeof OsceRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/practice': {
-      id: '/practice'
-      path: '/practice'
-      fullPath: '/practice'
-      preLoaderRoute: typeof PracticeRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/profile': {
@@ -515,6 +521,20 @@ declare module '@tanstack/react-router' {
       fullPath: '/flashcards/review'
       preLoaderRoute: typeof FlashcardsReviewRouteImport
       parentRoute: typeof FlashcardsRoute
+    }
+    '/labs/': {
+      id: '/labs/'
+      path: '/labs'
+      fullPath: '/labs/'
+      preLoaderRoute: typeof LabsIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/labs/anatomy': {
+      id: '/labs/anatomy'
+      path: '/labs/anatomy'
+      fullPath: '/labs/anatomy'
+      preLoaderRoute: typeof LabsAnatomyRouteImport
+      parentRoute: typeof rootRouteImport
     }
     '/osce/': {
       id: '/osce/'
@@ -657,11 +677,12 @@ const rootRouteChildren: RootRouteChildren = {
   LeaderboardsRoute: LeaderboardsRoute,
   LoginRoute: LoginRoute,
   OsceRoute: OsceRouteWithChildren,
-  PracticeRoute: PracticeRoute,
   ProfileRoute: ProfileRoute,
   QuizRoute: QuizRouteWithChildren,
   RegisterRoute: RegisterRoute,
   UsmleRoute: UsmleRouteWithChildren,
+  LabsAnatomyRoute: LabsAnatomyRoute,
+  LabsIndexRoute: LabsIndexRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
