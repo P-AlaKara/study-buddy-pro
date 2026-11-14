@@ -478,12 +478,12 @@ export function CaseChallengeScreen({ caseDefinition }: { caseDefinition: Medica
           type="button"
           onClick={() => setCoachOpen((open) => !open)}
           aria-expanded={coachOpen}
-          aria-label={`Ask ${DR_AMBROSE.name} for a hint`}
+          aria-label={`Request a hint from ${DR_AMBROSE.name}`}
           className="hidden items-center gap-2 rounded-full border border-[var(--case-yellow)] lg:flex bg-[var(--case-yellow-soft)] py-1 pl-1 pr-2 shadow-lg transition-transform hover:-translate-y-0.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--case-yellow)] sm:pr-3"
         >
           <DrAmbrose expression="thinking" variant="logo" className="w-10 shrink-0" />
           <span className="hidden text-xs font-black text-[var(--case-yellow-ink)] sm:inline">
-            Ask {DR_AMBROSE.name}
+            Request a hint
           </span>
         </button>
       </div>
@@ -551,6 +551,11 @@ function MobileSheet({
   children: ReactNode;
 }) {
   const dialogRef = useRef<HTMLDivElement>(null);
+  // Callers pass a fresh `onClose` every render. Read it through a ref so the
+  // effect below runs only when the sheet opens; otherwise every keystroke in a
+  // child input (e.g. clinical notes) re-runs it and steals focus.
+  const onCloseRef = useRef(onClose);
+  onCloseRef.current = onClose;
 
   useEffect(() => {
     if (!open) return;
@@ -560,14 +565,14 @@ function MobileSheet({
         ?.focus();
     });
     const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key === "Escape") onClose();
+      if (event.key === "Escape") onCloseRef.current();
     };
     window.addEventListener("keydown", onKeyDown);
     return () => {
       cancelAnimationFrame(focusFrame);
       window.removeEventListener("keydown", onKeyDown);
     };
-  }, [open, onClose]);
+  }, [open]);
 
   if (!open) return null;
   return (

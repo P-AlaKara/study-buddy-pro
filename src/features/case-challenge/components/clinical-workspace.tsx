@@ -447,7 +447,7 @@ export function HintPanel({
       >
         <HelpCircle className="size-4" />{" "}
         {nextHint
-          ? `Ask ${DR_AMBROSE.name} · Tier ${nextHint.tier} · ${nextHint.cost} pts`
+          ? `Request hint · Tier ${nextHint.tier} · ${nextHint.cost} pts`
           : "All hints used"}
       </button>
     </div>

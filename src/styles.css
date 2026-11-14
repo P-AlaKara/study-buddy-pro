@@ -921,21 +921,21 @@ body:has(.case-immersive) .feedback-fab {
   .case-immersive-ui,
   .case-coach-anchor,
   .case-immersive .case-finding-notice {
-    zoom: 0.76;
+    zoom: 0.8;
   }
 }
 @media (min-width: 90rem) {
   .case-immersive-ui,
   .case-coach-anchor,
   .case-immersive .case-finding-notice {
-    zoom: 0.72;
+    zoom: 0.756;
   }
 }
 @media (min-width: 110rem) {
   .case-immersive-ui,
   .case-coach-anchor,
   .case-immersive .case-finding-notice {
-    zoom: 0.7;
+    zoom: 0.735;
   }
 }
 

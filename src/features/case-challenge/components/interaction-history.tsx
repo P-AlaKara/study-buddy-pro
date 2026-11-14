@@ -19,7 +19,6 @@ import {
   Maximize2,
   MessageCircleMore,
   Minimize2,
-  Sparkles,
   Stethoscope,
   Syringe,
   XCircle,
@@ -156,7 +155,6 @@ const SYSTEM_META: Partial<
     { label: string; color: string; icon: ComponentType<{ className?: string }> }
   >
 > = {
-  clue: { label: "Finding logged", color: "var(--case-mint)", icon: Sparkles },
   deterioration: { label: "Deterioration", color: "var(--case-critical)", icon: AlertTriangle },
   warning: { label: "Warning", color: "var(--case-orange)", icon: AlertTriangle },
   hint: { label: "Hint", color: "var(--case-yellow)", icon: Lightbulb },
@@ -266,11 +264,6 @@ function nodesForEvent(
           {event.detail}
         </p>
       )}
-      {event.type === "clue" && (
-        <p className="mt-0.5 text-[10px] font-black text-[var(--case-mint-ink)]">
-          Logged to patient chart
-        </p>
-      )}
     </TimelineNode>,
   ];
 }
@@ -297,9 +290,10 @@ export function InteractionHistory({
   const scrollRef = useRef<HTMLDivElement>(null);
   const [followingLatest, setFollowingLatest] = useState(true);
 
-  // The complete, chronological encounter log — every event the engine records,
-  // never filtered by clinical stage.
-  const events = game.timeline;
+  // The complete, chronological encounter log, never filtered by clinical stage.
+  // "Finding logged" (clue) events are left out: the finding toast already
+  // announces them and they live in the patient chart.
+  const events = game.timeline.filter((event) => event.type !== "clue");
   const nodes = events.flatMap((event) =>
     nodesForEvent(event, caseDefinition, game, actionById, onStart),
   );

@@ -109,7 +109,7 @@ export function EncounterTopBar({
           type="button"
           onClick={onToggleCoach}
           aria-expanded={coachOpen}
-          aria-label={`Ask ${DR_AMBROSE.name} for a hint`}
+          aria-label={`Request a hint from ${DR_AMBROSE.name}`}
           className={`case-hud-icon grid size-11 overflow-hidden !p-0 lg:hidden ${coachOpen ? "ring-2 ring-[var(--case-yellow)]" : ""}`}
         >
           <DrAmbrose expression="thinking" variant="logo" className="w-9" />
