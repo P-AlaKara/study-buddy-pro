@@ -3,6 +3,8 @@ import type { GameState } from "../engine.js";
 import type { MedicalCase } from "../schema.js";
 import { WORKSPACE_TOOLS, workspaceToolMeta, type RightTab } from "./case-constants.js";
 import { presentingTags } from "./patient-media.js";
+import type { VitalsFeed } from "./use-vitals-feed.js";
+import { VitalsMonitor } from "./vitals-monitor.js";
 
 export function caseNumberLabel(id: string): string {
   const match = id.match(/(\d+)/);
@@ -11,7 +13,7 @@ export function caseNumberLabel(id: string): string {
 
 /**
  * The floating case panel: setting, title, who the patient is and why they
- * are here, then the three clinical-tool launchers. Each launcher opens that
+ * are here, the bedside-monitor vitals, then the three clinical-tool launchers. Each launcher opens that
  * one tool in the workspace; progression through the interaction categories
  * lives on the dock, so there is no second, competing stage list here.
  */
@@ -20,12 +22,17 @@ export function CasePanel({
   game,
   onOpenWorkspace,
   unreadFindings,
+  vitalsFeed,
+  announceVitals = false,
   className = "",
 }: {
   caseDefinition: MedicalCase;
   game: GameState;
   onOpenWorkspace: (tool: RightTab) => void;
   unreadFindings: number;
+  vitalsFeed: VitalsFeed;
+  /** Whether this copy of the panel announces vital-sign changes to screen readers. */
+  announceVitals?: boolean;
   className?: string;
 }) {
   const { patient } = caseDefinition;
@@ -63,6 +70,7 @@ export function CasePanel({
             </span>
           ))}
         </div>
+        <VitalsMonitor game={game} feed={vitalsFeed} announce={announceVitals} className="mt-3" />
       </section>
 
       <section className="border-t border-white/60 px-3 pb-2.5 pt-2.5">

@@ -26,7 +26,8 @@ import { CommitDialog } from "./commit-dialog.js";
 import { DR_AMBROSE, DrAmbrose } from "./dr-ambrose.js";
 import { EncounterTopBar } from "./encounter-top-bar.js";
 import { InteractionHistory } from "./interaction-history.js";
-import { VitalsMonitor } from "./vitals-strip.js";
+import { useVitalsFeed } from "./use-vitals-feed.js";
+import { VitalsMonitor } from "./vitals-monitor.js";
 import { PatientStatusChips, WardBackdrop } from "./ward-backdrop.js";
 import {
   engineMessage,
@@ -56,6 +57,10 @@ export function CaseChallengeScreen({ caseDefinition }: { caseDefinition: Medica
   const [coachOpen, setCoachOpen] = useState(false);
   const [trayOpen, setTrayOpen] = useState(false);
   const [casePanelOpen, setCasePanelOpen] = useState(false);
+
+  // The patient's arrival vitals seed the BP / temperature trend lines.
+  const arrivalVitals = useMemo(() => createInitialState(caseDefinition).vitals, [caseDefinition]);
+  const vitalsFeed = useVitalsFeed(game, arrivalVitals);
 
   const typingTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const reactionTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -329,7 +334,7 @@ export function CaseChallengeScreen({ caseDefinition }: { caseDefinition: Medica
     );
   }
 
-  const casePanel = (className: string) => (
+  const casePanel = (className: string, announceVitals: boolean) => (
     <CasePanel
       caseDefinition={caseDefinition}
       game={game}
@@ -338,6 +343,8 @@ export function CaseChallengeScreen({ caseDefinition }: { caseDefinition: Medica
         openWorkspace(tool);
       }}
       unreadFindings={unreadFindings}
+      vitalsFeed={vitalsFeed}
+      announceVitals={announceVitals}
       className={className}
     />
   );
@@ -373,13 +380,8 @@ export function CaseChallengeScreen({ caseDefinition }: { caseDefinition: Medica
           />
         </div>
 
-        {/* Bedside monitor strip under the top bar */}
-        <div className="case-ui-vitals">
-          <VitalsMonitor game={game} />
-        </div>
-
-        {/* Case identity + tools (desktop) */}
-        <aside className="case-ui-left">{casePanel("min-h-0 overflow-y-auto")}</aside>
+        {/* Case identity, vitals monitor + tools (desktop) */}
+        <aside className="case-ui-left">{casePanel("min-h-0 overflow-y-auto", true)}</aside>
 
         {/* Over the patient: status, errors, and the phone-sized patient chip */}
         <div className="case-ui-center">
@@ -400,24 +402,29 @@ export function CaseChallengeScreen({ caseDefinition }: { caseDefinition: Medica
               </button>
             </div>
           )}
-          <button
-            type="button"
-            onClick={() => setCasePanelOpen(true)}
-            className="case-float-panel case-patient-chip lg:hidden"
-            aria-label={`Patient ${caseDefinition.patient.name}: open case details`}
-          >
-            <span className="flex items-baseline gap-2">
-              <span className="font-display text-base font-black text-slate-900">
-                {caseDefinition.patient.name}
+          {/* Phones / tablets: the patient card — who they are, plus the vitals
+              monitor that lives in the case panel on desktop */}
+          <div className="case-float-panel case-patient-chip lg:hidden">
+            <button
+              type="button"
+              onClick={() => setCasePanelOpen(true)}
+              className="case-patient-chip-button"
+              aria-label={`Patient ${caseDefinition.patient.name}: open case details`}
+            >
+              <span className="flex items-baseline gap-2">
+                <span className="font-display text-base font-black text-slate-900">
+                  {caseDefinition.patient.name}
+                </span>
+                <span className="text-[11px] font-bold text-slate-500">
+                  {caseDefinition.patient.age} · {caseDefinition.patient.sex}
+                </span>
               </span>
-              <span className="text-[11px] font-bold text-slate-500">
-                {caseDefinition.patient.age} · {caseDefinition.patient.sex}
+              <span className="mt-0.5 line-clamp-2 block text-[12px] font-bold leading-snug text-slate-600">
+                {caseDefinition.patient.chiefComplaint}
               </span>
-            </span>
-            <span className="mt-0.5 line-clamp-2 block text-[12px] font-bold leading-snug text-slate-600">
-              {caseDefinition.patient.chiefComplaint}
-            </span>
-          </button>
+            </button>
+            <VitalsMonitor game={game} feed={vitalsFeed} announce className="mt-2" />
+          </div>
         </div>
 
         {/* Complete history (desktop) */}
@@ -494,7 +501,7 @@ export function CaseChallengeScreen({ caseDefinition }: { caseDefinition: Medica
         label="Case details"
         onClose={() => setCasePanelOpen(false)}
       >
-        {casePanel("h-full overflow-y-auto rounded-none border-0 bg-white shadow-none")}
+        {casePanel("h-full overflow-y-auto rounded-none border-0 bg-white shadow-none", false)}
       </MobileSheet>
 
       {/* History drawer (tablet / mobile) */}
