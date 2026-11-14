@@ -10,16 +10,6 @@
     "isPlaceholder": false
   },
   {
-    "id": "pe_ecg_tachycardia",
-    "filename": "sinus-tachycardia-ecg.svg",
-    "sourceUrl": "https://commons.wikimedia.org/wiki/File:Tachycardia_ECG_paper.svg",
-    "author": "Madhero88",
-    "license": "CC BY-SA 3.0 Unported",
-    "requiredAttributionText": "Tachycardia ECG paper by Madhero88, via Wikimedia Commons (CC BY-SA 3.0).",
-    "altText": "ECG rhythm strip on grid paper showing a regular narrow-complex tachycardia.",
-    "isPlaceholder": false
-  },
-  {
     "id": "pe_ctpa_filling_defect",
     "filename": "saddle-pe-ctpa.jpg",
     "sourceUrl": "https://commons.wikimedia.org/wiki/File:SADDLE_PE.JPG",

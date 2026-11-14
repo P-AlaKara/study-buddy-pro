@@ -1,6 +1,7 @@
 import { useRef, useState, type PointerEvent as ReactPointerEvent } from "react";
 import { LocateFixed, Minus, Move, Plus, RotateCcw } from "lucide-react";
-import type { CaseActionResult, CaseAsset } from "../schema.js";
+import type { CaseActionResult } from "../schema.js";
+import type { ResultMedia } from "./result-media.js";
 
 interface FindingMark {
   x: number;
@@ -9,13 +10,11 @@ interface FindingMark {
 }
 
 export function CaseImageViewer({
-  asset,
-  assetPath,
+  media,
   result,
   revealAnswer = false,
 }: {
-  asset: CaseAsset;
-  assetPath: string;
+  media: ResultMedia;
   result: CaseActionResult;
   revealAnswer?: boolean;
 }) {
@@ -131,8 +130,8 @@ export function CaseImageViewer({
           style={{ transform: `translate(${pan.x}px, ${pan.y}px) scale(${zoom})` }}
         >
           <img
-            src={assetPath}
-            alt={asset.altText}
+            src={media.src}
+            alt={media.altText}
             draggable={false}
             className="h-full w-full select-none object-contain"
           />
@@ -187,12 +186,12 @@ export function CaseImageViewer({
           )}
         </div>
         <figcaption className="text-[11px] leading-relaxed text-white/65">
-          {asset.requiredAttributionText}
-          {asset.sourceUrl && (
+          {media.attribution}
+          {media.sourceUrl && (
             <>
               {" "}
               <a
-                href={asset.sourceUrl}
+                href={media.sourceUrl}
                 target="_blank"
                 rel="noreferrer"
                 className="underline underline-offset-2"

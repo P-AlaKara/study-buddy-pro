@@ -1,4 +1,18 @@
-import type { MedicalCase } from "../schema.js";
+import { ecgAnnotation } from "../ecg.js";
+import type { MedicalCase, ResultCondition } from "../schema.js";
+
+/*
+ * Patient states the responses track:
+ * - EXTENDING: no rate control by minute 12; the dissection is propagating
+ *   (worse pain, spreading pulse deficit and malperfusion).
+ * - BLEEDING: no surgical call by minute 18; blood is tracking into the
+ *   pericardium (falling pressure, muffled heart sounds, low-voltage ECG
+ *   with alternans, haemopericardium on CT, tamponade on echo).
+ * - RATE_CONTROLLED: IV beta-blockade has been given.
+ */
+const EXTENDING: ResultCondition = { afterDeterioration: ["dissection_no_rate_control"] };
+const BLEEDING: ResultCondition = { afterDeterioration: ["dissection_no_surgical_call"] };
+const RATE_CONTROLLED: ResultCondition = { afterActions: ["give_beta_blocker"] };
 
 export const theTearingPain: MedicalCase = {
   id: "a1000000-0000-4000-8000-000000000002",
@@ -35,7 +49,7 @@ export const theTearingPain: MedicalCase = {
       id: "dissection_no_rate_control",
       ifNotDoneBy: 12,
       action: "give_beta_blocker",
-      effect: { hr: 14, systolicBp: 16, rr: 4 },
+      effect: { hr: 14, systolicBp: 16, diastolicBp: 6, rr: 4, spo2: -2 },
       alertLine:
         "His pressure is still over 210 and the pain is worse. We need to reduce aortic shear now.",
       source: "nurse",
@@ -67,6 +81,26 @@ export const theTearingPain: MedicalCase = {
         content:
           "It was instant — the worst pain of my life. It feels like something is tearing from my chest straight between my shoulder blades.",
       },
+      variants: [
+        {
+          when: BLEEDING,
+          result: { content: "Still… tearing. Through to my back. I feel — faint." },
+        },
+        {
+          when: { afterActions: ["give_opioid_analgesia"] },
+          result: {
+            content:
+              "It came on instantly — the worst pain of my life, tearing from my chest to between my shoulder blades. The morphine's taken the edge off, but it's still there.",
+          },
+        },
+        {
+          when: EXTENDING,
+          result: {
+            content:
+              "Instant — like something tearing from my chest to between my shoulder blades. And it's getting worse… moving lower down my back.",
+          },
+        },
+      ],
       clueTier: "obvious",
       supports: ["aortic_dissection"],
       against: ["acid_reflux"],
@@ -85,6 +119,12 @@ export const theTearingPain: MedicalCase = {
         content:
           "I've had high blood pressure for years. I ran out of tablets a couple of months ago and never went back.",
       },
+      variants: [
+        {
+          when: BLEEDING,
+          result: { content: "High pressure… for years. Stopped the tablets… couple of months." },
+        },
+      ],
       clueTier: "buried",
       supports: ["aortic_dissection", "acute_coronary_syndrome"],
       against: [],
@@ -103,6 +143,19 @@ export const theTearingPain: MedicalCase = {
         content:
           "My left hand went numb for a minute in the ambulance. I nearly blacked out when the pain started.",
       },
+      variants: [
+        {
+          when: BLEEDING,
+          result: { content: "Dizzy… everything's going grey. Left hand's… numb again." },
+        },
+        {
+          when: EXTENDING,
+          result: {
+            content:
+              "My left hand went numb in the ambulance — and now my left leg feels heavy too. I nearly blacked out when the pain started.",
+          },
+        },
+      ],
       clueTier: "buried",
       supports: ["aortic_dissection"],
       against: ["acid_reflux"],
@@ -121,6 +174,12 @@ export const theTearingPain: MedicalCase = {
         content:
           "I'm sweating and nauseated, but the pain doesn't feel heavy or tight. It went to my back immediately.",
       },
+      variants: [
+        {
+          when: BLEEDING,
+          result: { content: "Sweaty… sick. Not a squeeze — it tore… straight to my back." },
+        },
+      ],
       clueTier: "obvious",
       supports: ["acute_coronary_syndrome", "aortic_dissection"],
       against: [],
@@ -138,6 +197,12 @@ export const theTearingPain: MedicalCase = {
         content:
           "I get ordinary heartburn after spicy food, but never pain like this. Antacid didn't touch it.",
       },
+      variants: [
+        {
+          when: BLEEDING,
+          result: { content: "Heartburn… sometimes. Never like this. Antacid did nothing." },
+        },
+      ],
       clueTier: "red_herring",
       supports: ["acid_reflux"],
       against: [],
@@ -146,15 +211,38 @@ export const theTearingPain: MedicalCase = {
     {
       id: "check_vitals",
       category: "examine",
-      label: "Check initial vital signs",
+      label: "Check vital signs",
       timeCostMin: 1,
       moneyCost: 0,
       riskNote: "",
       result: {
         type: "text",
         content:
-          "HR 112, right-arm BP 198/112, RR 24, SpO₂ 96% on room air, temperature 36.7°C. He is pale and diaphoretic.",
+          "HR {hr}, right-arm BP {bp}, RR {rr}, SpO₂ {spo2}% on room air, temperature {temp}°C. He is pale and diaphoretic.",
       },
+      variants: [
+        {
+          when: BLEEDING,
+          result: {
+            content:
+              "HR {hr}, right-arm BP {bp}, RR {rr}, SpO₂ {spo2}%, temperature {temp}°C. He is grey and clammy with distended neck veins, and his pressure is falling.",
+          },
+        },
+        {
+          when: RATE_CONTROLLED,
+          result: {
+            content:
+              "HR {hr}, right-arm BP {bp}, RR {rr}, SpO₂ {spo2}% on room air, temperature {temp}°C. With rate control he is calmer, though still sweaty and in pain.",
+          },
+        },
+        {
+          when: EXTENDING,
+          result: {
+            content:
+              "HR {hr}, right-arm BP {bp}, RR {rr}, SpO₂ {spo2}% on room air, temperature {temp}°C. The pain is worse; he is pale, drenched in sweat and cannot lie still.",
+          },
+        },
+      ],
       clueTier: "obvious",
       supports: ["aortic_dissection", "acute_coronary_syndrome"],
       against: ["acid_reflux"],
@@ -170,7 +258,8 @@ export const theTearingPain: MedicalCase = {
       riskNote: "",
       result: {
         type: "text",
-        content: "Right arm: 198/112 mmHg. Left arm: 164/96 mmHg — a 34 mmHg systolic difference.",
+        content:
+          "Right arm: {bp} mmHg. Left arm: {sbp-34}/{dbp-16} mmHg — a 34 mmHg systolic difference.",
       },
       clueTier: "buried",
       supports: ["aortic_dissection"],
@@ -190,6 +279,15 @@ export const theTearingPain: MedicalCase = {
         content:
           "There is a new high-pitched early diastolic murmur at the left sternal edge, consistent with acute aortic regurgitation.",
       },
+      variants: [
+        {
+          when: BLEEDING,
+          result: {
+            content:
+              "Heart sounds are now quiet and distant. The early diastolic murmur of aortic regurgitation is only just audible at the left sternal edge, and the JVP is raised.",
+          },
+        },
+      ],
       clueTier: "buried",
       supports: ["aortic_dissection"],
       against: ["acute_coronary_syndrome", "acid_reflux"],
@@ -208,6 +306,15 @@ export const theTearingPain: MedicalCase = {
         content:
           "The left radial pulse is weaker and slightly delayed compared with the right. Femoral pulses remain palpable.",
       },
+      variants: [
+        {
+          when: EXTENDING,
+          result: {
+            content:
+              "The left radial pulse is now barely palpable, and the left femoral pulse is weaker than the right — the dissection is extending.",
+          },
+        },
+      ],
       clueTier: "buried",
       supports: ["aortic_dissection"],
       against: ["acute_coronary_syndrome", "acid_reflux"],
@@ -226,6 +333,15 @@ export const theTearingPain: MedicalCase = {
         content:
           "Power and speech are currently normal; light-touch sensation is mildly reduced in the left hand.",
       },
+      variants: [
+        {
+          when: EXTENDING,
+          result: {
+            content:
+              "Speech is normal. Light-touch sensation is reduced in the left hand, and left grip is now weaker (4/5) — evolving malperfusion.",
+          },
+        },
+      ],
       clueTier: "none",
       supports: ["aortic_dissection"],
       against: [],
@@ -241,15 +357,25 @@ export const theTearingPain: MedicalCase = {
       result: {
         type: "ecg",
         content:
-          "Sinus tachycardia with left ventricular hypertrophy and non-specific ST-T changes. There is no diagnostic STEMI pattern.",
-        assetId: "dissection_ecg",
-        annotation: {
-          xPercent: 53,
-          yPercent: 48,
-          radiusPercent: 24,
-          label: "No regional ST elevation",
-        },
+          "{rhythm} at {hr} bpm with left ventricular hypertrophy by voltage criteria and lateral ST depression with T-wave inversion (strain pattern). There is no regional ST elevation to suggest STEMI.",
+        ecg: { preset: "lvh_strain" },
+        annotation: ecgAnnotation(
+          ["V5", "V6"],
+          13,
+          "LVH with lateral strain; no regional ST elevation",
+        ),
       },
+      variants: [
+        {
+          when: BLEEDING,
+          result: {
+            content:
+              "{rhythm} at {hr} bpm. QRS voltages are now much lower than expected for his hypertrophy, with beat-to-beat electrical alternans — suggestive of a pericardial effusion. No regional ST elevation.",
+            ecg: { preset: "lvh_effusion" },
+            annotation: ecgAnnotation(["rhythm"], 14, "Low voltage with electrical alternans"),
+          },
+        },
+      ],
       clueTier: "contradicting",
       supports: ["aortic_dissection"],
       against: ["acute_coronary_syndrome"],
@@ -274,6 +400,44 @@ export const theTearingPain: MedicalCase = {
           { test: "Lactate", result: "2.6 mmol/L", reference: "0.5–2.2", flag: "high" },
         ],
       },
+      variants: [
+        {
+          when: BLEEDING,
+          result: {
+            content:
+              "Troponin is mildly raised, but haemoglobin is falling and lactate is climbing — bleeding and poor perfusion, not coronary occlusion.",
+            labs: [
+              {
+                test: "High-sensitivity troponin",
+                result: "58 ng/L",
+                reference: "<14",
+                flag: "high",
+              },
+              { test: "Haemoglobin", result: "11.9 g/dL", reference: "13.0–17.0", flag: "low" },
+              { test: "Creatinine", result: "131 µmol/L", reference: "60–110", flag: "high" },
+              { test: "Lactate", result: "4.6 mmol/L", reference: "0.5–2.2", flag: "critical" },
+            ],
+          },
+        },
+        {
+          when: EXTENDING,
+          result: {
+            content:
+              "Troponin is mildly elevated, which is not specific for coronary occlusion. Lactate and creatinine are rising as the dissection extends.",
+            labs: [
+              {
+                test: "High-sensitivity troponin",
+                result: "47 ng/L",
+                reference: "<14",
+                flag: "high",
+              },
+              { test: "Haemoglobin", result: "13.6 g/dL", reference: "13.0–17.0", flag: "normal" },
+              { test: "Creatinine", result: "118 µmol/L", reference: "60–110", flag: "high" },
+              { test: "Lactate", result: "3.2 mmol/L", reference: "0.5–2.2", flag: "high" },
+            ],
+          },
+        },
+      ],
       clueTier: "red_herring",
       supports: ["acute_coronary_syndrome", "aortic_dissection"],
       against: ["acid_reflux"],
@@ -289,12 +453,12 @@ export const theTearingPain: MedicalCase = {
       result: {
         type: "image",
         content:
-          "The mediastinum is widened with an abnormal aortic contour. There is no focal lung opacity.",
+          "The superior mediastinum is widened with an enlarged, indistinct aortic contour, and the heart is enlarged. There is no focal lung opacity.",
         assetId: "dissection_cxr_wide_mediastinum",
         annotation: {
-          xPercent: 53,
-          yPercent: 30,
-          radiusPercent: 19,
+          xPercent: 54,
+          yPercent: 32,
+          radiusPercent: 17,
           label: "Widened superior mediastinum",
         },
       },
@@ -314,15 +478,31 @@ export const theTearingPain: MedicalCase = {
       result: {
         type: "image",
         content:
-          "An intimal flap begins in the ascending aorta and extends through the arch: acute Stanford type A aortic dissection.",
+          "An intimal flap arises in the ascending aorta and continues into the descending thoracic aorta: acute Stanford type A (DeBakey I) aortic dissection.",
         assetId: "dissection_ct_flap",
         annotation: {
-          xPercent: 56,
-          yPercent: 44,
-          radiusPercent: 14,
-          label: "Intimal flap separating true and false lumens",
+          xPercent: 55,
+          yPercent: 50,
+          radiusPercent: 19,
+          label: "Intimal flap in the ascending and descending aorta",
         },
       },
+      variants: [
+        {
+          when: BLEEDING,
+          result: {
+            content:
+              "The intimal flap runs from the ascending into the descending aorta, and fluid now surrounds the heart (haemopericardium): type A dissection with impending tamponade.",
+            assetId: "dissection_ct_haemopericardium",
+            annotation: {
+              xPercent: 50,
+              yPercent: 37,
+              radiusPercent: 16,
+              label: "Flap in the ascending aorta with surrounding pericardial fluid",
+            },
+          },
+        },
+      ],
       clueTier: "buried",
       supports: ["aortic_dissection"],
       against: ["acute_coronary_syndrome", "acid_reflux"],
@@ -341,6 +521,15 @@ export const theTearingPain: MedicalCase = {
         content:
           "A dilated aortic root and moderate aortic regurgitation are seen. There is a small pericardial effusion without tamponade physiology.",
       },
+      variants: [
+        {
+          when: BLEEDING,
+          result: {
+            content:
+              "A dilated aortic root with moderate aortic regurgitation. The pericardial effusion is now moderate, with right ventricular diastolic collapse — tamponade physiology.",
+          },
+        },
+      ],
       clueTier: "buried",
       supports: ["aortic_dissection"],
       against: ["acute_coronary_syndrome"],
@@ -394,7 +583,7 @@ export const theTearingPain: MedicalCase = {
       result: {
         type: "text",
         content:
-          "Continuous ECG, pulse oximetry, and frequent blood pressure monitoring are started.",
+          "Continuous ECG, pulse oximetry and frequent blood pressure monitoring are started. The monitor shows {rhythm} at {hr} bpm, right-arm BP {bp}, SpO₂ {spo2}%.",
       },
       clueTier: "none",
       supports: [],
@@ -428,7 +617,8 @@ export const theTearingPain: MedicalCase = {
       riskNote: "Monitor consciousness, breathing, and blood pressure.",
       result: {
         type: "text",
-        content: "Titrated analgesia eases his distress and helps reduce the sympathetic surge.",
+        content:
+          "Titrated IV morphine eases his distress (pain 9/10 → 5/10) and blunts the sympathetic surge: HR {hr}, BP {bp}.",
       },
       clueTier: "none",
       supports: [],
@@ -446,33 +636,57 @@ export const theTearingPain: MedicalCase = {
       result: {
         type: "text",
         content:
-          "IV esmolol is titrated. His heart rate falls toward 65 bpm and systolic pressure begins moving toward 120 mmHg.",
+          "IV esmolol is titrated: heart rate falls to {hr} bpm (target ≤60) and right-arm pressure to {bp}. Systolic is still above the 100–120 target; with the rate controlled, a vasodilator can now be added safely.",
       },
+      variants: [
+        {
+          when: { afterActions: ["give_vasodilator_alone"] },
+          result: {
+            content:
+              "IV esmolol blunts the reflex tachycardia from the vasodilator: heart rate falls to {hr} bpm (target ≤60) and right-arm pressure to {bp}.",
+          },
+        },
+      ],
       clueTier: "none",
       supports: ["aortic_dissection"],
       against: [],
       triggersEvent: "aortic_impulse_control_started",
       isCritical: true,
-      vitalsEffect: { hr: -38, systolicBp: -46 },
+      vitalsEffect: { hr: -38, systolicBp: -46, diastolicBp: -22 },
     },
     {
       id: "give_vasodilator_alone",
       category: "treat",
-      label: "Start a vasodilator before beta-blockade",
+      label: "Start an IV vasodilator (GTN infusion)",
       timeCostMin: 2,
       moneyCost: 80,
       riskNote:
-        "Reflex tachycardia can increase aortic shear if rate control is not established first.",
+        "Without prior rate control, reflex tachycardia increases shear on the aortic wall.",
       result: {
         type: "text",
         content:
-          "The pressure falls briefly, but reflex tachycardia increases the force on the injured aortic wall.",
+          "GTN lowers the pressure to {bp}, but reflex tachycardia to {hr} bpm increases the force on the injured aortic wall.",
       },
+      variants: [
+        {
+          when: RATE_CONTROLLED,
+          result: {
+            content:
+              "With the rate already controlled, the GTN infusion brings right-arm pressure down to {bp} without reflex tachycardia (HR {hr}).",
+          },
+          vitalsEffect: { hr: 2, systolicBp: -30, diastolicBp: -14 },
+        },
+      ],
       clueTier: "none",
       supports: [],
       against: [],
       triggersEvent: "reflex_tachycardia",
-      harmful: true,
+      penalizeWhenUnsafe: true,
+      safeWhen: {
+        allActionIds: ["give_beta_blocker"],
+        explanation:
+          "Add a vasodilator only after beta-blockade has controlled the heart rate; otherwise reflex tachycardia increases aortic wall shear.",
+      },
       vitalsEffect: { hr: 16, systolicBp: -12 },
     },
     {
@@ -485,8 +699,24 @@ export const theTearingPain: MedicalCase = {
       result: {
         type: "text",
         content:
-          "The cardiothoracic team activates the emergency theatre pathway for acute type A dissection.",
+          "The cardiothoracic team accepts him on the clinical picture and activates the emergency theatre pathway for suspected type A dissection, asking for CT aortography on the way.",
       },
+      variants: [
+        {
+          when: BLEEDING,
+          result: {
+            content:
+              "The cardiothoracic team comes straight down: with falling pressure and a likely haemopericardium, he is taken directly to theatre.",
+          },
+        },
+        {
+          when: { afterActions: ["order_ct_aorta"] },
+          result: {
+            content:
+              "The cardiothoracic surgeon reviews the CT and accepts him for emergency type A repair; theatre is being prepared.",
+          },
+        },
+      ],
       clueTier: "none",
       supports: ["aortic_dissection"],
       against: [],
@@ -508,7 +738,7 @@ export const theTearingPain: MedicalCase = {
       result: {
         type: "text",
         content:
-          "Antithrombotic treatment is given for presumed ACS. His risk of catastrophic haemorrhage rises sharply.",
+          "Antithrombotic treatment is given for presumed ACS. His pressure drops to {bp} as the risk of catastrophic haemorrhage rises sharply.",
       },
       clueTier: "none",
       supports: ["acute_coronary_syndrome"],
@@ -653,37 +883,39 @@ export const theTearingPain: MedicalCase = {
   assets: [
     {
       id: "dissection_cxr_wide_mediastinum",
-      filename: "widened-mediastinum-placeholder.svg",
-      sourceUrl: "",
-      author: "Placeholder",
-      license: "Not applicable — replacement required",
+      filename: "type-a-dissection-cxr.jpg",
+      sourceUrl: "https://commons.wikimedia.org/wiki/File:AoDiss_ChestXRay.jpg",
+      author: "J. Heuser",
+      license: "CC BY-SA 3.0 Unported",
       requiredAttributionText:
-        "Placeholder image; replace with a verified open-licensed chest radiograph showing a widened mediastinum.",
-      altText: "Placeholder for a chest X-ray with a widened mediastinum.",
-      isPlaceholder: true,
+        "Chest radiograph of a Stanford type A aortic dissection by J. Heuser, via Wikimedia Commons (CC BY-SA 3.0); numeric labels removed.",
+      altText:
+        "Frontal chest radiograph showing a widened superior mediastinum with an enlarged, ill-defined aortic contour and an enlarged heart.",
+      isPlaceholder: false,
     },
     {
       id: "dissection_ct_flap",
-      filename: "aortic-dissection-ct-placeholder.svg",
-      sourceUrl: "",
-      author: "Placeholder",
-      license: "Not applicable — replacement required",
+      filename: "type-a-dissection-ct.jpg",
+      sourceUrl: "https://commons.wikimedia.org/wiki/File:TypeAdissection.png",
+      author: "James Heilman, MD",
+      license: "CC BY-SA 3.0 Unported",
       requiredAttributionText:
-        "Placeholder image; replace with a verified open-licensed CT angiogram showing an aortic dissection flap.",
-      altText: "Placeholder for an axial CT angiogram showing an aortic dissection flap.",
-      isPlaceholder: true,
+        "Type A aortic dissection CT by James Heilman, MD, via Wikimedia Commons (CC BY-SA 3.0); arrows removed.",
+      altText:
+        "Axial contrast-enhanced chest CT showing an intimal flap in both the ascending and the descending thoracic aorta.",
+      isPlaceholder: false,
     },
     {
-      id: "dissection_ecg",
-      filename: "dissection-ecg-placeholder.svg",
-      sourceUrl: "",
-      author: "Placeholder",
-      license: "Not applicable — replacement required",
+      id: "dissection_ct_haemopericardium",
+      filename: "type-a-dissection-haemopericardium-ct.jpg",
+      sourceUrl: "https://commons.wikimedia.org/wiki/File:Dissection2018WithPericardial.jpg",
+      author: "James Heilman, MD",
+      license: "CC BY-SA 4.0 International",
       requiredAttributionText:
-        "Placeholder image; replace with a verified open-licensed ECG without an acute STEMI pattern.",
+        "Type A dissection with pericardial effusion CT by James Heilman, MD, via Wikimedia Commons (CC BY-SA 4.0); arrows removed.",
       altText:
-        "Placeholder for a 12-lead ECG showing sinus tachycardia and left ventricular hypertrophy.",
-      isPlaceholder: true,
+        "Axial CT angiogram showing an intimal flap in the ascending and descending aorta with fluid surrounding the heart.",
+      isPlaceholder: false,
     },
   ],
   mockComparisonPercent: 54,

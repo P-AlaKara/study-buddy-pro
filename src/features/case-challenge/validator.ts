@@ -1,4 +1,10 @@
-import { CLUE_TIERS, type CaseAsset, type MedicalCase } from "./schema.js";
+import {
+  CLUE_TIERS,
+  ECG_PRESETS,
+  type CaseActionResult,
+  type CaseAsset,
+  type MedicalCase,
+} from "./schema.js";
 
 export interface CaseValidationIssue {
   path: string;
@@ -63,16 +69,54 @@ export function validateCase(caseDefinition: MedicalCase): CaseValidationIssue[]
     });
   }
 
+  const ruleIds = new Set(caseDefinition.deteriorationRules.map((rule) => rule.id));
+
+  function checkResult(path: string, result: CaseActionResult): void {
+    if (result.assetId && !assetIds.has(result.assetId)) {
+      issues.push({
+        path: `${path}.assetId`,
+        message: `Referenced asset ${result.assetId} is not in the case manifest.`,
+      });
+    }
+    if (result.ecg && !ECG_PRESETS.includes(result.ecg.preset)) {
+      issues.push({ path: `${path}.ecg`, message: `Unknown ECG preset ${result.ecg.preset}.` });
+    }
+    if (result.type === "image" && !result.assetId) {
+      issues.push({ path, message: "Image results need an asset to display." });
+    }
+    if (result.type === "ecg" && !result.assetId && !result.ecg) {
+      issues.push({ path, message: "ECG results need a generated tracing or an asset." });
+    }
+    if (result.type === "lab_table" && !result.labs?.length) {
+      issues.push({ path, message: "Lab results need at least one row." });
+    }
+  }
+
   for (const action of caseDefinition.actions) {
     if (!CLUE_TIERS.includes(action.clueTier)) {
       issues.push({ path: `actions.${action.id}.clueTier`, message: "Unknown clue tier." });
     }
-    if (action.result.assetId && !assetIds.has(action.result.assetId)) {
-      issues.push({
-        path: `actions.${action.id}.result.assetId`,
-        message: `Referenced asset ${action.result.assetId} is not in the case manifest.`,
-      });
-    }
+    checkResult(`actions.${action.id}.result`, action.result);
+    action.variants?.forEach((variant, index) => {
+      const path = `actions.${action.id}.variants.${index}`;
+      checkResult(`${path}.result`, { ...action.result, ...variant.result });
+      for (const id of [
+        ...(variant.when.afterActions ?? []),
+        ...(variant.when.notAfterActions ?? []),
+      ]) {
+        if (!actionIds.has(id) || id === action.id) {
+          issues.push({ path: `${path}.when`, message: `Condition action ${id} is not valid.` });
+        }
+      }
+      for (const id of variant.when.afterDeterioration ?? []) {
+        if (!ruleIds.has(id)) {
+          issues.push({
+            path: `${path}.when`,
+            message: `Condition deterioration rule ${id} does not exist.`,
+          });
+        }
+      }
+    });
     for (const diagnosisId of [...action.supports, ...action.against]) {
       if (!diagnosisIds.has(diagnosisId)) {
         issues.push({

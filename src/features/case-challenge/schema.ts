@@ -75,10 +75,37 @@ export interface LabRow {
   flag?: "normal" | "high" | "low" | "critical";
 }
 
+/** Morphology presets the ECG generator (`ecg.ts`) can draw. */
+export const ECG_PRESETS = [
+  "sinus_normal",
+  "pe_early",
+  "pe_rv_strain",
+  "lvh_strain",
+  "lvh_effusion",
+] as const;
+export type EcgPreset = (typeof ECG_PRESETS)[number];
+
+/**
+ * A 12-lead ECG drawn at runtime rather than loaded from a file, so the
+ * tracing always matches the patient's live heart rate. The engine fills in
+ * `heartRate` when the action completes.
+ */
+export interface EcgTracing {
+  preset: EcgPreset;
+  heartRate?: number;
+}
+
 export interface CaseActionResult {
   type: ResultType;
+  /**
+   * May contain live-vital tokens resolved when the action completes:
+   * `{hr}`, `{bp}`, `{sbp}`, `{dbp}`, `{rr}`, `{spo2}`, `{temp}` (each also
+   * accepts an offset such as `{sbp-34}`) and `{rhythm}` ("Sinus
+   * tachycardia" / "Sinus rhythm" / "Sinus bradycardia" from the rate).
+   */
   content: string;
   assetId?: string;
+  ecg?: EcgTracing;
   labs?: LabRow[];
   annotation?: {
     xPercent: number;
@@ -86,6 +113,32 @@ export interface CaseActionResult {
     radiusPercent: number;
     label: string;
   };
+}
+
+export type VitalSign = "hr" | "systolicBp" | "diastolicBp" | "rr" | "spo2" | "temp";
+
+/**
+ * When a result variant applies. Every listed condition must hold; it is
+ * evaluated against the patient at the moment the action completes (after
+ * any deterioration during it, before the action's own vitals effect).
+ */
+export interface ResultCondition {
+  /** All of these actions were completed earlier. */
+  afterActions?: string[];
+  /** None of these actions were completed earlier. */
+  notAfterActions?: string[];
+  /** All of these deterioration rules have fired. */
+  afterDeterioration?: string[];
+  /** Live vital-sign ranges: `atLeast` is inclusive, `below` is exclusive. */
+  vitals?: Partial<Record<VitalSign, { atLeast?: number; below?: number }>>;
+}
+
+export interface ResultVariant {
+  when: ResultCondition;
+  /** Merged over the action's base result. */
+  result: Partial<CaseActionResult>;
+  /** Replaces the action's base vitals effect when this variant applies. */
+  vitalsEffect?: VitalsDelta;
 }
 
 export interface ActionSafetyGate {
@@ -106,6 +159,12 @@ export interface CaseAction {
   moneyCost: number;
   riskNote: string;
   result: CaseActionResult;
+  /**
+   * State-dependent alternatives to `result`; the first matching variant
+   * wins, otherwise the base result is used. This is how an action's response
+   * tracks the patient (a repeat set of vitals, an ECG after deterioration).
+   */
+  variants?: ResultVariant[];
   clueTier: ClueTier;
   supports: string[];
   against: string[];

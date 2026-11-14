@@ -12,7 +12,7 @@ import {
   Syringe,
   Trash2,
 } from "lucide-react";
-import type { GameState } from "../engine.js";
+import { resultForAction, type GameState } from "../engine.js";
 import type { ActionCategory, MedicalCase } from "../schema.js";
 import { DR_AMBROSE, DrAmbrose, type AmbroseExpression } from "./dr-ambrose.js";
 import { workspaceToolMeta, type RightTab } from "./case-constants.js";
@@ -181,7 +181,7 @@ function ChartPanel({ game, caseDefinition }: { game: GameState; caseDefinition:
                     </time>
                   </div>
                   <p className="mt-1.5 text-[11px] leading-relaxed text-slate-600">
-                    {action.result.content}
+                    {resultForAction(game, action).content}
                   </p>
                   {action.category === "test" && (
                     <span className="mt-2 inline-flex items-center gap-1 rounded-full bg-white px-2 py-1 text-[9px] font-black text-[var(--case-mint-ink)]">

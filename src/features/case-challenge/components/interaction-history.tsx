@@ -23,9 +23,10 @@ import {
   Syringe,
   XCircle,
 } from "lucide-react";
-import type { GameState, TimelineEvent } from "../engine.js";
-import type { ActionCategory, CaseAction, MedicalCase } from "../schema.js";
+import { resultForAction, type GameState, type TimelineEvent } from "../engine.js";
+import type { ActionCategory, CaseAction, CaseActionResult, MedicalCase } from "../schema.js";
 import { CaseImageViewer } from "./case-image-viewer.js";
+import { resultMedia } from "./result-media.js";
 import { TypingDots } from "./case-ui.js";
 import { formatEncounterClock } from "./patient-media.js";
 
@@ -88,24 +89,24 @@ function PatientBubble({ text }: { text: string }) {
 /** Neutral card body for an examination / investigation / treatment result. */
 function ResultBody({
   action,
+  result,
   caseDefinition,
 }: {
   action: CaseAction;
+  result: CaseActionResult;
   caseDefinition: MedicalCase;
 }) {
-  const asset = action.result.assetId
-    ? caseDefinition.assets.find((candidate) => candidate.id === action.result.assetId)
-    : undefined;
+  const media = resultMedia(caseDefinition, result);
   const leadLabel =
     action.category === "examine" ? "Findings" : action.category === "test" ? "Result" : "Response";
 
   return (
     <div className="space-y-2">
       <p className="text-[13px] font-bold leading-relaxed text-slate-700">
-        <span className="font-black text-slate-900">{leadLabel}:</span> {action.result.content}
+        <span className="font-black text-slate-900">{leadLabel}:</span> {result.content}
       </p>
 
-      {action.result.type === "lab_table" && action.result.labs && (
+      {result.type === "lab_table" && result.labs && (
         <div className="overflow-x-auto rounded-xl border border-[var(--case-border)]">
           <table className="w-full min-w-[320px] text-left text-xs">
             <thead className="bg-slate-50 text-[9px] uppercase tracking-wider text-slate-500">
@@ -116,7 +117,7 @@ function ResultBody({
               </tr>
             </thead>
             <tbody>
-              {action.result.labs.map((lab) => (
+              {result.labs.map((lab) => (
                 <tr key={lab.test} className="border-t border-slate-100">
                   <td className="px-3 py-2 font-bold">{lab.test}</td>
                   <td
@@ -136,13 +137,9 @@ function ResultBody({
         </div>
       )}
 
-      {asset && (action.result.type === "image" || action.result.type === "ecg") && (
+      {media && (
         <div className="overflow-hidden rounded-xl">
-          <CaseImageViewer
-            asset={asset}
-            assetPath={`/cases/${caseDefinition.slug}/${asset.filename}`}
-            result={action.result}
-          />
+          <CaseImageViewer media={media} result={result} />
         </div>
       )}
     </div>
@@ -201,7 +198,8 @@ function nodesForEvent(
     const action = actionById.get(event.actionId);
     if (!action) return [];
     const you = YOU_META[action.category];
-    const isReply = action.result.type === "patient_reply";
+    const result = resultForAction(game, action);
+    const isReply = result.type === "patient_reply";
     const resultColor = isReply
       ? "var(--case-accent)"
       : action.category === "examine"
@@ -242,9 +240,9 @@ function nodesForEvent(
         time={time}
       >
         {isReply ? (
-          <PatientBubble text={action.result.content} />
+          <PatientBubble text={result.content} />
         ) : (
-          <ResultBody action={action} caseDefinition={caseDefinition} />
+          <ResultBody action={action} result={result} caseDefinition={caseDefinition} />
         )}
       </TimelineNode>,
     ];

@@ -16,6 +16,18 @@ The differential API records add, remove, rank, confidence, and evidence-tag cha
 
 `commitCase` resolves diagnosis and treatment selections into `diagnosed`, `missed`, or `patient_lost`. `createDebrief` returns found/missed clues, harmful-action explanations, the replay timeline, teaching points, and the score breakdown.
 
+## State-dependent results
+
+An action's response reflects the patient at the moment it completes, not the minute-0 script:
+
+- `variants` on a `CaseAction` are tried in order; the first whose `when` holds (`afterActions`, `notAfterActions`, `afterDeterioration`, live `vitals` ranges) is merged over the base `result`, and may replace `vitalsEffect`. Conditions see the patient after any deterioration during the action, before its own effect.
+- Result text and lab values can use live tokens — `{hr}`, `{bp}`, `{sbp}`, `{dbp}`, `{rr}`, `{spo2}`, `{temp}` (with offsets such as `{sbp-34}`) and `{rhythm}` — filled in with the vitals after the action's effect.
+- The engine stores the resolved result on `CompletedAction.result`; UI code reads it through `resultForAction(state, action)`, never `action.result` directly.
+
+ECGs are generated, not shipped as files: an `ecg` result carries `ecg: { preset }` and `ecg.ts` draws a print-style 12-lead (3×4 + lead II rhythm strip, 25 mm/s, 10 mm/mV, 4:3 to fill the viewer) at the heart rate recorded when the ECG was taken. Presets cover normal sinus, early PE, PE with right-ventricular strain, LVH with strain, and LVH with a pericardial effusion (low voltage + alternans). Use `ecgAnnotation([...leads], radius, label)` for the debrief answer ring. `components/result-media.ts` turns any result into the viewer's image source and attribution.
+
+Radiology images live in `public/cases/<slug>/` with a matching `assets.manifest.json`. They are open-licensed (CC0 / public domain / CC BY-SA) and teaching overlays such as arrows or numbered labels are removed, so the "mark finding" exercise is not given away; the attribution text records that change.
+
 Run `npm test` after changing the schema, validator, cases, or engine. Tests cover action application, deterioration, interrupted actions, safe-treatment gates, differential history, hints, scoring, win/loss/penalised paths for both cases, and validation failures.
 
 ## Encounter UI

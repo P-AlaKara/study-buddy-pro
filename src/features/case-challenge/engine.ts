@@ -1,8 +1,10 @@
 import type {
   CaseAction,
+  CaseActionResult,
   ClueTier,
   MedicalCase,
   PatientExpression,
+  ResultCondition,
   VitalsDelta,
 } from "./schema.js";
 import { DR_AMBROSE } from "./config.js";
@@ -86,6 +88,12 @@ export interface CompletedAction {
   startedAtMinute: number;
   completedAtMinute: number;
   safetyGateMet: boolean;
+  /**
+   * The result as the patient actually presented when the action completed
+   * (variant chosen, live vitals filled in). Absent in saves made before
+   * results became state-dependent; read it through `resultForAction`.
+   */
+  result?: CaseActionResult;
 }
 
 export interface HintUse {
@@ -239,6 +247,105 @@ function safetyGateMet(action: CaseAction, completed: ReadonlySet<string>): bool
     : false;
 
   return allSatisfied && (!hasAlternativeGate || anySatisfied || thresholdSatisfied);
+}
+
+function conditionMet(
+  condition: ResultCondition,
+  state: Pick<GameState, "vitals" | "appliedDeteriorationRuleIds">,
+  completed: ReadonlySet<string>,
+): boolean {
+  if (condition.afterActions?.some((id) => !completed.has(id))) return false;
+  if (condition.notAfterActions?.some((id) => completed.has(id))) return false;
+  const fired = new Set(state.appliedDeteriorationRuleIds);
+  if (condition.afterDeterioration?.some((id) => !fired.has(id))) return false;
+  for (const [sign, range] of Object.entries(condition.vitals ?? {})) {
+    const value = state.vitals[sign as keyof RuntimeVitals];
+    if (range?.atLeast !== undefined && value < range.atLeast) return false;
+    if (range?.below !== undefined && value >= range.below) return false;
+  }
+  return true;
+}
+
+function rhythmName(hr: number): string {
+  if (hr >= 100) return "Sinus tachycardia";
+  if (hr < 60) return "Sinus bradycardia";
+  return "Sinus rhythm";
+}
+
+/** Fill `{hr}`, `{sbp-34}`, `{rhythm}`… with the patient's live values. */
+export function interpolateVitals(text: string, vitals: RuntimeVitals): string {
+  return text.replace(
+    /\{(hr|bp|sbp|dbp|rr|spo2|temp|rhythm)([+-]\d+)?\}/g,
+    (_match, token: string, offsetText?: string) => {
+      const offset = offsetText ? Number(offsetText) : 0;
+      switch (token) {
+        case "hr":
+          return String(vitals.hr + offset);
+        case "bp":
+          return formatBloodPressure(vitals);
+        case "sbp":
+          return String(vitals.systolicBp + offset);
+        case "dbp":
+          return String(vitals.diastolicBp + offset);
+        case "rr":
+          return String(vitals.rr + offset);
+        case "spo2":
+          return String(Math.min(100, vitals.spo2 + offset));
+        case "temp":
+          return (vitals.temp + offset).toFixed(1);
+        default:
+          return rhythmName(vitals.hr);
+      }
+    },
+  );
+}
+
+/**
+ * Pick the variant that matches the patient's state as the action completes
+ * (after deterioration during it, before its own effect).
+ */
+function selectVariant(
+  action: CaseAction,
+  state: Pick<GameState, "vitals" | "appliedDeteriorationRuleIds">,
+  completed: ReadonlySet<string>,
+): { result: CaseActionResult; vitalsEffect: VitalsDelta | undefined } {
+  const variant = action.variants?.find((candidate) =>
+    conditionMet(candidate.when, state, completed),
+  );
+  if (!variant) return { result: action.result, vitalsEffect: action.vitalsEffect };
+  return {
+    result: { ...action.result, ...variant.result },
+    vitalsEffect: variant.vitalsEffect ?? action.vitalsEffect,
+  };
+}
+
+/** Bind a selected result to the vitals it was observed at. */
+function finaliseResult(result: CaseActionResult, vitals: RuntimeVitals): CaseActionResult {
+  return {
+    ...result,
+    content: interpolateVitals(result.content, vitals),
+    ...(result.labs
+      ? {
+          labs: result.labs.map((row) => ({
+            ...row,
+            result: interpolateVitals(row.result, vitals),
+          })),
+        }
+      : {}),
+    ...(result.ecg ? { ecg: { ...result.ecg, heartRate: vitals.hr } } : {}),
+  };
+}
+
+/**
+ * The result the student saw for a completed action. Saves made before
+ * results were stored fall back to the base result read at the current vitals,
+ * so templates never surface as raw `{hr}` tokens.
+ */
+export function resultForAction(state: GameState, action: CaseAction): CaseActionResult {
+  return (
+    state.completedActions.find((entry) => entry.actionId === action.id)?.result ??
+    finaliseResult(action.result, state.vitals)
+  );
 }
 
 function unique(values: readonly string[]): string[] {
@@ -574,6 +681,15 @@ export function applyAction(
     );
   }
 
+  // The response reflects the patient as they are now, not as authored at
+  // minute 0: pick the matching variant, apply its effect, then read the
+  // vitals into the text (so "saturation rises to {spo2}%" is the new value).
+  const selected = selectVariant(action, advanced.state, completedBeforeAction);
+  const vitalsAfter = selected.vitalsEffect
+    ? applyVitalsDelta(advanced.state.vitals, selected.vitalsEffect)
+    : advanced.state.vitals;
+  const result = finaliseResult(selected.result, vitalsAfter);
+
   let sequence = advanced.state.sequence + 1;
   const timeline = [
     ...advanced.state.timeline,
@@ -581,7 +697,7 @@ export function applyAction(
       timeMinute: completedAtMinute,
       type: "action" as const,
       title: action.label,
-      detail: action.result.content,
+      detail: result.content,
       actionId: action.id,
       clueTier: action.clueTier,
       isKeyClue: action.isKeyClue ?? false,
@@ -609,7 +725,7 @@ export function applyAction(
         {
           actionId: action.id,
           label: action.label,
-          result: action.result.content,
+          result: result.content,
           discoveredAtMinute: completedAtMinute,
           clueTier: action.clueTier,
           isKeyClue: action.isKeyClue ?? false,
@@ -626,7 +742,7 @@ export function applyAction(
         timeMinute: completedAtMinute,
         type: "clue",
         title: action.isKeyClue ? "Key clue discovered" : "Evidence discovered",
-        detail: action.result.content,
+        detail: result.content,
         actionId: action.id,
         clueTier: action.clueTier,
         isKeyClue: action.isKeyClue ?? false,
@@ -638,12 +754,10 @@ export function applyAction(
   const nextBase: GameState = {
     ...advanced.state,
     moneySpent: advanced.state.moneySpent + action.moneyCost,
-    vitals: action.vitalsEffect
-      ? applyVitalsDelta(advanced.state.vitals, action.vitalsEffect)
-      : advanced.state.vitals,
+    vitals: vitalsAfter,
     completedActions: [
       ...advanced.state.completedActions,
-      { actionId, startedAtMinute, completedAtMinute, safetyGateMet: gateMet },
+      { actionId, startedAtMinute, completedAtMinute, safetyGateMet: gateMet, result },
     ],
     discoveredEvidence,
     triggeredEventIds: action.triggersEvent
@@ -668,7 +782,7 @@ export function applyAction(
         phase: "debrief",
         status: "complete",
         outcome: "patient_lost",
-        outcomeReason: action.result.content,
+        outcomeReason: result.content,
         sequence: outcomeSequence,
         timeline: [
           ...nextBase.timeline,
@@ -676,7 +790,7 @@ export function applyAction(
             timeMinute: completedAtMinute,
             type: "outcome",
             title: "Patient lost",
-            detail: action.result.content,
+            detail: result.content,
             actionId: action.id,
           }),
         ],
@@ -933,7 +1047,20 @@ export function commitCase(
     }
   }
 
-  const selectedHarmful = treatmentIds.filter((id) => actionById.get(id)?.harmful);
+  // A plan item is harmful if it always is, or if it is only safe in a
+  // context (e.g. vasodilator after beta-blockade) that neither the encounter
+  // nor the rest of the plan provides. Treatments already given were judged
+  // when they were applied.
+  const completed = completedIds(state);
+  const planContext = new Set([...completed, ...treatmentIds]);
+  const selectedHarmful = treatmentIds.filter((id) => {
+    const action = actionById.get(id);
+    if (!action) return false;
+    if (action.harmful) return true;
+    return Boolean(
+      action.penalizeWhenUnsafe && !completed.has(id) && !safetyGateMet(action, planContext),
+    );
+  });
   const selectedImmediateFailure = selectedHarmful.find(
     (id) => actionById.get(id)?.immediateFailure,
   );
@@ -947,7 +1074,11 @@ export function commitCase(
     (diagnosis) => diagnosis.id === selection.diagnosisId,
   );
   const outcomeReason = selectedImmediateFailure
-    ? (actionById.get(selectedImmediateFailure)?.result.content ?? "A harmful plan caused a crash.")
+    ? interpolateVitals(
+        actionById.get(selectedImmediateFailure)?.result.content ??
+          "A harmful plan caused a crash.",
+        state.vitals,
+      )
     : correctDiagnosis
       ? `You committed to ${committedDiagnosis?.label ?? selection.diagnosisId}.`
       : `You committed to ${committedDiagnosis?.label ?? selection.diagnosisId}; the diagnosis was ${caseDefinition.solution.diagnosis}.`;

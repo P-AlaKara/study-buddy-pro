@@ -1,32 +1,32 @@
 [
   {
     "id": "dissection_cxr_wide_mediastinum",
-    "filename": "widened-mediastinum-placeholder.svg",
-    "sourceUrl": "",
-    "author": "Placeholder",
-    "license": "Not applicable — replacement required",
-    "requiredAttributionText": "Placeholder image; replace with a verified open-licensed chest radiograph showing a widened mediastinum.",
-    "altText": "Placeholder for a chest X-ray with a widened mediastinum.",
-    "isPlaceholder": true
+    "filename": "type-a-dissection-cxr.jpg",
+    "sourceUrl": "https://commons.wikimedia.org/wiki/File:AoDiss_ChestXRay.jpg",
+    "author": "J. Heuser",
+    "license": "CC BY-SA 3.0 Unported",
+    "requiredAttributionText": "Chest radiograph of a Stanford type A aortic dissection by J. Heuser, via Wikimedia Commons (CC BY-SA 3.0); numeric labels removed.",
+    "altText": "Frontal chest radiograph showing a widened superior mediastinum with an enlarged, ill-defined aortic contour and an enlarged heart.",
+    "isPlaceholder": false
   },
   {
     "id": "dissection_ct_flap",
-    "filename": "aortic-dissection-ct-placeholder.svg",
-    "sourceUrl": "",
-    "author": "Placeholder",
-    "license": "Not applicable — replacement required",
-    "requiredAttributionText": "Placeholder image; replace with a verified open-licensed CT angiogram showing an aortic dissection flap.",
-    "altText": "Placeholder for an axial CT angiogram showing an aortic dissection flap.",
-    "isPlaceholder": true
+    "filename": "type-a-dissection-ct.jpg",
+    "sourceUrl": "https://commons.wikimedia.org/wiki/File:TypeAdissection.png",
+    "author": "James Heilman, MD",
+    "license": "CC BY-SA 3.0 Unported",
+    "requiredAttributionText": "Type A aortic dissection CT by James Heilman, MD, via Wikimedia Commons (CC BY-SA 3.0); arrows removed.",
+    "altText": "Axial contrast-enhanced chest CT showing an intimal flap in both the ascending and the descending thoracic aorta.",
+    "isPlaceholder": false
   },
   {
-    "id": "dissection_ecg",
-    "filename": "dissection-ecg-placeholder.svg",
-    "sourceUrl": "",
-    "author": "Placeholder",
-    "license": "Not applicable — replacement required",
-    "requiredAttributionText": "Placeholder image; replace with a verified open-licensed ECG without an acute STEMI pattern.",
-    "altText": "Placeholder for a 12-lead ECG showing sinus tachycardia and left ventricular hypertrophy.",
-    "isPlaceholder": true
+    "id": "dissection_ct_haemopericardium",
+    "filename": "type-a-dissection-haemopericardium-ct.jpg",
+    "sourceUrl": "https://commons.wikimedia.org/wiki/File:Dissection2018WithPericardial.jpg",
+    "author": "James Heilman, MD",
+    "license": "CC BY-SA 4.0 International",
+    "requiredAttributionText": "Type A dissection with pericardial effusion CT by James Heilman, MD, via Wikimedia Commons (CC BY-SA 4.0); arrows removed.",
+    "altText": "Axial CT angiogram showing an intimal flap in the ascending and descending aorta with fluid surrounding the heart.",
+    "isPlaceholder": false
   }
 ]

@@ -17,6 +17,7 @@ import {
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog";
 import {
   createDebrief,
+  resultForAction,
   type GameState,
   type ScoreBreakdown,
   type TimelineEvent,
@@ -24,6 +25,7 @@ import {
 import { CASE_BANK } from "../cases/index.js";
 import type { MedicalCase } from "../schema.js";
 import { CaseImageViewer } from "./case-image-viewer.js";
+import { resultMedia } from "./result-media.js";
 import { DrAmbrose, type AmbroseExpression } from "./dr-ambrose.js";
 
 export function CaseDebrief({
@@ -40,12 +42,12 @@ export function CaseDebrief({
   const index = CASE_BANK.findIndex((candidate) => candidate.id === caseDefinition.id);
   const nextCase = CASE_BANK[(index + 1) % CASE_BANK.length];
   const completedActionIds = new Set(game.completedActions.map((entry) => entry.actionId));
+  // The images exactly as they were when ordered (an ECG at that moment's rate).
   const reviewedArtifacts = caseDefinition.actions.flatMap((action) => {
-    if (!completedActionIds.has(action.id) || !action.result.assetId || !action.result.annotation) {
-      return [];
-    }
-    const asset = caseDefinition.assets.find((candidate) => candidate.id === action.result.assetId);
-    return asset ? [{ action, asset }] : [];
+    if (!completedActionIds.has(action.id)) return [];
+    const result = resultForAction(game, action);
+    const media = result.annotation ? resultMedia(caseDefinition, result) : null;
+    return media ? [{ action, result, media }] : [];
   });
   const outcome = outcomePresentation(debrief.outcome);
   const ambroseExpression: AmbroseExpression =
@@ -253,15 +255,10 @@ export function CaseDebrief({
             Amber overlays show the authored finding. Zoom and pan to inspect it again.
           </p>
           <div className="mt-5 grid gap-4 lg:grid-cols-2">
-            {reviewedArtifacts.map(({ action, asset }) => (
+            {reviewedArtifacts.map(({ action, result, media }) => (
               <div key={action.id}>
                 <h3 className="mb-2 text-sm font-black text-slate-700">{action.label}</h3>
-                <CaseImageViewer
-                  asset={asset}
-                  assetPath={`/cases/${caseDefinition.slug}/${asset.filename}`}
-                  result={action.result}
-                  revealAnswer
-                />
+                <CaseImageViewer media={media} result={result} revealAnswer />
               </div>
             ))}
           </div>

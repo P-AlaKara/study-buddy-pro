@@ -1,6 +1,7 @@
 import { Activity, Clock3, BadgeDollarSign, Check, UserRound } from "lucide-react";
-import type { CaseAction, MedicalCase } from "../schema.js";
+import type { CaseAction, CaseActionResult, MedicalCase } from "../schema.js";
 import { CaseImageViewer } from "./case-image-viewer.js";
+import { resultMedia } from "./result-media.js";
 import { categoryMeta } from "./case-constants.js";
 
 export function TypingDots({ className = "" }: { className?: string }) {
@@ -21,14 +22,15 @@ export function TypingDots({ className = "" }: { className?: string }) {
 export function ActionResultEntry({
   action,
   caseDefinition,
+  result = action.result,
 }: {
   action: CaseAction;
   caseDefinition: MedicalCase;
+  /** The resolved result (see `resultForAction`); defaults to the authored one. */
+  result?: CaseActionResult;
 }) {
-  const asset = action.result.assetId
-    ? caseDefinition.assets.find((candidate) => candidate.id === action.result.assetId)
-    : undefined;
-  const isPatientReply = action.result.type === "patient_reply";
+  const media = resultMedia(caseDefinition, result);
+  const isPatientReply = result.type === "patient_reply";
   const title = isPatientReply
     ? `Patient · ${caseDefinition.patient.name}`
     : action.category === "examine"
@@ -58,12 +60,12 @@ export function ActionResultEntry({
         <div className="min-w-0 flex-1">
           <p className="text-[10px] font-black uppercase tracking-wider text-slate-500">{title}</p>
           <p className="mt-1 text-sm font-bold leading-relaxed text-slate-800">
-            {isPatientReply ? `“${action.result.content}”` : action.result.content}
+            {isPatientReply ? `“${result.content}”` : result.content}
           </p>
         </div>
       </div>
 
-      {action.result.type === "lab_table" && action.result.labs && (
+      {result.type === "lab_table" && result.labs && (
         <div className="mt-3 overflow-x-auto rounded-xl border border-slate-100">
           <table className="w-full min-w-[420px] text-left text-xs">
             <thead className="bg-slate-50 text-[9px] uppercase tracking-wider text-slate-500">
@@ -74,7 +76,7 @@ export function ActionResultEntry({
               </tr>
             </thead>
             <tbody>
-              {action.result.labs.map((lab) => (
+              {result.labs.map((lab) => (
                 <tr key={lab.test} className="border-t border-slate-100">
                   <td className="px-3 py-2 font-bold">{lab.test}</td>
                   <td
@@ -94,13 +96,9 @@ export function ActionResultEntry({
         </div>
       )}
 
-      {asset && (action.result.type === "image" || action.result.type === "ecg") && (
+      {media && (
         <div className="mt-3 overflow-hidden rounded-xl">
-          <CaseImageViewer
-            asset={asset}
-            assetPath={`/cases/${caseDefinition.slug}/${asset.filename}`}
-            result={action.result}
-          />
+          <CaseImageViewer media={media} result={result} />
         </div>
       )}
     </article>

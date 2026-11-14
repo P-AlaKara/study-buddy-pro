@@ -15,9 +15,11 @@ import {
   rankDifferential,
   removeFromDifferential,
   requestNextHint,
+  resultForAction,
   setDifferentialConfidence,
   tagEvidence,
 } from "../src/features/case-challenge/engine.js";
+import { renderEcgSvg } from "../src/features/case-challenge/ecg.js";
 import { theLongFlight, theTearingPain } from "../src/features/case-challenge/cases/index.js";
 import type { MedicalCase } from "../src/features/case-challenge/schema.js";
 import { validateCase } from "../src/features/case-challenge/validator.js";
@@ -283,6 +285,103 @@ test("makes thrombolysis for presumed MI a catastrophic aortic-dissection ending
     createDebrief(state, theTearingPain).harmfulActions[0]?.actionId,
     "give_thrombolysis",
   );
+});
+
+test("reports repeat vitals as they are now, not as authored at minute 0", () => {
+  let state = elapseTime(started(theLongFlight), theLongFlight, 8);
+  state = applyAction(state, theLongFlight, "check_vitals");
+  const result = resultForAction(
+    state,
+    theLongFlight.actions.find((a) => a.id === "check_vitals")!,
+  );
+  assert.match(result.content, /^HR 134, BP 102\/64, RR 30, SpO₂ 86% on room air/);
+  assert.match(result.content, /accessory muscles/);
+  assert.equal(state.timeline.find((e) => e.actionId === "check_vitals")?.detail, result.content);
+});
+
+test("draws the PE ECG at the live rate, with RV strain once she deteriorates", () => {
+  const ecg = theLongFlight.actions.find((a) => a.id === "order_ecg")!;
+  const early = applyAction(started(theLongFlight), theLongFlight, "order_ecg");
+  const earlyResult = resultForAction(early, ecg);
+  assert.deepEqual(earlyResult.ecg, { preset: "pe_early", heartRate: 118 });
+  assert.match(earlyResult.content, /^Sinus tachycardia at 118 bpm/);
+
+  const late = applyAction(
+    elapseTime(started(theLongFlight), theLongFlight, 8),
+    theLongFlight,
+    "order_ecg",
+  );
+  const lateResult = resultForAction(late, ecg);
+  assert.deepEqual(lateResult.ecg, { preset: "pe_rv_strain", heartRate: 134 });
+  assert.match(lateResult.content, /S1Q3T3/);
+  assert.match(renderEcgSvg(lateResult.ecg!), /Vent\. rate 134 bpm/);
+});
+
+test("reads post-treatment vitals into a treatment response", () => {
+  const state = applyAction(started(theLongFlight), theLongFlight, "give_oxygen");
+  assert.equal(state.vitals.spo2, 95);
+  assert.match(state.completedActions[0]?.result?.content ?? "", /rises to 95%/);
+});
+
+test("shows haemopericardium on a CT that completes after surgery is delayed", () => {
+  let state = applyAction(started(theTearingPain), theTearingPain, "give_beta_blocker");
+  state = elapseTime(state, theTearingPain, 6);
+  state = applyAction(state, theTearingPain, "order_ct_aorta");
+  assert.equal(state.timeMinute, 25);
+  assert.equal(state.status, "active");
+  const ct = resultForAction(
+    state,
+    theTearingPain.actions.find((a) => a.id === "order_ct_aorta")!,
+  );
+  assert.equal(ct.assetId, "dissection_ct_haemopericardium");
+  assert.match(ct.content, /haemopericardium/);
+});
+
+test("shows low voltage and alternans on the dissection ECG once surgery is delayed", () => {
+  let state = started(theTearingPain);
+  state = applyAction(state, theTearingPain, "give_beta_blocker");
+  state = elapseTime(state, theTearingPain, 16);
+  assert.ok(state.appliedDeteriorationRuleIds.includes("dissection_no_surgical_call"));
+  state = applyAction(state, theTearingPain, "order_ecg");
+  const ecg = resultForAction(
+    state,
+    theTearingPain.actions.find((a) => a.id === "order_ecg")!,
+  );
+  assert.equal(ecg.ecg?.preset, "lvh_effusion");
+  assert.match(ecg.content, /^Sinus rhythm at 84 bpm/);
+  assert.match(ecg.content, /alternans/);
+});
+
+test("measures the inter-arm difference against the live pressure", () => {
+  let state = applyAction(started(theTearingPain), theTearingPain, "give_beta_blocker");
+  state = applyAction(state, theTearingPain, "check_both_arm_bp");
+  assert.equal(
+    state.completedActions.at(-1)?.result?.content,
+    "Right arm: 152/90 mmHg. Left arm: 118/74 mmHg — a 34 mmHg systolic difference.",
+  );
+});
+
+test("treats a vasodilator as harmful only before beta-blockade", () => {
+  const early = applyAction(started(theTearingPain), theTearingPain, "give_vasodilator_alone");
+  assert.deepEqual(early.harmfulActionIds, ["give_vasodilator_alone"]);
+  assert.equal(early.vitals.hr, 128);
+
+  let late = applyAction(started(theTearingPain), theTearingPain, "give_beta_blocker");
+  late = applyAction(late, theTearingPain, "give_vasodilator_alone");
+  assert.deepEqual(late.harmfulActionIds, []);
+  assert.equal(late.vitals.hr, 76);
+  assert.equal(formatBloodPressure(late.vitals), "122/76");
+
+  const plan = commitCase(openCommit(started(theTearingPain), theTearingPain), theTearingPain, {
+    diagnosisId: "aortic_dissection",
+    treatmentIds: ["give_vasodilator_alone"],
+  });
+  assert.deepEqual(plan.harmfulActionIds, ["give_vasodilator_alone"]);
+  const safePlan = commitCase(openCommit(started(theTearingPain), theTearingPain), theTearingPain, {
+    diagnosisId: "aortic_dissection",
+    treatmentIds: ["give_beta_blocker", "give_vasodilator_alone"],
+  });
+  assert.deepEqual(safePlan.harmfulActionIds, []);
 });
 
 test("validator rejects an unsolvable differential definition", () => {
