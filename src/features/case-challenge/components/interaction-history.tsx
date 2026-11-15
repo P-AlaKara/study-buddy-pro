@@ -314,6 +314,7 @@ export function InteractionHistory({
     <section
       className={`case-panel case-history-panel ${className}`}
       aria-label="Patient interaction history"
+      data-tour="history"
     >
       <header className="case-history-header flex items-center gap-3 border-b border-[var(--case-border)] px-4 py-3">
         <span className="grid size-9 shrink-0 place-items-center rounded-2xl bg-[var(--case-accent-soft)] text-[var(--case-accent-ink)]">

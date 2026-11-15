@@ -112,18 +112,22 @@ export function ActionCard({
   busy,
   disabled,
   onChoose,
+  tourId,
 }: {
   action: CaseAction;
   used: boolean;
   busy: boolean;
   disabled: boolean;
   onChoose: () => void;
+  /** Spotlight anchor for the case tour. */
+  tourId?: string | undefined;
 }) {
   const meta = categoryMeta[action.category];
   const Icon = meta.icon;
   return (
     <button
       type="button"
+      data-tour={tourId}
       disabled={used || busy || disabled}
       onClick={onChoose}
       style={used ? undefined : { backgroundColor: meta.soft }}

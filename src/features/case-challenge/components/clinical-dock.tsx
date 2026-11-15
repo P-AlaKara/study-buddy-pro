@@ -53,6 +53,7 @@ export function ClinicalDock({
         <div
           className="case-float-panel case-dock-handover"
           aria-labelledby="clinical-actions-title"
+          data-tour="handover"
         >
           <p className="text-[10px] font-black uppercase tracking-[0.16em] text-[var(--case-accent-ink)]">
             Handover
@@ -91,6 +92,7 @@ export function ClinicalDock({
         <div
           className="case-float-panel case-dock-tray"
           data-expanded={expanded ? "true" : "false"}
+          data-tour="tray"
           role="region"
           aria-labelledby="clinical-actions-title"
         >
@@ -141,9 +143,10 @@ export function ClinicalDock({
           </div>
 
           <div className="case-dock-cards">
-            {actions.map((action) => (
+            {actions.map((action, index) => (
               <ActionCard
                 key={action.id}
+                tourId={index === 0 ? "tray-card" : undefined}
                 action={action}
                 used={completedIds.has(action.id)}
                 busy={busy}
@@ -162,6 +165,7 @@ export function ClinicalDock({
 
       <div
         className="case-float-panel case-dock-bar"
+        data-tour="dock"
         role="tablist"
         aria-label="Clinical interaction categories"
       >

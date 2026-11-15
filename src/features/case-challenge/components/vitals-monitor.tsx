@@ -141,7 +141,12 @@ export function VitalsMonitor({
 }) {
   const tiles = buildTiles(game.vitals, feed);
   return (
-    <div className={`case-vitals-grid ${className}`} role="group" aria-label="Patient vital signs">
+    <div
+      className={`case-vitals-grid ${className}`}
+      role="group"
+      aria-label="Patient vital signs"
+      data-tour="vitals"
+    >
       {tiles.map((tile) => {
         const Icon = tile.icon;
         const change = feed.changes[tile.key];

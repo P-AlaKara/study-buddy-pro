@@ -46,34 +46,36 @@ export function CasePanel({
   return (
     <nav className={`case-float-panel flex flex-col ${className}`} aria-label="Case workspace">
       <section className="px-4 pb-3.5 pt-4">
-        <p className="text-[11px] font-black uppercase tracking-[0.14em] text-[var(--hud-brand)]">
-          {caseDefinition.setting}
-        </p>
-        <h1 className="mt-0.5 font-display text-[22px] font-black leading-tight text-[var(--hud-navy)]">
-          {caseDefinition.title}
-        </h1>
-        <p className="mt-2 text-[15px] font-black text-[var(--hud-brand)]">
-          {patient.name}, {patient.age} <span className="text-[var(--hud-muted)]">•</span>{" "}
-          {patient.sex}
-        </p>
-        <p className="mt-1 text-[13px] font-bold leading-snug text-[var(--hud-navy)]">
-          {patient.chiefComplaint}
-        </p>
-        <div className="mt-2.5 flex flex-wrap gap-1.5">
-          {tags.map((tag) => (
-            <span
-              key={tag}
-              className="inline-flex items-center gap-1 rounded-full bg-white/45 px-2.5 py-1 text-[10px] font-black uppercase tracking-wider text-[var(--hud-brand)]"
-            >
-              <span className="size-1.5 rounded-full bg-[var(--hud-brand)]" aria-hidden="true" />
-              {tag}
-            </span>
-          ))}
+        <div data-tour="patient">
+          <p className="text-[11px] font-black uppercase tracking-[0.14em] text-[var(--hud-brand)]">
+            {caseDefinition.setting}
+          </p>
+          <h1 className="mt-0.5 font-display text-[22px] font-black leading-tight text-[var(--hud-navy)]">
+            {caseDefinition.title}
+          </h1>
+          <p className="mt-2 text-[15px] font-black text-[var(--hud-brand)]">
+            {patient.name}, {patient.age} <span className="text-[var(--hud-muted)]">•</span>{" "}
+            {patient.sex}
+          </p>
+          <p className="mt-1 text-[13px] font-bold leading-snug text-[var(--hud-navy)]">
+            {patient.chiefComplaint}
+          </p>
+          <div className="mt-2.5 flex flex-wrap gap-1.5">
+            {tags.map((tag) => (
+              <span
+                key={tag}
+                className="inline-flex items-center gap-1 rounded-full bg-white/45 px-2.5 py-1 text-[10px] font-black uppercase tracking-wider text-[var(--hud-brand)]"
+              >
+                <span className="size-1.5 rounded-full bg-[var(--hud-brand)]" aria-hidden="true" />
+                {tag}
+              </span>
+            ))}
+          </div>
         </div>
         <VitalsMonitor game={game} feed={vitalsFeed} announce={announceVitals} className="mt-3" />
       </section>
 
-      <section className="border-t border-white/60 px-3 pb-2.5 pt-2.5">
+      <section className="border-t border-white/60 px-3 pb-2.5 pt-2.5" data-tour="tools">
         <p className="px-1.5 pb-1.5 text-[10px] font-black uppercase tracking-[0.14em] text-[var(--hud-muted)]">
           Case tools
         </p>
@@ -87,6 +89,7 @@ export function CasePanel({
               <li key={tool}>
                 <button
                   type="button"
+                  data-tour={`tool-${tool}`}
                   onClick={() => onOpenWorkspace(tool)}
                   className="group flex w-full items-center gap-3 rounded-2xl bg-white/40 px-3 py-2.5 text-left transition-colors hover:bg-white/65 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--hud-brand)]"
                 >

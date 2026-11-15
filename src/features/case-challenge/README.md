@@ -50,6 +50,14 @@ Below `lg` the layer stacks: compact top bar (back, title, clock, Ambrose, histo
 
 There are exactly three clinical tools — patient chart, clinical notes, differentials — declared once in `WORKSPACE_TOOLS` / `workspaceToolMeta` (`components/case-constants.ts`) and consumed by both the case panel launchers and `clinical-workspace.tsx`. The workspace deliberately has **no tab strip**: it renders the single tool that was requested, with a back button to the patient, so opening "Clinical notes" never also presents the chart and differentials.
 
+## First-run tour
+
+`components/case-tour.tsx` is a spotlight walkthrough narrated by Dr. Ambrose. It opens automatically the first time any case is opened in a browser (`localStorage` key `medley-case-tour`, set on finish or skip; see `case-tour-storage.ts`) and can be replayed from the **Tour** button (the top bar from `md`, the patient card on phones).
+
+- The copy lives in `components/case-tour-steps.ts`, in the order a student meets each part of the screen. Each step names `data-tour` anchors in order of preference; the first one on screen is ringed (desktop and phone place things differently), and with no match the card is centred.
+- When you move or rename a HUD control, keep its `data-tour` attribute. The anchors are `patient`, `patient-chip`, `vitals`, `handover`, `clock`, `dock`, `tray`, `tray-card`, `history`, `tools`, `tool-differential`, `hint`, `score`, `hints-used`, `commit` and `tour-button`.
+- The tour blocks clicks on the HUD. It changes state only through `TourControls`: the handover step takes over the case (this costs no time), and the action step opens the Ask tray as an example, then closes it again.
+
 ## Ward backdrop
 
 The ward is a static image, not a live scene (the earlier Three.js / React Three Fiber ward was removed; `three` remains a dependency only for the anatomy lab).

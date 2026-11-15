@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
-import { AlertTriangle, Check, ChevronRight, X } from "lucide-react";
+import { AlertTriangle, Check, ChevronRight, Compass, X } from "lucide-react";
 import {
   addToDifferential,
   applyAction,
@@ -23,6 +23,9 @@ import { CasePanel } from "./case-panel.js";
 import { ClinicalDock } from "./clinical-dock.js";
 import { ClinicalWorkspace, HintPanel } from "./clinical-workspace.js";
 import { CommitDialog } from "./commit-dialog.js";
+import { CaseTour } from "./case-tour.js";
+import { hasSeenCaseTour } from "./case-tour-storage.js";
+import type { TourControls } from "./case-tour-steps.js";
 import { DR_AMBROSE, DrAmbrose } from "./dr-ambrose.js";
 import { EncounterTopBar } from "./encounter-top-bar.js";
 import { InteractionHistory } from "./interaction-history.js";
@@ -57,6 +60,7 @@ export function CaseChallengeScreen({ caseDefinition }: { caseDefinition: Medica
   const [coachOpen, setCoachOpen] = useState(false);
   const [trayOpen, setTrayOpen] = useState(false);
   const [casePanelOpen, setCasePanelOpen] = useState(false);
+  const [tourOpen, setTourOpen] = useState(false);
 
   // The patient's arrival vitals seed the BP / temperature trend lines.
   const arrivalVitals = useMemo(() => createInitialState(caseDefinition).vitals, [caseDefinition]);
@@ -113,6 +117,14 @@ export function CaseChallengeScreen({ caseDefinition }: { caseDefinition: Medica
     resetEphemeralUi();
     hydratedCaseRef.current = caseDefinition.id;
   }, [caseDefinition]);
+
+  // First visit to any case: offer the tour once the ward has faded in. Seen
+  // or skipped, it is only ever reopened from the top bar's Tour button.
+  useEffect(() => {
+    if (hasSeenCaseTour()) return;
+    const timer = setTimeout(() => openTour(), 700);
+    return () => clearTimeout(timer);
+  }, []);
 
   // Autosave the live encounter once hydration for this case has settled.
   useEffect(() => {
@@ -275,6 +287,38 @@ export function CaseChallengeScreen({ caseDefinition }: { caseDefinition: Medica
     setWorkspaceOpen(false);
   }
 
+  /** Clear the stage so the tour describes the HUD as a first-timer sees it. */
+  function openTour() {
+    setTrayOpen(false);
+    setCoachOpen(false);
+    setHistoryOpen(false);
+    setCasePanelOpen(false);
+    setWorkspaceOpen(false);
+    setTourOpen(true);
+  }
+
+  function closeTour() {
+    setTourOpen(false);
+    // Hand focus back to the control that replays it.
+    requestAnimationFrame(() => {
+      const trigger = [...document.querySelectorAll<HTMLElement>('[data-tour="tour-button"]')].find(
+        (element) => element.getClientRects().length > 0,
+      );
+      trigger?.focus({ preventScroll: true });
+    });
+  }
+
+  const tourControls: TourControls = {
+    startCase: () => {
+      if (game.phase === "hook") startCase();
+    },
+    openTray: (category) => {
+      setActionCategory(category);
+      setTrayOpen(true);
+    },
+    closeTray: () => setTrayOpen(false),
+  };
+
   function askForHint() {
     safelyUpdate((current) => requestNextHint(current, caseDefinition));
   }
@@ -377,6 +421,7 @@ export function CaseChallengeScreen({ caseDefinition }: { caseDefinition: Medica
             onOpenHistory={() => setHistoryOpen(true)}
             onToggleCoach={() => setCoachOpen((open) => !open)}
             coachOpen={coachOpen}
+            onOpenTour={openTour}
           />
         </div>
 
@@ -405,24 +450,38 @@ export function CaseChallengeScreen({ caseDefinition }: { caseDefinition: Medica
           {/* Phones / tablets: the patient card — who they are, plus the vitals
               monitor that lives in the case panel on desktop */}
           <div className="case-float-panel case-patient-chip lg:hidden">
-            <button
-              type="button"
-              onClick={() => setCasePanelOpen(true)}
-              className="case-patient-chip-button"
-              aria-label={`Patient ${caseDefinition.patient.name}: open case details`}
-            >
-              <span className="flex items-baseline gap-2">
-                <span className="font-display text-base font-black text-slate-900">
-                  {caseDefinition.patient.name}
+            <div className="flex items-start gap-2">
+              <button
+                type="button"
+                onClick={() => setCasePanelOpen(true)}
+                className="case-patient-chip-button min-w-0 flex-1"
+                data-tour="patient-chip"
+                aria-label={`Patient ${caseDefinition.patient.name}: open case details`}
+              >
+                <span className="flex items-baseline gap-2">
+                  <span className="font-display text-base font-black text-slate-900">
+                    {caseDefinition.patient.name}
+                  </span>
+                  <span className="text-[11px] font-bold text-slate-500">
+                    {caseDefinition.patient.age} · {caseDefinition.patient.sex}
+                  </span>
                 </span>
-                <span className="text-[11px] font-bold text-slate-500">
-                  {caseDefinition.patient.age} · {caseDefinition.patient.sex}
+                <span className="mt-0.5 line-clamp-2 block text-[12px] font-bold leading-snug text-slate-600">
+                  {caseDefinition.patient.chiefComplaint}
                 </span>
-              </span>
-              <span className="mt-0.5 line-clamp-2 block text-[12px] font-bold leading-snug text-slate-600">
-                {caseDefinition.patient.chiefComplaint}
-              </span>
-            </button>
+              </button>
+              {/* Phones: the top bar has no room, so the tour lives here. */}
+              <button
+                type="button"
+                onClick={openTour}
+                data-tour="tour-button"
+                className="case-tour-trigger inline-flex shrink-0 items-center gap-1 rounded-full bg-white/60 px-2.5 py-1.5 text-[11px] font-black text-[var(--hud-brand)] md:hidden"
+                aria-label="Take the case tour"
+              >
+                <Compass className="size-3.5" />
+                Tour
+              </button>
+            </div>
             <VitalsMonitor game={game} feed={vitalsFeed} announce className="mt-2" />
           </div>
         </div>
@@ -450,6 +509,7 @@ export function CaseChallengeScreen({ caseDefinition }: { caseDefinition: Medica
         <div className="case-ui-commit">
           <button
             type="button"
+            data-tour="commit"
             onClick={showCommit}
             disabled={game.phase !== "investigate"}
             className={`case-primary-button px-6 py-3.5 text-base ${commitReadiness.ready ? "case-commit-ready" : ""}`}
@@ -486,6 +546,7 @@ export function CaseChallengeScreen({ caseDefinition }: { caseDefinition: Medica
           onClick={() => setCoachOpen((open) => !open)}
           aria-expanded={coachOpen}
           aria-label={`Request a hint from ${DR_AMBROSE.name}`}
+          data-tour="hint"
           className="hidden items-center gap-2 rounded-full border border-[var(--case-yellow)] lg:flex bg-[var(--case-yellow-soft)] py-1 pl-1 pr-2 shadow-lg transition-transform hover:-translate-y-0.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--case-yellow)] sm:pr-3"
         >
           <DrAmbrose expression="thinking" variant="logo" className="w-10 shrink-0" />
@@ -537,6 +598,13 @@ export function CaseChallengeScreen({ caseDefinition }: { caseDefinition: Medica
         }
         onClose={closeCommit}
         onSubmit={submitCommit}
+      />
+
+      <CaseTour
+        open={tourOpen}
+        context={{ phase: game.phase }}
+        controls={tourControls}
+        onClose={closeTour}
       />
     </div>
   );

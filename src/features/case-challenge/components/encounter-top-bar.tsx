@@ -1,5 +1,14 @@
 import { Link } from "@tanstack/react-router";
-import { ArrowLeft, Check, Clock3, HeartPulse, History, Lightbulb, UserRound } from "lucide-react";
+import {
+  ArrowLeft,
+  Check,
+  Clock3,
+  Compass,
+  HeartPulse,
+  History,
+  Lightbulb,
+  UserRound,
+} from "lucide-react";
 import { DR_AMBROSE, DrAmbrose } from "./dr-ambrose.js";
 import { useAuth } from "@/features/auth/auth-context";
 import { formatCaseClock, type GameState } from "../engine.js";
@@ -31,6 +40,7 @@ export function EncounterTopBar({
   onOpenHistory,
   onToggleCoach,
   coachOpen,
+  onOpenTour,
 }: {
   caseDefinition: MedicalCase;
   game: GameState;
@@ -39,6 +49,7 @@ export function EncounterTopBar({
   onOpenHistory: () => void;
   onToggleCoach: () => void;
   coachOpen: boolean;
+  onOpenTour: () => void;
 }) {
   const { profile } = useAuth();
   const name = profile?.name ?? "";
@@ -76,7 +87,7 @@ export function EncounterTopBar({
           {caseDefinition.title}
         </h1>
         <span className="hidden h-6 w-px bg-[var(--case-border)] md:block" aria-hidden="true" />
-        <span className="flex shrink-0 items-center gap-1.5 text-slate-700">
+        <span className="flex shrink-0 items-center gap-1.5 text-slate-700" data-tour="clock">
           <Clock3 className="size-4 text-slate-400" />
           <span className="font-mono text-sm font-black">{formatCaseClock(game.timeMinute)}</span>
           <span className="hidden text-[10px] font-bold text-slate-400 md:inline">
@@ -86,12 +97,24 @@ export function EncounterTopBar({
       </div>
 
       <div className="case-topbar-group justify-end">
-        <div className="hidden xl:block">
+        {/* Phones carry this in the patient card instead: the bar is full there. */}
+        <button
+          type="button"
+          onClick={onOpenTour}
+          data-tour="tour-button"
+          className="case-float-pill case-tour-trigger hidden gap-1.5 px-3 py-2 text-xs font-extrabold text-slate-700 md:inline-flex"
+          aria-label="Take the case tour"
+        >
+          <Compass className="size-4 text-[var(--hud-brand)]" />
+          Tour
+        </button>
+        <div className="hidden xl:block" data-tour="score">
           <ScoreMeter score={game.score.total} maximum={game.score.maximum} />
         </div>
         <span
           className="case-float-pill hidden items-center gap-1.5 px-3 py-2 text-xs font-extrabold text-slate-700 lg:inline-flex"
           title="Hints used"
+          data-tour="hints-used"
         >
           <Lightbulb className="size-4 text-[var(--case-yellow-ink)]" />
           {game.hintsUsed.length} hints
@@ -110,6 +133,7 @@ export function EncounterTopBar({
           onClick={onToggleCoach}
           aria-expanded={coachOpen}
           aria-label={`Request a hint from ${DR_AMBROSE.name}`}
+          data-tour="hint"
           className={`case-hud-icon grid size-11 overflow-hidden !p-0 lg:hidden ${coachOpen ? "ring-2 ring-[var(--case-yellow)]" : ""}`}
         >
           <DrAmbrose expression="thinking" variant="logo" className="w-9" />
@@ -117,6 +141,7 @@ export function EncounterTopBar({
         <button
           type="button"
           onClick={onOpenHistory}
+          data-tour="history"
           className="case-hud-icon grid size-11 lg:hidden"
           aria-label="Open interaction history"
         >
@@ -128,6 +153,7 @@ export function EncounterTopBar({
             onClick={onCommit}
             disabled={game.phase !== "investigate"}
             className={`case-primary-button size-11 !rounded-full !p-0 ${commitReady ? "case-commit-ready" : ""}`}
+            data-tour="commit"
             aria-label="Commit diagnosis"
             title="Commit diagnosis"
           >
