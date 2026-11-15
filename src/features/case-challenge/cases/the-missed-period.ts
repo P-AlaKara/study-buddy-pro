@@ -395,16 +395,23 @@ export const theMissedPeriod: MedicalCase = {
       moneyCost: 120,
       riskNote: "",
       result: {
-        type: "text",
+        type: "image",
         content:
-          "Free fluid in the pelvis and in the hepatorenal space. The uterus is empty — no intrauterine gestational sac. In a pregnant woman with pain, this is a ruptured ectopic until proven otherwise.",
+          "In the right upper quadrant a dark stripe of free fluid separates the liver from the kidney (Morison's pouch), and there is free fluid in the pelvis. The uterus is empty — no intrauterine gestational sac. In a pregnant woman with pain, this is a ruptured ectopic until proven otherwise.",
+        assetId: "ectopic_fast_free_fluid",
+        annotation: {
+          xPercent: 53,
+          yPercent: 62,
+          radiusPercent: 17,
+          label: "Free fluid in Morison's pouch",
+        },
       },
       variants: [
         {
           when: BLEEDING,
           result: {
             content:
-              "A large volume of free fluid fills the pelvis, both paracolic gutters and the hepatorenal space; the uterus is empty. Massive haemoperitoneum.",
+              "Free fluid now tracks the full length of Morison's pouch, fills the pelvis and both paracolic gutters; the uterus is empty. Massive haemoperitoneum.",
           },
         },
       ],
@@ -422,9 +429,16 @@ export const theMissedPeriod: MedicalCase = {
       moneyCost: 220,
       riskNote: "Fourteen minutes away from the resuscitation bay.",
       result: {
-        type: "text",
+        type: "image",
         content:
-          "Empty uterus with a thickened endometrium. A 3 cm inhomogeneous mass in the right adnexa, separate from the ovary, with free fluid in the pouch of Douglas: ruptured right tubal ectopic pregnancy.",
+          "Empty uterus with a thickened endometrium. In the right adnexa, separate from the ovary, a 3 cm inhomogeneous mass contains a small gestational sac, with free fluid in the pouch of Douglas: ruptured right tubal ectopic pregnancy.",
+        assetId: "ectopic_tvus_adnexal_mass",
+        annotation: {
+          xPercent: 53,
+          yPercent: 51,
+          radiusPercent: 15,
+          label: "Gestational sac within an adnexal mass",
+        },
       },
       clueTier: "buried",
       supports: ["ectopic_pregnancy"],
@@ -789,6 +803,31 @@ export const theMissedPeriod: MedicalCase = {
     incorrectDiagnosisPenalty: -40,
     perMissedKeyTreatment: -5,
   },
-  assets: [],
+  assets: [
+    {
+      id: "ectopic_fast_free_fluid",
+      filename: "free-fluid-morison-pouch.jpg",
+      sourceUrl: "https://commons.wikimedia.org/wiki/File:Morison003.jpg",
+      author: "Drahreg01",
+      license: "CC BY-SA 3.0 Unported",
+      requiredAttributionText:
+        "Ultrasound of free fluid in Morison's pouch by Drahreg01, via Wikimedia Commons (CC BY-SA 3.0); machine header cropped.",
+      altText:
+        "Right upper quadrant ultrasound showing a dark stripe of free fluid between the liver and the right kidney.",
+      isPlaceholder: false,
+    },
+    {
+      id: "ectopic_tvus_adnexal_mass",
+      filename: "ectopic-adnexal-mass-tvus.jpg",
+      sourceUrl: "https://commons.wikimedia.org/wiki/File:Ectopicleftmass.PNG",
+      author: "James Heilman, MD",
+      license: "CC BY-SA 3.0 Unported",
+      requiredAttributionText:
+        "Adnexal ectopic pregnancy on transvaginal ultrasound by James Heilman, MD, via Wikimedia Commons (CC BY-SA 3.0); caption line and scale cropped.",
+      altText:
+        "Transvaginal ultrasound showing a small gestational sac within an adnexal mass, separate from the uterus, with measurement calipers.",
+      isPlaceholder: false,
+    },
+  ],
   mockComparisonPercent: 49,
 };

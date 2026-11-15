@@ -1,1 +1,32 @@
-[]
+[
+  {
+    "id": "dka_cxr_normal",
+    "filename": "normal-pa-chest-radiograph.jpg",
+    "sourceUrl": "https://commons.wikimedia.org/wiki/File:Normal_posteroanterior_(PA)_chest_radiograph_(X-ray).jpg",
+    "author": "Mikael Häggström",
+    "license": "CC0 1.0 Universal",
+    "requiredAttributionText": "Normal posteroanterior chest radiograph by Mikael Häggström, via Wikimedia Commons (CC0 1.0).",
+    "altText": "Normal posteroanterior chest radiograph with clear lungs and a normal cardiac silhouette.",
+    "isPlaceholder": false
+  },
+  {
+    "id": "dka_appendix_us_normal",
+    "filename": "normal-appendix-ultrasound.jpg",
+    "sourceUrl": "https://commons.wikimedia.org/wiki/File:Ultrasonography_of_a_normal_appendix.jpg",
+    "author": "Mikael Häggström",
+    "license": "CC0 1.0 Universal",
+    "requiredAttributionText": "Ultrasonography of a normal appendix by Mikael Häggström, via Wikimedia Commons (CC0 1.0); body-marker inset cropped.",
+    "altText": "Abdominal ultrasound with colour Doppler showing a thin, compressible appendix of normal width.",
+    "isPlaceholder": false
+  },
+  {
+    "id": "dka_ct_abdomen_normal",
+    "filename": "normal-abdominal-ct-axial.jpg",
+    "sourceUrl": "https://commons.wikimedia.org/wiki/File:CT_of_a_normal_abdomen_and_pelvis,_axial_plane_90.png",
+    "author": "Mikael Häggström, M.D.",
+    "license": "CC0 1.0 Universal",
+    "requiredAttributionText": "Axial contrast CT of a normal abdomen by Mikael Häggström, M.D., via Wikimedia Commons (CC0 1.0); locator panel cropped.",
+    "altText": "Axial contrast-enhanced CT of the upper abdomen showing a normal liver, spleen, pancreas and kidneys with no free fluid.",
+    "isPlaceholder": false
+  }
+]

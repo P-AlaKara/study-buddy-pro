@@ -545,6 +545,30 @@ export const theSweetBreath: MedicalCase = {
       triggersEvent: "",
     },
     {
+      id: "order_cxr",
+      category: "test",
+      label: "Chest X-ray (look for a precipitant)",
+      timeCostMin: 4,
+      moneyCost: 85,
+      riskNote: "Low-dose ionising radiation; low yield without chest symptoms.",
+      result: {
+        type: "image",
+        content:
+          "Clear lungs with no consolidation, effusion or pneumothorax; normal heart size. No chest infection to explain the ketoacidosis — the precipitant is simply undiagnosed diabetes.",
+        assetId: "dka_cxr_normal",
+        annotation: {
+          xPercent: 50,
+          yPercent: 48,
+          radiusPercent: 42,
+          label: "Clear lungs, no consolidation",
+        },
+      },
+      clueTier: "none",
+      supports: [],
+      against: [],
+      triggersEvent: "",
+    },
+    {
       id: "order_abdominal_ultrasound",
       category: "test",
       label: "Abdominal ultrasound",
@@ -552,9 +576,16 @@ export const theSweetBreath: MedicalCase = {
       moneyCost: 160,
       riskNote: "No direct harm, but delays resuscitation.",
       result: {
-        type: "text",
+        type: "image",
         content:
-          "Normal appendix, liver, pancreas and kidneys. No free fluid. Fifteen minutes in radiology while he remains untreated.",
+          "A compressible appendix of normal calibre (4 mm) with normal flow on Doppler; liver, pancreas and kidneys look normal and there is no free fluid. Fifteen minutes in radiology while he remains untreated.",
+        assetId: "dka_appendix_us_normal",
+        annotation: {
+          xPercent: 64,
+          yPercent: 58,
+          radiusPercent: 20,
+          label: "Normal, compressible appendix",
+        },
       },
       clueTier: "red_herring",
       supports: [],
@@ -570,9 +601,16 @@ export const theSweetBreath: MedicalCase = {
       moneyCost: 420,
       riskNote: "Ionising radiation and contrast load in a dehydrated patient with kidney injury.",
       result: {
-        type: "text",
+        type: "image",
         content:
-          "No surgical pathology. The contrast load adds to his kidney injury, and twenty minutes pass without treatment.",
+          "Normal liver, spleen, pancreas, kidneys and bowel with no free fluid or collection — no surgical pathology. The contrast load adds to his kidney injury, and twenty minutes pass without treatment.",
+        assetId: "dka_ct_abdomen_normal",
+        annotation: {
+          xPercent: 50,
+          yPercent: 48,
+          radiusPercent: 40,
+          label: "Normal solid organs, no free fluid",
+        },
       },
       clueTier: "none",
       supports: [],
@@ -870,6 +908,45 @@ export const theSweetBreath: MedicalCase = {
     incorrectDiagnosisPenalty: -40,
     perMissedKeyTreatment: -5,
   },
-  assets: [],
+  assets: [
+    {
+      id: "dka_cxr_normal",
+      filename: "normal-pa-chest-radiograph.jpg",
+      sourceUrl:
+        "https://commons.wikimedia.org/wiki/File:Normal_posteroanterior_(PA)_chest_radiograph_(X-ray).jpg",
+      author: "Mikael Häggström",
+      license: "CC0 1.0 Universal",
+      requiredAttributionText:
+        "Normal posteroanterior chest radiograph by Mikael Häggström, via Wikimedia Commons (CC0 1.0).",
+      altText:
+        "Normal posteroanterior chest radiograph with clear lungs and a normal cardiac silhouette.",
+      isPlaceholder: false,
+    },
+    {
+      id: "dka_appendix_us_normal",
+      filename: "normal-appendix-ultrasound.jpg",
+      sourceUrl: "https://commons.wikimedia.org/wiki/File:Ultrasonography_of_a_normal_appendix.jpg",
+      author: "Mikael Häggström",
+      license: "CC0 1.0 Universal",
+      requiredAttributionText:
+        "Ultrasonography of a normal appendix by Mikael Häggström, via Wikimedia Commons (CC0 1.0); body-marker inset cropped.",
+      altText:
+        "Abdominal ultrasound with colour Doppler showing a thin, compressible appendix of normal width.",
+      isPlaceholder: false,
+    },
+    {
+      id: "dka_ct_abdomen_normal",
+      filename: "normal-abdominal-ct-axial.jpg",
+      sourceUrl:
+        "https://commons.wikimedia.org/wiki/File:CT_of_a_normal_abdomen_and_pelvis,_axial_plane_90.png",
+      author: "Mikael Häggström, M.D.",
+      license: "CC0 1.0 Universal",
+      requiredAttributionText:
+        "Axial contrast CT of a normal abdomen by Mikael Häggström, M.D., via Wikimedia Commons (CC0 1.0); locator panel cropped.",
+      altText:
+        "Axial contrast-enhanced CT of the upper abdomen showing a normal liver, spleen, pancreas and kidneys with no free fluid.",
+      isPlaceholder: false,
+    },
+  ],
   mockComparisonPercent: 72,
 };

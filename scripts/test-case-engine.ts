@@ -515,6 +515,34 @@ test("treats CT and discharge as the ectopic case's harmful endings", () => {
   assert.equal(lost.score.diagnosis, -40);
 });
 
+test("shows radiology images for the new cases' imaging tests", () => {
+  for (const [caseDefinition, actionIds] of [
+    [theSweetBreath, ["order_cxr", "order_abdominal_ultrasound", "order_ct_abdomen"]],
+    [theMissedPeriod, ["bedside_ultrasound", "transvaginal_ultrasound"]],
+  ] as const) {
+    for (const actionId of actionIds) {
+      const state = applyAction(started(caseDefinition), caseDefinition, actionId);
+      const action = caseDefinition.actions.find((a) => a.id === actionId)!;
+      const result = resultForAction(state, action);
+      assert.equal(result.type, "image");
+      assert.ok(
+        caseDefinition.assets.some((asset) => asset.id === result.assetId),
+        `${caseDefinition.slug}.${actionId} should reference a case asset`,
+      );
+      assert.ok(result.annotation, `${caseDefinition.slug}.${actionId} needs a debrief ring`);
+    }
+  }
+  // The deteriorated FAST keeps its image while the wording changes.
+  let late = elapseTime(started(theMissedPeriod), theMissedPeriod, 10);
+  late = applyAction(late, theMissedPeriod, "bedside_ultrasound");
+  const fast = resultForAction(
+    late,
+    theMissedPeriod.actions.find((a) => a.id === "bedside_ultrasound")!,
+  );
+  assert.equal(fast.assetId, "ectopic_fast_free_fluid");
+  assert.match(fast.content, /Massive haemoperitoneum/);
+});
+
 test("validator requires a debrief line for every harmful action", () => {
   const invalid = structuredClone(theSweetBreath) as MedicalCase;
   invalid.solution.harmfulActionDebrief = {};
