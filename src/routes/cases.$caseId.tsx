@@ -34,7 +34,7 @@ function CasePlayer() {
     return (
       <section className="case-panel mx-auto max-w-xl p-8 text-center">
         <CaseMascotState title="Case not found" expression="concerned">
-          This case is not in the current two-case challenge bank.
+          This case is not in the current challenge bank.
         </CaseMascotState>
         <Link to="/cases" className="case-primary-button mt-6 inline-flex px-5 py-3">
           <ArrowLeft className="size-4" /> Back to cases

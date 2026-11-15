@@ -31,6 +31,7 @@ import { Route as FlashcardsDeckIdRouteImport } from './routes/flashcards.$deckI
 import { Route as FlashcardsReviewRouteImport } from './routes/flashcards.review'
 import { Route as LabsIndexRouteImport } from './routes/labs.index'
 import { Route as LabsAnatomyRouteImport } from './routes/labs.anatomy'
+import { Route as ManageCasesRouteImport } from './routes/manage.cases'
 import { Route as OsceIndexRouteImport } from './routes/osce.index'
 import { Route as OsceStationIdRouteImport } from './routes/osce.$stationId'
 import { Route as QuizIndexRouteImport } from './routes/quiz.index'
@@ -149,6 +150,11 @@ const LabsAnatomyRoute = LabsAnatomyRouteImport.update({
   path: '/labs/anatomy',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ManageCasesRoute = ManageCasesRouteImport.update({
+  id: '/manage/cases',
+  path: '/manage/cases',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const OsceIndexRoute = OsceIndexRouteImport.update({
   id: '/',
   path: '/',
@@ -204,6 +210,7 @@ export interface FileRoutesByFullPath {
   '/flashcards/$deckId': typeof FlashcardsDeckIdRoute
   '/flashcards/review': typeof FlashcardsReviewRoute
   '/labs/anatomy': typeof LabsAnatomyRoute
+  '/manage/cases': typeof ManageCasesRoute
   '/osce/$stationId': typeof OsceStationIdRoute
   '/quiz/play': typeof QuizPlayRoute
   '/usmle/$coachId': typeof UsmleCoachIdRoute
@@ -229,6 +236,7 @@ export interface FileRoutesByTo {
   '/flashcards/$deckId': typeof FlashcardsDeckIdRoute
   '/flashcards/review': typeof FlashcardsReviewRoute
   '/labs/anatomy': typeof LabsAnatomyRoute
+  '/manage/cases': typeof ManageCasesRoute
   '/osce/$stationId': typeof OsceStationIdRoute
   '/quiz/play': typeof QuizPlayRoute
   '/usmle/$coachId': typeof UsmleCoachIdRoute
@@ -261,6 +269,7 @@ export interface FileRoutesById {
   '/flashcards/$deckId': typeof FlashcardsDeckIdRoute
   '/flashcards/review': typeof FlashcardsReviewRoute
   '/labs/anatomy': typeof LabsAnatomyRoute
+  '/manage/cases': typeof ManageCasesRoute
   '/osce/$stationId': typeof OsceStationIdRoute
   '/quiz/play': typeof QuizPlayRoute
   '/usmle/$coachId': typeof UsmleCoachIdRoute
@@ -294,6 +303,7 @@ export interface FileRouteTypes {
     | '/flashcards/$deckId'
     | '/flashcards/review'
     | '/labs/anatomy'
+    | '/manage/cases'
     | '/osce/$stationId'
     | '/quiz/play'
     | '/usmle/$coachId'
@@ -319,6 +329,7 @@ export interface FileRouteTypes {
     | '/flashcards/$deckId'
     | '/flashcards/review'
     | '/labs/anatomy'
+    | '/manage/cases'
     | '/osce/$stationId'
     | '/quiz/play'
     | '/usmle/$coachId'
@@ -350,6 +361,7 @@ export interface FileRouteTypes {
     | '/flashcards/$deckId'
     | '/flashcards/review'
     | '/labs/anatomy'
+    | '/manage/cases'
     | '/osce/$stationId'
     | '/quiz/play'
     | '/usmle/$coachId'
@@ -377,6 +389,7 @@ export interface RootRouteChildren {
   RegisterRoute: typeof RegisterRoute
   UsmleRoute: typeof UsmleRouteWithChildren
   LabsAnatomyRoute: typeof LabsAnatomyRoute
+  ManageCasesRoute: typeof ManageCasesRoute
   LabsIndexRoute: typeof LabsIndexRoute
 }
 
@@ -536,6 +549,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof LabsAnatomyRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/manage/cases': {
+      id: '/manage/cases'
+      path: '/manage/cases'
+      fullPath: '/manage/cases'
+      preLoaderRoute: typeof ManageCasesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/osce/': {
       id: '/osce/'
       path: '/'
@@ -682,6 +702,7 @@ const rootRouteChildren: RootRouteChildren = {
   RegisterRoute: RegisterRoute,
   UsmleRoute: UsmleRouteWithChildren,
   LabsAnatomyRoute: LabsAnatomyRoute,
+  ManageCasesRoute: ManageCasesRoute,
   LabsIndexRoute: LabsIndexRoute,
 }
 export const routeTree = rootRouteImport

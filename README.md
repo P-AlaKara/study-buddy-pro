@@ -145,7 +145,7 @@ npm install
 npm run dev
 ```
 
-Set the Supabase values in `.env` before starting the app. Never expose `SUPABASE_SECRET_KEY` in client-side code or commit real credentials. `OPENAI_API_KEY` (and the optional `OPENAI_MODEL*` overrides) power the Exam Generator; `GEMINI_API_KEY` and `GEMINI_MODEL` remain server-side settings for OSCE AI features. All model keys stay server-side.
+Set the Supabase values in `.env` before starting the app. Never expose `SUPABASE_SECRET_KEY` in client-side code or commit real credentials. `OPENAI_API_KEY` (and the optional `OPENAI_MODEL*` overrides) power the Exam Generator; `GEMINI_API_KEY` and `GEMINI_MODEL` remain server-side settings for OSCE AI features. All model keys stay server-side. `CONTENT_CREATOR_EMAILS` (comma-separated sign-in emails) opens the case studio at `/manage/cases` to those accounts only; leave it empty to keep the studio closed.
 
 The Exam Generator (shown as **Exam Generator** in the navigation) is always enabled. If you ever need to take it offline, set `EXAM_GENERATOR_ENABLED` to `false` in `src/features/exam-generator/feature-flag.ts` and rebuild. It is deliberately a code constant rather than an environment variable so a stale value in a deployment environment can never hide or expose it unexpectedly.
 

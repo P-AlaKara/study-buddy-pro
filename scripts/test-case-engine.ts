@@ -20,9 +20,15 @@ import {
   tagEvidence,
 } from "../src/features/case-challenge/engine.js";
 import { renderEcgSvg } from "../src/features/case-challenge/ecg.js";
-import { theLongFlight, theTearingPain } from "../src/features/case-challenge/cases/index.js";
+import {
+  CASE_BANK,
+  theLongFlight,
+  theMissedPeriod,
+  theSweetBreath,
+  theTearingPain,
+} from "../src/features/case-challenge/cases/index.js";
 import type { MedicalCase } from "../src/features/case-challenge/schema.js";
-import { validateCase } from "../src/features/case-challenge/validator.js";
+import { validateCase, validateCaseBank } from "../src/features/case-challenge/validator.js";
 
 type Test = { name: string; run: () => void };
 const tests: Test[] = [];
@@ -382,6 +388,138 @@ test("treats a vasodilator as harmful only before beta-blockade", () => {
     treatmentIds: ["give_beta_blocker", "give_vasodilator_alone"],
   });
   assert.deepEqual(safePlan.harmfulActionIds, []);
+});
+
+test("ships four valid cases across distinct specialties", () => {
+  assert.equal(CASE_BANK.length, 4);
+  assert.deepEqual(validateCaseBank(CASE_BANK), []);
+  const specialties = new Set(CASE_BANK.flatMap((item) => item.specialty));
+  for (const expected of [
+    "Pulmonology",
+    "Cardiology",
+    "Endocrinology",
+    "Obstetrics & Gynaecology",
+  ]) {
+    assert.ok(specialties.has(expected), `missing specialty ${expected}`);
+  }
+});
+
+test("wins the ketoacidosis case with fluids, potassium and insulin in order", () => {
+  let state = started(theSweetBreath);
+  for (const actionId of [
+    "start_monitoring",
+    "gain_iv_access",
+    "start_iv_fluids",
+    "bedside_glucose",
+    "order_vbg",
+    "ask_thirst_urination",
+    "examine_breathing",
+    "replace_potassium",
+    "start_insulin_infusion",
+  ]) {
+    state = applyAction(state, theSweetBreath, actionId);
+  }
+  assert.deepEqual(state.appliedDeteriorationRuleIds, []);
+  assert.deepEqual(state.harmfulActionIds, []);
+  assert.equal(state.score.earlyKeyClue, 10);
+  state = addToDifferential(state, theSweetBreath, "diabetic_ketoacidosis", 90);
+  state = commitCase(openCommit(state, theSweetBreath), theSweetBreath, {
+    diagnosisId: "diabetic_ketoacidosis",
+    treatmentIds: [
+      "start_monitoring",
+      "start_iv_fluids",
+      "replace_potassium",
+      "start_insulin_infusion",
+    ],
+  });
+  assert.equal(state.outcome, "diagnosed");
+  assert.equal(state.score.diagnosis, 0);
+  assert.equal(state.score.treatment, 0);
+  assert.equal(createDebrief(state, theSweetBreath).teachingPoints.length, 3);
+});
+
+test("penalises insulin started before fluids and a potassium level", () => {
+  const early = applyAction(started(theSweetBreath), theSweetBreath, "start_insulin_infusion");
+  assert.equal(early.completedActions[0]?.safetyGateMet, false);
+  assert.deepEqual(early.harmfulActionIds, ["start_insulin_infusion"]);
+
+  let safe = applyAction(started(theSweetBreath), theSweetBreath, "start_iv_fluids");
+  safe = applyAction(safe, theSweetBreath, "order_vbg");
+  safe = applyAction(safe, theSweetBreath, "start_insulin_infusion");
+  assert.equal(safe.completedActions.at(-1)?.safetyGateMet, true);
+  assert.deepEqual(safe.harmfulActionIds, []);
+});
+
+test("loses the ketoacidosis case when fluids are never started", () => {
+  let state = elapseTime(started(theSweetBreath), theSweetBreath, 10);
+  assert.deepEqual(state.appliedDeteriorationRuleIds, ["dka_no_fluids"]);
+  assert.equal(state.vitals.systolicBp, 88);
+  state = applyAction(state, theSweetBreath, "check_vitals");
+  assert.match(state.completedActions.at(-1)?.result?.content ?? "", /hypovolaemic shock/);
+  state = elapseTime(state, theSweetBreath, 30);
+  assert.equal(state.outcome, "patient_lost");
+  assert.equal(state.timeMinute, 30);
+});
+
+test("wins the ectopic pregnancy case by resuscitating and calling gynaecology early", () => {
+  let state = started(theMissedPeriod);
+  for (const actionId of [
+    "start_monitoring",
+    "gain_iv_access",
+    "start_fluid_resuscitation",
+    "urine_pregnancy_test",
+    "call_gynaecology",
+    "bedside_ultrasound",
+    "transfuse_blood",
+  ]) {
+    state = applyAction(state, theMissedPeriod, actionId);
+  }
+  assert.deepEqual(state.appliedDeteriorationRuleIds, []);
+  assert.equal(state.completedActions.at(-1)?.safetyGateMet, true);
+  state = addToDifferential(state, theMissedPeriod, "ectopic_pregnancy", 95);
+  state = commitCase(openCommit(state, theMissedPeriod), theMissedPeriod, {
+    diagnosisId: "ectopic_pregnancy",
+    treatmentIds: [
+      "gain_iv_access",
+      "start_fluid_resuscitation",
+      "transfuse_blood",
+      "call_gynaecology",
+    ],
+  });
+  assert.equal(state.outcome, "diagnosed");
+  assert.equal(state.score.treatment, 0);
+  assert.equal(state.score.harmfulActions, 0);
+});
+
+test("reads the postural drop off the live blood pressure", () => {
+  const state = applyAction(started(theMissedPeriod), theMissedPeriod, "check_postural_bp");
+  assert.match(
+    state.completedActions[0]?.result?.content ?? "",
+    /^Lying: 98\/62 mmHg, HR 108\. Sitting up: 76\/52 mmHg with HR 126/,
+  );
+});
+
+test("treats CT and discharge as the ectopic case's harmful endings", () => {
+  const scanned = applyAction(started(theMissedPeriod), theMissedPeriod, "order_ct_abdomen");
+  assert.deepEqual(scanned.harmfulActionIds, ["order_ct_abdomen"]);
+  assert.deepEqual(scanned.unnecessaryActionIds, ["order_ct_abdomen"]);
+  assert.ok(scanned.appliedDeteriorationRuleIds.includes("ectopic_no_resuscitation"));
+
+  let lost = started(theMissedPeriod);
+  lost = addToDifferential(lost, theMissedPeriod, "appendicitis", 80);
+  lost = commitCase(openCommit(lost, theMissedPeriod), theMissedPeriod, {
+    diagnosisId: "appendicitis",
+    treatmentIds: ["discharge_with_analgesia"],
+  });
+  assert.equal(lost.outcome, "patient_lost");
+  assert.equal(lost.score.diagnosis, -40);
+});
+
+test("validator requires a debrief line for every harmful action", () => {
+  const invalid = structuredClone(theSweetBreath) as MedicalCase;
+  invalid.solution.harmfulActionDebrief = {};
+  const issues = validateCase(invalid);
+  assert.ok(issues.some((issue) => issue.message.includes("needs a debrief explanation")));
 });
 
 test("validator rejects an unsolvable differential definition", () => {

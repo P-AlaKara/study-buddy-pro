@@ -13,6 +13,7 @@ import {
   ChevronDown,
   ChevronRight,
   CircleCheck,
+  ClipboardList,
   Clock3,
   Flame,
   GraduationCap,
@@ -43,6 +44,7 @@ import { DR_AMBROSE, DrAmbrose } from "@/features/case-challenge/components/dr-a
 import { PatientAvatar } from "@/features/case-challenge/components/patient-avatar";
 import { FEATURED_CASE } from "@/features/case-challenge/featured-case";
 import { EXAM_GENERATOR_ENABLED } from "@/features/exam-generator/feature-flag";
+import { useCaseStudioAccess } from "@/features/case-studio/use-case-studio-access";
 
 type Student = Pick<
   Database["public"]["Tables"]["students"]["Row"],
@@ -69,8 +71,9 @@ type Student = Pick<
 >;
 type NavKey = "home" | "exams" | "cases" | "osce" | "flashcards" | "usmle" | "labs";
 // Pages that live in the shell but aren't main-nav destinations (profile is
-// reached from the account menu, leaderboards from the header trophy button).
-type View = NavKey | "profile" | "leaderboards" | "quiz";
+// reached from the account menu, leaderboards from the header trophy button,
+// the case studio from the account menu of allow-listed content creators).
+type View = NavKey | "profile" | "leaderboards" | "quiz" | "manage";
 // Students get the full study shell; coaches only need their coaching space.
 const studentNav: AppNavItem<NavKey>[] = [
   { key: "home", label: "Home", to: "/", icon: Home },
@@ -155,6 +158,7 @@ export function StudyApp({ view, children }: { view: View; children?: ReactNode 
   const navigate = useNavigate();
   const isMobile = useIsMobile();
   const { profile, isCoach, isLoading: loading, signOut, refresh } = useAuth();
+  const canManageCases = useCaseStudioAccess();
   const [menuOpen, setMenuOpen] = useState(false);
   const [activity, setActivity] = useState<string | null>(null);
   // Each account owns exactly one profile; it comes from the auth context.
@@ -164,7 +168,7 @@ export function StudyApp({ view, children }: { view: View; children?: ReactNode 
 
   // Coaches only have a coaching space; keep them out of the student-only views.
   useEffect(() => {
-    if (isCoach && view !== "usmle" && view !== "profile") {
+    if (isCoach && view !== "usmle" && view !== "profile" && view !== "manage") {
       void navigate({ to: "/usmle" });
     }
   }, [isCoach, view, navigate]);
@@ -313,6 +317,19 @@ export function StudyApp({ view, children }: { view: View; children?: ReactNode 
                         <Activity size={18} />
                         Your profile
                       </Button>
+                      {canManageCases && (
+                        <Button
+                          variant="ghost"
+                          onClick={() => {
+                            setMenuOpen(false);
+                            void navigate({ to: "/manage/cases" });
+                          }}
+                          className="w-full justify-start gap-3 rounded-2xl px-3 py-3 text-sm md:py-2"
+                        >
+                          <ClipboardList size={18} />
+                          Manage cases
+                        </Button>
+                      )}
                       <Button
                         variant="ghost"
                         onClick={handleSignOut}

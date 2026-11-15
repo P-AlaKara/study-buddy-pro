@@ -28,7 +28,9 @@ ECGs are generated, not shipped as files: an `ecg` result carries `ecg: { preset
 
 Radiology images live in `public/cases/<slug>/` with a matching `assets.manifest.json`. They are open-licensed (CC0 / public domain / CC BY-SA) and teaching overlays such as arrows or numbered labels are removed, so the "mark finding" exercise is not given away; the attribution text records that change.
 
-Run `npm test` after changing the schema, validator, cases, or engine. Tests cover action application, deterioration, interrupted actions, safe-treatment gates, differential history, hints, scoring, win/loss/penalised paths for both cases, and validation failures.
+Run `npm test` after changing the schema, validator, cases, or engine. Tests cover action application, deterioration, interrupted actions, safe-treatment gates, differential history, hints, scoring, win/loss/penalised paths for every shipped case, and validation failures.
+
+The bank ships four cases (`cases/index.ts`): pulmonary embolism, type A aortic dissection, diabetic ketoacidosis and a ruptured ectopic pregnancy. Content creators inspect and author cases in the case studio (`src/features/case-studio/`, served at `/manage/cases` behind the `CONTENT_CREATOR_EMAILS` allowlist); see `CASE_AUTHORING_GUIDE.md`.
 
 ## Encounter UI
 

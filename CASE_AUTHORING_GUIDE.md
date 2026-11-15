@@ -2,6 +2,10 @@
 
 Clinical cases are TypeScript objects conforming to `MedicalCase` in `src/features/case-challenge/schema.ts`. Add one file under `src/features/case-challenge/cases/`, export it from that folder's `index.ts`, and run `npm run validate:cases`.
 
+## Case studio (`/manage/cases`)
+
+Content creators on the `CONTENT_CREATOR_EMAILS` allowlist (see `.env.example`) get an in-app studio that runs the same validator as CI against every shipped case, checks each case's asset files and manifest, and offers a form + JSON builder for new cases with live validation and an in-page playtest. Drafts autosave to the creator's browser. The studio does not write to the repository: export the draft as a `.ts` module (and its `assets.manifest.json`), drop it into the folders above, run `npm test`, and request clinician review. The builder also offers "Duplicate as draft" on any shipped case as a starting point.
+
 Every case is educational content and must remain `reviewStatus: "needs_clinician_review"` until a qualified clinician has checked the full path, including wrong-action consequences and treatment details. The app must display “Educational use only, not medical advice.”
 
 ## Core structure
@@ -58,4 +62,15 @@ npm run validate:cases
 npm run build
 ```
 
-The validator checks clue coverage, correct/tempting diagnosis counts, reachable key clues, action and diagnosis references, manifest membership, duplicate filenames, and physical asset existence. Clinical review remains a human release gate.
+The validator checks required fields, clue coverage, correct/tempting diagnosis counts, reachable key clues, action and diagnosis references, a debrief line for every harmful action, exactly three hints and teaching points, manifest membership, duplicate filenames, and physical asset existence. Clinical review remains a human release gate.
+
+## Shipped cases
+
+| Slug       | Title             | Specialties                                      | Level |
+| ---------- | ----------------- | ------------------------------------------------ | ----- |
+| `case_001` | The Long Flight   | Emergency, Pulmonology                           | 2     |
+| `case_002` | The Tearing Pain  | Emergency, Cardiology, Cardiothoracic Surgery    | 3     |
+| `case_003` | The Sweet Breath  | Emergency, Endocrinology, Internal Medicine      | 2     |
+| `case_004` | The Missed Period | Obstetrics & Gynaecology, Emergency, Gen. Surgery | 3     |
+
+`case_003` and `case_004` use generated ECGs and text results only (no image assets) and are marked `needs_clinician_review`.

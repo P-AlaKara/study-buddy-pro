@@ -1,9 +1,26 @@
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { Activity, ArrowRight, ChevronDown, Stethoscope } from "lucide-react";
+import {
+  Activity,
+  ArrowRight,
+  Baby,
+  ChevronDown,
+  ClipboardList,
+  Droplets,
+  Stethoscope,
+} from "lucide-react";
 import { CASE_BANK } from "@/features/case-challenge/cases";
 import { CaseMascotState, DrAmbrose } from "@/features/case-challenge/components/dr-ambrose";
 import { CASE_LIBRARY_INSTRUCTIONS } from "@/features/case-challenge/config";
+import { useCaseStudioAccess } from "@/features/case-studio/use-case-studio-access";
+
+// One icon/colour pairing per card, cycling through the bank.
+const CARD_STYLES = [
+  { icon: Activity, className: "bg-[#dff4f1] text-[#107b80]" },
+  { icon: Stethoscope, className: "bg-[#fff0ec] text-[#b64e3a]" },
+  { icon: Droplets, className: "bg-[#eeeafd] text-[#5b50a3]" },
+  { icon: Baby, className: "bg-[#fff6d6] text-[#7a5a00]" },
+] as const;
 
 export const Route = createFileRoute("/cases/")({
   head: () => ({
@@ -17,7 +34,7 @@ export const Route = createFileRoute("/cases/")({
       { property: "og:title", content: "Clinical case challenges | Medley" },
       {
         property: "og:description",
-        content: "Make time-sensitive clinical decisions in two replayable cases.",
+        content: "Make time-sensitive clinical decisions in replayable cases across specialties.",
       },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
@@ -27,13 +44,14 @@ export const Route = createFileRoute("/cases/")({
   component: CaseLibrary,
 });
 
-type DifficultyFilter = "all" | "2" | "3";
+type DifficultyFilter = "all" | "1" | "2" | "3";
 const INSTRUCTIONS_STORAGE_KEY = "medley-case-instructions";
 
 function CaseLibrary() {
   const [difficulty, setDifficulty] = useState<DifficultyFilter>("all");
   const [specialty, setSpecialty] = useState("all");
   const [instructionsExpanded, setInstructionsExpanded] = useState(true);
+  const canManageCases = useCaseStudioAccess();
 
   useEffect(() => {
     const savedPreference = window.localStorage.getItem(INSTRUCTIONS_STORAGE_KEY);
@@ -55,6 +73,14 @@ function CaseLibrary() {
 
   const specialties = useMemo(
     () => ["all", ...new Set(CASE_BANK.flatMap((item) => item.specialty))],
+    [],
+  );
+  const difficulties = useMemo(
+    () =>
+      [
+        "all",
+        ...new Set(CASE_BANK.map((item) => String(item.difficulty))),
+      ].sort() as DifficultyFilter[],
     [],
   );
   const shown = CASE_BANK.filter(
@@ -141,9 +167,17 @@ function CaseLibrary() {
             <h2 id="case-bank-title" className="mt-1 text-2xl font-black">
               Choose your shift
             </h2>
+            {canManageCases && (
+              <Link
+                to="/manage/cases"
+                className="mt-2 inline-flex items-center gap-1.5 text-sm font-black text-[#107b80] underline-offset-4 hover:underline"
+              >
+                <ClipboardList className="size-4" /> Manage cases
+              </Link>
+            )}
           </div>
           <div className="flex flex-wrap gap-2">
-            {(["all", "2", "3"] as const).map((value) => (
+            {difficulties.map((value) => (
               <FilterChip
                 key={value}
                 active={difficulty === value}
@@ -168,50 +202,51 @@ function CaseLibrary() {
         </div>
 
         <div className="mt-5 grid gap-4 md:grid-cols-2">
-          {shown.map((item, index) => (
-            <Link
-              key={item.id}
-              to="/cases/$caseId"
-              params={{ caseId: item.id }}
-              className="case-panel group block overflow-hidden p-5 transition-transform hover:-translate-y-1 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#168d91] md:p-6"
-            >
-              <div className="flex items-start justify-between gap-4">
-                <span
-                  className={`grid size-12 shrink-0 place-items-center rounded-2xl ${index === 0 ? "bg-[#dff4f1] text-[#107b80]" : "bg-[#fff0ec] text-[#b64e3a]"}`}
-                >
-                  {index === 0 ? (
-                    <Activity className="size-6" />
-                  ) : (
-                    <Stethoscope className="size-6" />
-                  )}
-                </span>
-                <span className="rounded-full bg-slate-100 px-3 py-1 text-[10px] font-black uppercase tracking-wider text-slate-600">
-                  Level {item.difficulty}
-                </span>
-              </div>
-              <h3 className="mt-5 text-xl font-black text-slate-900">{item.title}</h3>
-              <p className="mt-2 line-clamp-3 text-sm font-semibold leading-relaxed text-slate-500">
-                {item.intro}
-              </p>
-              <div className="mt-5 flex flex-wrap gap-2">
-                <span className="rounded-full bg-slate-100 px-3 py-1 text-[10px] font-extrabold text-slate-600">
-                  {item.setting}
-                </span>
-                {item.specialty.slice(0, 2).map((specialtyName) => (
+          {shown.map((item) => {
+            const bankIndex = CASE_BANK.findIndex((candidate) => candidate.id === item.id);
+            const style = CARD_STYLES[bankIndex % CARD_STYLES.length] ?? CARD_STYLES[0];
+            const CardIcon = style.icon;
+            return (
+              <Link
+                key={item.id}
+                to="/cases/$caseId"
+                params={{ caseId: item.id }}
+                className="case-panel group block overflow-hidden p-5 transition-transform hover:-translate-y-1 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#168d91] md:p-6"
+              >
+                <div className="flex items-start justify-between gap-4">
                   <span
-                    key={specialtyName}
-                    className="rounded-full bg-[#eeeafd] px-3 py-1 text-[10px] font-extrabold text-[#5b50a3]"
+                    className={`grid size-12 shrink-0 place-items-center rounded-2xl ${style.className}`}
                   >
-                    {specialtyName}
+                    <CardIcon className="size-6" />
                   </span>
-                ))}
-              </div>
-              <span className="mt-6 inline-flex items-center gap-2 text-sm font-black text-[#107b80]">
-                Start case
-                <ArrowRight className="size-4 transition-transform group-hover:translate-x-1" />
-              </span>
-            </Link>
-          ))}
+                  <span className="rounded-full bg-slate-100 px-3 py-1 text-[10px] font-black uppercase tracking-wider text-slate-600">
+                    Level {item.difficulty}
+                  </span>
+                </div>
+                <h3 className="mt-5 text-xl font-black text-slate-900">{item.title}</h3>
+                <p className="mt-2 line-clamp-3 text-sm font-semibold leading-relaxed text-slate-500">
+                  {item.intro}
+                </p>
+                <div className="mt-5 flex flex-wrap gap-2">
+                  <span className="rounded-full bg-slate-100 px-3 py-1 text-[10px] font-extrabold text-slate-600">
+                    {item.setting}
+                  </span>
+                  {item.specialty.slice(0, 2).map((specialtyName) => (
+                    <span
+                      key={specialtyName}
+                      className="rounded-full bg-[#eeeafd] px-3 py-1 text-[10px] font-extrabold text-[#5b50a3]"
+                    >
+                      {specialtyName}
+                    </span>
+                  ))}
+                </div>
+                <span className="mt-6 inline-flex items-center gap-2 text-sm font-black text-[#107b80]">
+                  Start case
+                  <ArrowRight className="size-4 transition-transform group-hover:translate-x-1" />
+                </span>
+              </Link>
+            );
+          })}
         </div>
 
         {shown.length === 0 && (
@@ -234,7 +269,8 @@ function CaseLibrary() {
       </section>
 
       <p className="text-center text-[11px] font-bold text-slate-500">
-        Educational use only, not medical advice · Demo cases are clinician reviewed.
+        Educational use only, not medical advice · Cases are written for clinician review before
+        release.
       </p>
     </div>
   );

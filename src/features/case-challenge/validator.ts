@@ -23,9 +23,42 @@ export function validateCase(caseDefinition: MedicalCase): CaseValidationIssue[]
   if (actionIds.size !== allActionIds.length) {
     issues.push({ path: "actions", message: "Action IDs must be unique within a case." });
   }
+  if (!caseDefinition.actions.length) {
+    issues.push({ path: "actions", message: "A case needs at least one action." });
+  }
+
+  for (const field of ["id", "slug", "title", "setting", "intro"] as const) {
+    if (!caseDefinition[field]?.trim()) {
+      issues.push({ path: field, message: `${field} is required.` });
+    }
+  }
+  if (!caseDefinition.specialty.length) {
+    issues.push({ path: "specialty", message: "List at least one specialty." });
+  }
+  if (!caseDefinition.patient.name.trim()) {
+    issues.push({ path: "patient.name", message: "The patient needs a name." });
+  }
 
   if (caseDefinition.intro.trim().split(/\s+/).length > 40) {
     issues.push({ path: "intro", message: "Intro must be 40 words or fewer." });
+  }
+
+  if (!caseDefinition.vitalsTimeline.length) {
+    issues.push({ path: "vitalsTimeline", message: "Add the arrival vital signs (minute 0)." });
+  } else if (caseDefinition.vitalsTimeline[0]?.tMinute !== 0) {
+    issues.push({ path: "vitalsTimeline", message: "The first vitals snapshot must be minute 0." });
+  }
+  for (const snapshot of caseDefinition.vitalsTimeline) {
+    if (!/^\d{2,3}\/\d{2,3}/.test(snapshot.bp.trim())) {
+      issues.push({
+        path: `vitalsTimeline.${snapshot.tMinute}.bp`,
+        message: "Blood pressure must start with systolic/diastolic, e.g. 118/76.",
+      });
+    }
+  }
+
+  if (diagnosisIds.size !== caseDefinition.differential.length) {
+    issues.push({ path: "differential", message: "Differential IDs must be unique." });
   }
 
   for (const tier of REQUIRED_CLUE_TIERS) {
@@ -175,6 +208,18 @@ export function validateCase(caseDefinition: MedicalCase): CaseValidationIssue[]
     }
   }
 
+  for (const action of caseDefinition.actions) {
+    if (action.harmful && !caseDefinition.solution.harmfulActionDebrief[action.id]?.trim()) {
+      issues.push({
+        path: `solution.harmfulActionDebrief.${action.id}`,
+        message: `Harmful action ${action.id} needs a debrief explanation.`,
+      });
+    }
+  }
+
+  if (caseDefinition.hints.length !== 3) {
+    issues.push({ path: "hints", message: "Exactly three hints are required." });
+  }
   caseDefinition.hints.forEach((hint, index) => {
     if (hint.tier !== index + 1 || hint.cost < 0) {
       issues.push({
@@ -182,7 +227,20 @@ export function validateCase(caseDefinition: MedicalCase): CaseValidationIssue[]
         message: "Hints must use tiers 1, 2, and 3 in order with non-negative costs.",
       });
     }
+    if (!hint.text.trim()) {
+      issues.push({ path: `hints.${index}`, message: "Hint text is empty." });
+    }
   });
+
+  if (caseDefinition.solution.teachingPoints.length !== 3) {
+    issues.push({
+      path: "solution.teachingPoints",
+      message: "Exactly three teaching points are required.",
+    });
+  }
+  if (!caseDefinition.solution.keyTreatment.length) {
+    issues.push({ path: "solution.keyTreatment", message: "Name at least one key treatment." });
+  }
 
   const { scoring } = caseDefinition;
   if (
