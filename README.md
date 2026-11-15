@@ -124,7 +124,7 @@ Only text-based documents are supported; scanned or image-only files are clearly
 - **Document extraction:** PDF.js (PDF) and fflate (PPTX), in the browser
 - **AI assistance:** OpenAI for the Exam Generator and Gemini for OSCE, both with structured, Zod-validated output
 - **Validation and testing:** Zod, TypeScript-based validators, and deterministic engine tests
-- **Deployment:** Nitro server output with a Render blueprint
+- **Deployment:** Vercel, via TanStack Start's Nitro `vercel` preset (Build Output API)
 
 ## Development
 

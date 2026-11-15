@@ -1,4 +1,4 @@
--- The original Lovable database received these demo profiles outside migration
+-- The original hosted database received these demo profiles outside migration
 -- history. Keep them here so a fresh Supabase project can replay every later
 -- foreign-keyed seed without depending on the old managed database.
 INSERT INTO public.students (

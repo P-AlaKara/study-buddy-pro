@@ -6,7 +6,7 @@
 -- the upload screen and the weak-areas retake offered after an exam is
 -- completed (the student's weakest topics are pre-filled as the focus).
 --
--- Plain DDL only (no $$ plpgsql) so Lovable applies it cleanly. Idempotent.
+-- Plain DDL only (no $$ plpgsql) so every migration runner applies it cleanly. Idempotent.
 
 BEGIN;
 

@@ -37,7 +37,7 @@ on disk. Because the old keys have existed in repository history, treat them as
 exposed and revoke or rotate them after the cutover.
 
 The project URL and ref in `.env` have already been changed. Replace the old
-Lovable keys and add the new server key:
+project's keys and add the new server key:
 
 ```dotenv
 SUPABASE_PROJECT_ID="lvqatsptuqaqvmivfjkj"
@@ -91,7 +91,7 @@ npx supabase db push
 The migrations already contain the app's cases, quizzes, OSCEs, flashcards,
 groups, achievements, demo students, and simulated activity history. The added
 `20260923194320_seed_demo_students.sql` migration restores four profiles that
-had originally been created outside Lovable's migration history.
+had originally been created outside the old project's migration history.
 
 Do **not** run `supabase db reset --linked`; that command destroys the remote
 database.
@@ -137,8 +137,8 @@ contains `SUPABASE_SECRET_KEY` or a value beginning with `sb_secret_`.
 ## Preserving live data instead of rebuilding demo data
 
 Replaying migrations is recommended for this prototype because its content and
-demo history are seeded. If the Lovable database now contains user-created
+demo history are seeded. If the old database now contains user-created
 profiles, notes, attempts, or decks that must be preserved, stop before `db
 push` and make a logical backup/data-export plan first. A database dump requires
-the old database connection string; the public Lovable API URL is not a Postgres
-connection string.
+the old database connection string; the old project's public API URL is not a
+Postgres connection string.

@@ -1,6 +1,6 @@
 -- The 20261023213000_osce_free_form migration declares osce_ai_interactions
 -- with `source_mode IN ('guided', 'free_form', 'nudge', 'system')`, but the
--- constraint that actually landed on the connected (Lovable) database predates
+-- constraint that actually landed on the original hosted database predates
 -- the 'system' value and only allows ('guided', 'free_form', 'nudge') -- the
 -- same partial-apply drift that left the osce_ai_* RPCs missing until the
 -- 20261024120100 repair.
