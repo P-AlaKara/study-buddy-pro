@@ -1,7 +1,7 @@
 // Upload screen (wireframe 2): multiple PDFs / PPTX, validation, removal, then
-// kick off generation. Files are sent straight to the server for in-memory
-// extraction — nothing is stored.
-import { type ReactNode, useRef, useState } from "react";
+// kick off generation. Each file is read here in the browser as soon as it's
+// added; only the extracted text is sent to the server, and nothing is stored.
+import { type ReactNode, useEffect, useRef, useState } from "react";
 import { useNavigate } from "@tanstack/react-router";
 import {
   AlertCircle,
@@ -19,11 +19,28 @@ import { Button } from "@/components/ui/button";
 import { logProblem } from "@/lib/log-problem";
 import { Chip, PageEyebrow, Stepper } from "./ui";
 import { createExamFromUploads } from "./exam-generator.functions";
+import { extractInBrowser, isAbortError } from "./extract-browser";
+import {
+  ExtractionError,
+  MAX_CONTENT_BYTES,
+  MAX_FILES,
+  MAX_FILE_BYTES,
+  MAX_FILE_MB,
+  type DocumentExtraction,
+} from "./extract-text";
+import { buildUploadedContent } from "./upload-content";
 
-const MAX_FILES = 15;
-const MAX_BYTES = 40 * 1024 * 1024;
 const ACCEPT =
   ".pdf,.pptx,.ppt,application/pdf,application/vnd.openxmlformats-officedocument.presentationml.presentation";
+
+type Entry = {
+  id: string;
+  file: File;
+  status: "reading" | "ready" | "failed";
+  progress: { done: number; total: number } | null;
+  extraction: DocumentExtraction | null;
+  error: string | null;
+};
 
 function isSupported(file: File): boolean {
   const name = file.name.toLowerCase();
@@ -37,10 +54,18 @@ function formatSize(bytes: number): string {
 export function UploadPanel({ initialFocus = null }: { initialFocus?: string | null }) {
   const navigate = useNavigate();
   const inputRef = useRef<HTMLInputElement>(null);
-  const [files, setFiles] = useState<File[]>([]);
+  const [entries, setEntries] = useState<Entry[]>([]);
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
   const [dragging, setDragging] = useState(false);
+
+  // Files are read one at a time so a stack of large PDFs doesn't swamp memory.
+  const queue = useRef<Promise<void>>(Promise.resolve());
+  const controllers = useRef(new Map<string, AbortController>());
+  useEffect(() => {
+    const active = controllers.current;
+    return () => active.forEach((c) => c.abort());
+  }, []);
 
   // Exam focus. A general exam covers the whole upload; a specific exam steers
   // generation toward the named areas. `initialFocus` arrives pre-filled when a
@@ -52,40 +77,106 @@ export function UploadPanel({ initialFocus = null }: { initialFocus?: string | n
   );
   const [focusAreas, setFocusAreas] = useState(prefilledFocus);
 
+  const updateEntry = (id: string, patch: Partial<Entry>) =>
+    setEntries((cur) => cur.map((e) => (e.id === id ? { ...e, ...patch } : e)));
+
+  const enqueue = (entry: Entry) => {
+    const controller = new AbortController();
+    controllers.current.set(entry.id, controller);
+    queue.current = queue.current.then(async () => {
+      if (controller.signal.aborted) return;
+      try {
+        const extraction = await extractInBrowser(entry.file, {
+          signal: controller.signal,
+          onProgress: (done, total) => updateEntry(entry.id, { progress: { done, total } }),
+        });
+        updateEntry(entry.id, { status: "ready", extraction, progress: null });
+      } catch (err) {
+        if (controller.signal.aborted || isAbortError(err)) return;
+        if (!(err instanceof ExtractionError)) logProblem("Read uploaded file", err);
+        updateEntry(entry.id, {
+          status: "failed",
+          progress: null,
+          error:
+            err instanceof ExtractionError
+              ? err.message
+              : "We couldn’t read this file. Please try again, or upload a different one.",
+        });
+      } finally {
+        controllers.current.delete(entry.id);
+      }
+    });
+  };
+
   const addFiles = (incoming: FileList | File[]) => {
     setError("");
-    const next: File[] = [...files];
+    const accepted: Entry[] = [];
     for (const file of Array.from(incoming)) {
       if (!isSupported(file)) {
         setError(`“${file.name}” isn’t a PDF or PowerPoint file.`);
         continue;
       }
-      if (file.size === 0 || file.size > MAX_BYTES) {
-        setError(`“${file.name}” must be between 1 byte and 40 MB.`);
+      if (file.size === 0 || file.size > MAX_FILE_BYTES) {
+        setError(`“${file.name}” must be between 1 byte and ${MAX_FILE_MB} MB.`);
         continue;
       }
-      if (next.some((f) => f.name === file.name && f.size === file.size)) continue;
-      next.push(file);
+      const all = [...entries, ...accepted];
+      if (all.some((e) => e.file.name === file.name && e.file.size === file.size)) continue;
+      if (all.length >= MAX_FILES) {
+        setError(`You can upload at most ${MAX_FILES} files at once.`);
+        break;
+      }
+      accepted.push({
+        id: crypto.randomUUID(),
+        file,
+        status: "reading",
+        progress: null,
+        extraction: null,
+        error: null,
+      });
     }
-    if (next.length > MAX_FILES) {
-      setError(`You can upload at most ${MAX_FILES} files at once.`);
-      setFiles(next.slice(0, MAX_FILES));
-    } else {
-      setFiles(next);
+    if (accepted.length > 0) {
+      setEntries((cur) => [...cur, ...accepted]);
+      accepted.forEach(enqueue);
     }
     if (inputRef.current) inputRef.current.value = "";
   };
 
-  const remove = (index: number) => setFiles((cur) => cur.filter((_, i) => i !== index));
+  const remove = (id: string) => {
+    controllers.current.get(id)?.abort();
+    setEntries((cur) => cur.filter((e) => e.id !== id));
+  };
+
+  const reading = entries.some((e) => e.status === "reading");
 
   const build = async () => {
-    if (files.length === 0) {
+    if (entries.length === 0) {
       setError("Add at least one PDF or PowerPoint file.");
+      return;
+    }
+    if (reading) return;
+    const ready = entries.flatMap((e) =>
+      e.status === "ready" && e.extraction ? [e.extraction] : [],
+    );
+    if (ready.length === 0) {
+      setError("None of these files have readable text. Add a text-based PDF or slide deck.");
       return;
     }
     const focus = focusMode === "specific" ? focusAreas.trim() : "";
     if (focusMode === "specific" && focus.length < 3) {
       setError("Tell us which areas to focus on, or switch to a general exam.");
+      return;
+    }
+    const skipped = entries.flatMap((e) =>
+      e.status === "failed" ? [{ name: e.file.name, reason: e.error ?? "Couldn’t be read." }] : [],
+    );
+    const content = new Blob([JSON.stringify(buildUploadedContent(ready, skipped))], {
+      type: "application/json",
+    });
+    if (content.size > MAX_CONTENT_BYTES) {
+      setError(
+        `Together these files contain more text than one exam can cover (${formatSize(content.size)} of text; the limit is ${formatSize(MAX_CONTENT_BYTES)}). Remove a file or two and try again.`,
+      );
       return;
     }
     setBusy(true);
@@ -95,7 +186,7 @@ export function UploadPanel({ initialFocus = null }: { initialFocus?: string | n
       form.append("idempotencyKey", crypto.randomUUID());
       form.append("focusMode", focusMode);
       form.append("focusAreas", focus);
-      for (const file of files) form.append("files", file);
+      form.append("content", content, "content.json");
       const { examId } = await createExamFromUploads({ data: form });
       await navigate({ to: "/exams/$examId", params: { examId } });
     } catch (err) {
@@ -156,7 +247,8 @@ export function UploadPanel({ initialFocus = null }: { initialFocus?: string | n
             Drop files here, or <span className="text-blue underline">browse files</span>
           </p>
           <p className="mt-1 text-xs text-muted-foreground">
-            PDF · PPTX &nbsp;•&nbsp; multiple files supported
+            PDF · PPTX &nbsp;•&nbsp; up to {MAX_FILE_MB} MB each &nbsp;•&nbsp; multiple files
+            supported
           </p>
         </div>
         <input
@@ -178,13 +270,13 @@ export function UploadPanel({ initialFocus = null }: { initialFocus?: string | n
         </div>
       )}
 
-      {files.length > 0 && (
+      {entries.length > 0 && (
         <section className="mt-6">
           <div className="mb-3 flex items-center justify-between">
             <h2 className="flex items-center gap-2 font-display text-lg font-black">
               Uploaded material{" "}
               <Chip tone="blue">
-                {files.length} file{files.length === 1 ? "" : "s"}
+                {entries.length} file{entries.length === 1 ? "" : "s"}
               </Chip>
             </h2>
             <button
@@ -196,38 +288,9 @@ export function UploadPanel({ initialFocus = null }: { initialFocus?: string | n
             </button>
           </div>
           <div className="space-y-2.5">
-            {files.map((file, index) => {
-              const isPptx = /\.pptx?$/i.test(file.name);
-              return (
-                <div
-                  key={`${file.name}-${index}`}
-                  className="clay-card flex items-center gap-3 bg-card p-3.5"
-                >
-                  <span
-                    className={`flex size-10 shrink-0 items-center justify-center rounded-xl ${
-                      isPptx
-                        ? "bg-peach text-[color:var(--case-orange)]"
-                        : "bg-pink-soft text-[color:var(--case-pink-ink)]"
-                    }`}
-                  >
-                    {isPptx ? <Presentation size={18} /> : <FileText size={18} />}
-                  </span>
-                  <div className="min-w-0 flex-1">
-                    <p className="truncate text-sm font-bold">{file.name}</p>
-                    <p className="text-xs text-muted-foreground">{formatSize(file.size)}</p>
-                  </div>
-                  <Chip tone="mint">Ready</Chip>
-                  <button
-                    type="button"
-                    onClick={() => remove(index)}
-                    aria-label={`Remove ${file.name}`}
-                    className="grid size-8 shrink-0 place-items-center rounded-full text-muted-foreground hover:bg-muted"
-                  >
-                    <X size={16} />
-                  </button>
-                </div>
-              );
-            })}
+            {entries.map((entry) => (
+              <FileRow key={entry.id} entry={entry} onRemove={() => remove(entry.id)} />
+            ))}
           </div>
         </section>
       )}
@@ -278,13 +341,74 @@ export function UploadPanel({ initialFocus = null }: { initialFocus?: string | n
 
       <div className="mt-8 flex flex-col items-center justify-between gap-3 sm:flex-row">
         <p className="flex items-center gap-1.5 text-xs text-muted-foreground">
-          <Lock size={13} /> Your files are processed privately and never stored.
+          <Lock size={13} /> Your files are read on your device and never uploaded — only their text
+          is used.
         </p>
-        <Button variant="blue" disabled={busy || files.length === 0} onClick={() => void build()}>
-          {busy ? <Loader2 className="animate-spin" /> : null}
-          {busy ? "Starting…" : "Build comprehensive exam"}
+        <Button
+          variant="blue"
+          disabled={busy || reading || entries.length === 0}
+          onClick={() => void build()}
+        >
+          {busy || reading ? <Loader2 className="animate-spin" /> : null}
+          {busy ? "Starting…" : reading ? "Reading files…" : "Build comprehensive exam"}
         </Button>
       </div>
+    </div>
+  );
+}
+
+function FileRow({ entry, onRemove }: { entry: Entry; onRemove: () => void }) {
+  const { file, status, progress, extraction } = entry;
+  const isPptx = /\.pptx?$/i.test(file.name);
+  const unitWord = isPptx ? "slide" : "page";
+  let detail = formatSize(file.size);
+  if (status === "reading" && progress) {
+    detail += ` · reading ${progress.done}/${progress.total} ${unitWord}s`;
+  } else if (status === "reading") {
+    detail += " · reading…";
+  } else if (status === "ready" && extraction) {
+    detail += ` · ${extraction.unitCount} ${unitWord}${extraction.unitCount === 1 ? "" : "s"}`;
+  }
+  return (
+    <div className="clay-card bg-card p-3.5">
+      <div className="flex items-center gap-3">
+        <span
+          className={`flex size-10 shrink-0 items-center justify-center rounded-xl ${
+            isPptx
+              ? "bg-peach text-[color:var(--case-orange)]"
+              : "bg-pink-soft text-[color:var(--case-pink-ink)]"
+          }`}
+        >
+          {isPptx ? <Presentation size={18} /> : <FileText size={18} />}
+        </span>
+        <div className="min-w-0 flex-1">
+          <p className="truncate text-sm font-bold">{file.name}</p>
+          <p className="text-xs text-muted-foreground">{detail}</p>
+        </div>
+        {status === "reading" && (
+          <Chip tone="neutral">
+            <Loader2 className="size-3 animate-spin" /> Reading
+          </Chip>
+        )}
+        {status === "ready" && <Chip tone="mint">Ready</Chip>}
+        {status === "failed" && <Chip tone="pink">Can’t read</Chip>}
+        <button
+          type="button"
+          onClick={onRemove}
+          aria-label={`Remove ${file.name}`}
+          className="grid size-8 shrink-0 place-items-center rounded-full text-muted-foreground hover:bg-muted"
+        >
+          <X size={16} />
+        </button>
+      </div>
+      {status === "failed" && entry.error && (
+        <p className="mt-2 text-xs font-semibold text-[color:var(--case-pink-ink)]">
+          {entry.error} This file will be skipped.
+        </p>
+      )}
+      {status === "ready" && extraction?.warning && (
+        <p className="mt-2 text-xs text-muted-foreground">{extraction.warning}</p>
+      )}
     </div>
   );
 }

@@ -31,6 +31,10 @@ import {
   type ExtractedUnit,
 } from "../src/features/exam-generator/extract-text.js";
 import {
+  buildUploadedContent,
+  parseUploadedContent,
+} from "../src/features/exam-generator/upload-content.js";
+import {
   coverageMapSchema,
   questionBatchSchema,
   writtenGradeSchema,
@@ -126,6 +130,82 @@ test("finalizeExtraction flags scanned/empty and records skipped-unit warnings",
   const out = finalizeExtraction("d.pdf", "pdf", partial);
   assert.equal(out.units.length, 1);
   assert.match(out.warning ?? "", /couldn’t be read/);
+});
+
+test("extractPptx keeps speaker notes and skips embedded media", () => {
+  const xml = (t: string) => strToU8(`<p:sld><a:p><a:r><a:t>${t}</a:t></a:r></a:p></p:sld>`);
+  const zip = zipSync({
+    "ppt/slides/slide1.xml": xml("Murmurs"),
+    "ppt/notesSlides/notesSlide1.xml": xml("Listen at the apex"),
+    "ppt/media/video1.mp4": new Uint8Array(2048).fill(7),
+  });
+  const units = extractPptx("deck.pptx", zip);
+  assert.equal(units.length, 1);
+  assert.equal(units[0]!.text, "Murmurs\n[Speaker notes] Listen at the apex");
+});
+
+// --- Browser → server upload payload ---------------------------------------
+test("uploaded content round-trips through JSON into pipeline units", () => {
+  const pdf = finalizeExtraction("Cardio.pdf", "pdf", [
+    { document: "Cardio.pdf", unitKind: "page", unit: 1, text: "Heart failure basics and NYHA." },
+    { document: "Cardio.pdf", unitKind: "page", unit: 2, text: "" },
+    { document: "Cardio.pdf", unitKind: "page", unit: 3, text: "Diuretics and ACE inhibitors." },
+  ]);
+  const deck = finalizeExtraction("Renal.pptx", "pptx", [
+    {
+      document: "Renal.pptx",
+      unitKind: "slide",
+      unit: 1,
+      text: "The nephron: glomerulus, tubules and the loop of Henle",
+    },
+  ]);
+  const wire = JSON.parse(
+    JSON.stringify(
+      buildUploadedContent([pdf, deck], [{ name: "scan.pdf", reason: "Image-only PDF." }]),
+    ),
+  );
+  const out = parseUploadedContent(wire);
+  assert.deepEqual(
+    out.units.map((u) => [u.document, u.unitKind, u.unit]),
+    [
+      ["Cardio.pdf", "page", 1],
+      ["Cardio.pdf", "page", 3],
+      ["Renal.pptx", "slide", 1],
+    ],
+  );
+  assert.deepEqual(out.sourceDocuments, [
+    { name: "Cardio.pdf", kind: "pdf", unitCount: 3 },
+    { name: "Renal.pptx", kind: "pptx", unitCount: 1 },
+  ]);
+  assert.equal(out.warnings[0], "“scan.pdf”: Image-only PDF.");
+  assert.match(out.warnings[1] ?? "", /1 page in “Cardio.pdf” couldn’t be read/);
+});
+
+test("parseUploadedContent rejects malformed, oversized and empty payloads", () => {
+  assert.throws(() => parseUploadedContent({ documents: "nope" }), /couldn’t be read/);
+  assert.throws(() => parseUploadedContent(null), /couldn’t be read/);
+  const doc = (i: number) => ({
+    name: `f${i}.pdf`,
+    kind: "pdf",
+    unitCount: 1,
+    units: [{ unit: 1, text: "Some text" }],
+    warning: null,
+  });
+  const tooMany = {
+    documents: Array.from({ length: 10 }, (_, i) => doc(i)),
+    skipped: Array.from({ length: 6 }, (_, i) => ({ name: `s${i}`, reason: "x" })),
+  };
+  assert.throws(() => parseUploadedContent(tooMany), /at most 15 files/);
+  // Whitespace-only text is not readable; with nothing else, the first warning surfaces.
+  const blank = { ...doc(0), units: [{ unit: 1, text: "   " }] };
+  assert.throws(
+    () => parseUploadedContent({ documents: [blank], skipped: [] }),
+    /“f0.pdf”: No readable text/,
+  );
+  assert.throws(
+    () => parseUploadedContent({ documents: [], skipped: [{ name: "a.pdf", reason: "Scanned." }] }),
+    /“a.pdf”: Scanned\./,
+  );
 });
 
 // --- Coverage map ----------------------------------------------------------

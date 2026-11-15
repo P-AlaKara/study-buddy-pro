@@ -2,8 +2,10 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireAuth } from "@/features/auth/middleware";
+import { MAX_CONTENT_BYTES } from "./extract-text";
 import { requireExamGeneratorEnabled } from "./feature-flag";
 import { computeResultsSummary, gradeMcq, toFlashcard } from "./pipeline";
+import { parseUploadedContent } from "./upload-content";
 import type {
   AttemptPayload,
   ExamAnswer,
@@ -16,8 +18,6 @@ import type {
   SourceDocumentMeta,
   TakingQuestion,
 } from "./types";
-
-const MAX_FILES = 15;
 
 async function adminDb() {
   requireExamGeneratorEnabled();
@@ -200,7 +200,6 @@ export const createExamFromUploads = createServerFn({ method: "POST" })
   .handler(async ({ data, context }): Promise<{ examId: string }> => {
     const db = await adminDb();
     const student = studentId(context);
-    const { extractDocument, ExtractionError } = await import("./extract.server");
 
     // Optional student-directed focus. "specific" mode concentrates the exam on
     // the areas the student names (also used to pre-fill a weak-areas retake);
@@ -221,46 +220,29 @@ export const createExamFromUploads = createServerFn({ method: "POST" })
       if (existing) return { examId: existing.exam_id };
     }
 
-    const files = data.getAll("files").filter((f): f is File => f instanceof File && f.size > 0);
-    if (files.length === 0) throw new Error("Add at least one PDF or PowerPoint file.");
-    if (files.length > MAX_FILES) throw new Error(`Upload at most ${MAX_FILES} files at once.`);
-
-    const units: { document: string; unitKind: "page" | "slide"; unit: number; text: string }[] =
-      [];
-    const sourceDocuments: SourceDocumentMeta[] = [];
-    const warnings: string[] = [];
-    let firstError: string | null = null;
-
-    for (const file of files) {
-      try {
-        const bytes = new Uint8Array(await file.arrayBuffer());
-        const extraction = await extractDocument(file.name, bytes);
-        units.push(...extraction.units);
-        sourceDocuments.push({
-          name: file.name,
-          kind: extraction.kind,
-          unitCount: extraction.unitCount,
-        });
-        if (extraction.warning) warnings.push(extraction.warning);
-      } catch (error) {
-        const message =
-          error instanceof ExtractionError
-            ? `“${file.name}”: ${error.message}`
-            : `“${file.name}” could not be processed.`;
-        warnings.push(message);
-        if (!firstError) firstError = message;
-        console.error("[ExamGen] upload extraction failed", file.name, error);
-      }
+    // Files are read in the browser (extract-browser.ts); only their text arrives
+    // here, as one JSON blob. The original files never reach the server.
+    const content = data.get("content");
+    if (!(content instanceof Blob) || content.size === 0) {
+      throw new Error("Add at least one PDF or PowerPoint file.");
     }
-
-    if (units.length === 0) {
-      throw new Error(firstError ?? "None of the uploaded files contained readable text.");
+    if (content.size > MAX_CONTENT_BYTES) {
+      throw new Error(
+        "Your files contain more text than one exam can cover. Remove a file or two and try again.",
+      );
     }
+    let raw: unknown;
+    try {
+      raw = JSON.parse(await content.text());
+    } catch {
+      throw new Error("Your material couldn’t be read. Please try again.");
+    }
+    const { units, sourceDocuments, warnings } = parseUploadedContent(raw);
 
     const title =
       sourceDocuments.length > 1
         ? `${baseName(sourceDocuments[0]!.name)} + ${sourceDocuments.length - 1} more`
-        : baseName((sourceDocuments[0] ?? { name: files[0]!.name }).name);
+        : baseName(sourceDocuments[0]!.name);
 
     const { data: exam, error: examError } = await db
       .from("exams")

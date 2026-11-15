@@ -58,7 +58,7 @@ The product is designed around active recall, deliberate practice, immediate fee
 
 The Exam Generator turns a student's own lecture notes into a comprehensive, source-grounded examination.
 
-- Authenticated students upload one or more text-based PDFs or PowerPoint (`.pptx`) files; the material is extracted in-memory and combined into a single exam.
+- Authenticated students add one or more text-based PDFs or PowerPoint (`.pptx`) files (up to 200 MB each); the text is extracted in the browser — the files themselves are never uploaded — and combined into a single exam.
 - A structured, multi-stage pipeline analyses every document, builds a coverage map of granular learning objectives, generates questions objective by objective, then audits coverage and fills gaps — prioritising comprehensive breadth over an arbitrary question count.
 - Each exam mixes single-best-answer MCQs (with per-option explanations), short-answer recall prompts, and structured long-answer questions with model answers and marking rubrics, tagged by Bloom level where useful.
 - Questions are grounded only in the uploaded material, carry a source document and page/slide reference, and are checked for duplicates and near-duplicates before being saved.
@@ -110,7 +110,7 @@ Only text-based documents are supported; scanned or image-only files are clearly
 
 - **Application-owned authentication:** accounts use email and password with Argon2id password hashing and an app-signed, httpOnly session cookie. Email verification and password reset are intentionally deferred and must be added before production.
 - All database access flows through authenticated server functions using a service-role client; the browser has no direct table access.
-- Uploaded documents are never stored permanently: the Exam Generator extracts text in-memory, keeps it only transiently while generating, and discards both the files and the extracted text when generation finishes, fails, or is cancelled. Only the generated exam is saved.
+- Documents never leave the student's device: the Exam Generator extracts text in the browser and sends only that text (capped at 4 MB, under Vercel's 4.5 MB request limit). The server keeps the text only transiently while generating and discards it when generation finishes, fails, or is cancelled. Only the generated exam is saved.
 - Generated exams, questions, coverage maps, attempts, answers, and saved flashcards belong to the authenticated student and are protected by the same authorization rules as the rest of the app.
 - Generated questions are validated against a strict schema, grounded in the uploaded material, and de-duplicated before persistence.
 - Model output is schema-validated, retried once when malformed, and replaced with safe fallbacks when generation fails or times out.
@@ -121,7 +121,7 @@ Only text-based documents are supported; scanned or image-only files are clearly
 - **Application:** React 19, TypeScript, TanStack Start, TanStack Router, and Vite
 - **Interface:** Tailwind CSS, Radix UI primitives, Lucide icons, and Recharts
 - **Data and authentication:** application-owned accounts (Argon2id hashing + app-signed session cookies) on Supabase PostgreSQL and Storage, with all access through server functions
-- **Document extraction:** PDF.js (PDF) and fflate (PPTX), server-side only
+- **Document extraction:** PDF.js (PDF) and fflate (PPTX), in the browser
 - **AI assistance:** OpenAI for the Exam Generator and Gemini for OSCE, both with structured, Zod-validated output
 - **Validation and testing:** Zod, TypeScript-based validators, and deterministic engine tests
 - **Deployment:** Nitro server output with a Render blueprint

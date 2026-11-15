@@ -1,5 +1,6 @@
 // Pure + PPTX (fflate-only) extraction helpers. No pdfjs here, so this module is
-// safe to unit-test directly. PDF extraction lives in extract.server.ts.
+// safe to unit-test directly. PDF extraction lives in extract-browser.ts — files
+// are read in the browser and only their text is sent to the server.
 import { strFromU8, unzipSync } from "fflate";
 import type { DocumentKind } from "./types";
 
@@ -18,7 +19,14 @@ export interface DocumentExtraction {
   warning: string | null;
 }
 
-export const MAX_FILE_BYTES = 40 * 1024 * 1024;
+export const MAX_FILES = 15;
+/** Per-file cap. Files are read on the student's device, so this only guards
+ *  browser memory — large lecture PDFs are mostly images we never read. */
+export const MAX_FILE_MB = 200;
+export const MAX_FILE_BYTES = MAX_FILE_MB * 1024 * 1024;
+/** Cap on the extracted-text payload sent to the server. Vercel rejects request
+ *  bodies over 4.5 MB, so stay safely under it. */
+export const MAX_CONTENT_BYTES = 4_000_000;
 
 export class ExtractionError extends Error {
   constructor(
@@ -119,10 +127,13 @@ export function slideNumber(path: string): number {
   return match ? Number(match[1]) : Number.MAX_SAFE_INTEGER;
 }
 
+const PPTX_TEXT_PART = /^ppt\/(slides\/slide\d+|notesSlides\/notesSlide\d+)\.xml$/i;
+
 export function extractPptx(name: string, bytes: Uint8Array): ExtractedUnit[] {
   let files: Record<string, Uint8Array>;
   try {
-    files = unzipSync(bytes);
+    // Only inflate slide + notes XML; skipping embedded media keeps big decks fast.
+    files = unzipSync(bytes, { filter: (file) => PPTX_TEXT_PART.test(file.name) });
   } catch {
     throw new ExtractionError(
       "This presentation couldn’t be opened. If it’s an older .ppt file, re-save it as .pptx.",
