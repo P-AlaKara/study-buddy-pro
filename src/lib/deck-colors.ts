@@ -2,19 +2,38 @@
 // browser (localStorage), never on the server, so it stays a pure UI choice and
 // degrades gracefully where storage is unavailable (private windows, SSR, etc.).
 
-export type DeckColor = { label: string; value: string };
+/**
+ * `value` is the stored pastel (the card tint). `accent` is a stronger tone of
+ * the same hue for bars, dots and badges; `ink` is a dark tone of the hue that
+ * stays readable (≥4.5:1) on the tinted card surface.
+ */
+export type DeckColor = { label: string; value: string; accent: string; ink: string };
 
 export const DECK_COLORS: DeckColor[] = [
-  { label: "Blush pink", value: "#ffe1ec" },
-  { label: "Sky blue", value: "#dcefff" },
-  { label: "Lavender", value: "#ecdcff" },
-  { label: "Mint", value: "#dcfaeb" },
-  { label: "Peach", value: "#ffe6d6" },
-  { label: "Lemon yellow", value: "#fff0b7" },
+  { label: "Blush pink", value: "#ffe1ec", accent: "#ef8db2", ink: "#9c3462" },
+  { label: "Sky blue", value: "#dcefff", accent: "#6fb2e4", ink: "#275e86" },
+  { label: "Lavender", value: "#ecdcff", accent: "#a98bef", ink: "#5e41b0" },
+  { label: "Mint", value: "#dcfaeb", accent: "#5cc69a", ink: "#1d6a4a" },
+  { label: "Peach", value: "#ffe6d6", accent: "#f0a072", ink: "#9a4d25" },
+  { label: "Lemon yellow", value: "#fff0b7", accent: "#e5b935", ink: "#7d5c0d" },
 ];
 
 /** Default card colour when the student hasn't picked one for a deck. */
 export const DEFAULT_DECK_COLOR = "#fff0b7"; // lemon yellow
+
+/** Full palette for a stored colour value (falls back to the default). */
+export function deckPalette(value: string): DeckColor {
+  return (
+    DECK_COLORS.find((c) => c.value === value) ??
+    DECK_COLORS.find((c) => c.value === DEFAULT_DECK_COLOR)!
+  );
+}
+
+/** CSS custom properties consumed by the `.fc-*` flashcard styles. */
+export function deckColorVars(value: string): Record<string, string> {
+  const p = deckPalette(value);
+  return { "--fc-base": p.value, "--fc-accent": p.accent, "--fc-ink": p.ink };
+}
 
 const KEY = (deckId: string) => `medley-deck-color-${deckId}`;
 

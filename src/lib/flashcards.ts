@@ -34,6 +34,35 @@ export type Review = {
   last_rating: Rating | null;
 };
 export type Rating = "again" | "hard" | "good" | "easy";
+/** The slice of a student's review row the deck page needs. */
+export type CardReviewState = {
+  flashcard_id: string;
+  interval_days: number;
+  repetitions: number;
+  due_date: string;
+  last_rating: Rating | null;
+};
+/** Deck context attached to each review-queue item (badge + colour lookup). */
+export type ReviewDeckInfo = { id: string; title: string; subject: string };
+
+export type Mastery = "new" | "learning" | "mastered";
+/** Interval (days) at which a card counts as mastered, like Anki's "mature". */
+export const MASTERED_INTERVAL_DAYS = 21;
+export function cardMastery(r: Pick<CardReviewState, "interval_days"> | null | undefined): Mastery {
+  if (!r) return "new";
+  return Number(r.interval_days) >= MASTERED_INTERVAL_DAYS ? "mastered" : "learning";
+}
+export const MASTERY_LABEL: Record<Mastery, string> = {
+  new: "New",
+  learning: "Learning",
+  mastered: "Mastered",
+};
+export const RATING_LABEL: Record<Rating, string> = {
+  again: "Again",
+  hard: "Hard",
+  good: "Good",
+  easy: "Easy",
+};
 export const CARD_TYPES: CardType[] = [
   "basic",
   "cloze",
@@ -93,6 +122,20 @@ export function previewInterval(prev: Parameters<typeof schedule>[0], r: Rating)
 
 export const clozeFront = (t: string) => t.replace(/\{\{c\d+::(.*?)\}\}/g, "[ … ]");
 export const clozeBack = (t: string) => t.replace(/\{\{c\d+::(.*?)\}\}/g, "【$1】");
+
+/** Splits cloze text into plain runs and hidden answers so the UI can style each. */
+export function clozeSegments(t: string): { text: string; hidden: boolean }[] {
+  const out: { text: string; hidden: boolean }[] = [];
+  const re = /\{\{c\d+::(.*?)\}\}/g;
+  let last = 0;
+  for (let m = re.exec(t); m; m = re.exec(t)) {
+    if (m.index > last) out.push({ text: t.slice(last, m.index), hidden: false });
+    out.push({ text: m[1] ?? "", hidden: true });
+    last = m.index + m[0].length;
+  }
+  if (last < t.length) out.push({ text: t.slice(last), hidden: false });
+  return out;
+}
 
 // Data access is backend-mediated. The server derives ownership from the
 // session, so the studentId argument kept for call-site compatibility is unused.

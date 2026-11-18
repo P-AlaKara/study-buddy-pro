@@ -2,7 +2,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireAuth } from "@/features/auth/middleware";
-import type { Card, Deck, Rating, Review } from "./flashcards";
+import type { Card, CardReviewState, Deck, Rating, Review, ReviewDeckInfo } from "./flashcards";
 import { schedule } from "./flashcards";
 
 async function assertDeckOwner(db: any, deckId: string, profileId: string) {
@@ -125,24 +125,40 @@ export const createDeck = createServerFn({ method: "POST" })
 export const getDeck = createServerFn({ method: "GET" })
   .middleware([requireAuth])
   .inputValidator((d) => z.object({ deckId: z.string().uuid() }).parse(d))
-  .handler(async ({ data, context }): Promise<{ deck: Deck; cards: Card[] }> => {
-    const db = await adminDb();
-    const [{ data: deck, error: de }, { data: cards }] = await Promise.all([
-      db.from("flashcard_decks").select("*").eq("id", data.deckId).single(),
-      db
-        .from("flashcards")
-        .select("*")
-        .eq("deck_id", data.deckId)
-        .order("position")
-        .order("created_at"),
-    ]);
-    if (de || !deck) throw new Error("Deck not found.");
-    // Personal decks are only visible to their owner.
-    if (!deck.is_official && deck.owner_student_id !== context.profileId) {
-      throw new Error("Deck not found.");
-    }
-    return { deck: deck as unknown as Deck, cards: (cards ?? []) as unknown as Card[] };
-  });
+  .handler(
+    async ({
+      data,
+      context,
+    }): Promise<{ deck: Deck; cards: Card[]; reviews: CardReviewState[] }> => {
+      const db = await adminDb();
+      const [{ data: deck, error: de }, { data: cards }, { data: reviews }] = await Promise.all([
+        db.from("flashcard_decks").select("*").eq("id", data.deckId).single(),
+        db
+          .from("flashcards")
+          .select("*")
+          .eq("deck_id", data.deckId)
+          .order("position")
+          .order("created_at"),
+        // Same per-student read the review queue does; filtered to this deck below.
+        db
+          .from("flashcard_reviews")
+          .select("flashcard_id,interval_days,repetitions,due_date,last_rating")
+          .eq("student_id", context.profileId),
+      ]);
+      if (de || !deck) throw new Error("Deck not found.");
+      // Personal decks are only visible to their owner.
+      if (!deck.is_official && deck.owner_student_id !== context.profileId) {
+        throw new Error("Deck not found.");
+      }
+      const deckCards = (cards ?? []) as unknown as Card[];
+      const ids = new Set(deckCards.map((c) => c.id));
+      return {
+        deck: deck as unknown as Deck,
+        cards: deckCards,
+        reviews: ((reviews ?? []) as CardReviewState[]).filter((r) => ids.has(r.flashcard_id)),
+      };
+    },
+  );
 
 export const upsertCard = createServerFn({ method: "POST" })
   .middleware([requireAuth])
@@ -221,22 +237,27 @@ export const updateDeckMeta = createServerFn({ method: "POST" })
   });
 
 // --- Review session --------------------------------------------------------
-type ReviewItem = { card: Card; review: Review | null };
+type ReviewItem = { card: Card; review: Review | null; deck: ReviewDeckInfo | null };
 
 export const getReviewQueue = createServerFn({ method: "GET" })
   .middleware([requireAuth])
   .inputValidator((d) => z.object({ deck: z.string().uuid().optional() }).parse(d))
   .handler(async ({ data, context }): Promise<ReviewItem[]> => {
     const db = await adminDb();
+    const deckInfo = new Map<string, ReviewDeckInfo>();
+    const remember = (rows: any[]) => {
+      for (const r of rows) deckInfo.set(r.id, { id: r.id, title: r.title, subject: r.subject });
+    };
 
     let deckIds: string[];
     if (data.deck) {
       const { data: deck } = await db
         .from("flashcard_decks")
-        .select("id,is_official,owner_student_id")
+        .select("id,is_official,owner_student_id,title,subject")
         .eq("id", data.deck)
         .maybeSingle();
       if (!deck) return [];
+      remember([deck]);
       let allowed = deck.is_official || deck.owner_student_id === context.profileId;
       if (!allowed) {
         const { data: save } = await db
@@ -251,9 +272,10 @@ export const getReviewQueue = createServerFn({ method: "GET" })
       deckIds = [data.deck];
     } else {
       const [{ data: decks }, { data: saved }] = await Promise.all([
-        db.from("flashcard_decks").select("id,is_official,owner_student_id"),
+        db.from("flashcard_decks").select("id,is_official,owner_student_id,title,subject"),
         db.from("saved_decks").select("deck_id").eq("student_id", context.profileId),
       ]);
+      remember(decks ?? []);
       const savedSet = new Set((saved ?? []).map((x: any) => x.deck_id));
       deckIds = (decks ?? [])
         .filter(
@@ -275,6 +297,7 @@ export const getReviewQueue = createServerFn({ method: "GET" })
     const items: ReviewItem[] = ((cards ?? []) as unknown as Card[]).map((card) => ({
       card,
       review: byCard.get(card.id) ?? null,
+      deck: deckInfo.get(card.deck_id) ?? null,
     }));
     const due = items.filter((i) => i.review && new Date(i.review.due_date).getTime() <= now);
     const fresh = items.filter((i) => !i.review).slice(0, 10);

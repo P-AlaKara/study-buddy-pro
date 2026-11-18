@@ -2194,6 +2194,344 @@ body:has(.case-immersive) .feedback-fab {
   }
 }
 
+/* ---------------------------------------------------------------------------
+   Flashcards: layered, deck-tinted flip cards (components/flashcards).
+   The outer `.fc-deck` sets --fc-base (stored pastel), --fc-accent and --fc-ink
+   inline from lib/deck-colors. Structure:
+     .fc-deck (stacked sheets) > .fc-scene (perspective, lift, enter anim)
+       > .fc-inner (preserve-3d, rotates) > .fc-face.fc-front / .fc-face.fc-back
+   Faces share one grid cell, so the card is as tall as its taller side.
+   NOTE: these classes never set `display` on elements that also carry Tailwind
+   display utilities (unlayered CSS would beat them).
+   --------------------------------------------------------------------------- */
+.fc-deck {
+  --fc-base: #fff0b7;
+  --fc-accent: #e5b935;
+  --fc-ink: #7d5c0d;
+  --fc-radius: 28px;
+  --fc-surface: color-mix(in oklab, var(--fc-base) 62%, var(--cream));
+  position: relative;
+  isolation: isolate;
+}
+/* Two sheets peeking out underneath read as "a deck", not a lone card. */
+.fc-deck[data-stack]::before,
+.fc-deck[data-stack]::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  border-radius: var(--fc-radius);
+  background: color-mix(in oklab, var(--fc-base) 70%, white);
+  border: 1px solid rgb(255 255 255 / 0.85);
+  box-shadow: 0 12px 24px -20px oklch(0.35 0.05 280 / 0.4);
+  pointer-events: none;
+  /* Scale from the bottom edge so each sheet peeks out by its full offset. */
+  transform-origin: 50% 100%;
+}
+.fc-deck[data-stack]::before {
+  transform: translateY(11px) scale(0.95);
+}
+.fc-deck[data-stack="2"]::after {
+  z-index: -2;
+  background: color-mix(in oklab, var(--fc-base) 85%, white);
+  transform: translateY(22px) scale(0.9);
+  opacity: 0.7;
+}
+.fc-deck:not([data-stack="2"])::after {
+  content: none;
+}
+
+.fc-scene {
+  perspective: 1800px;
+  touch-action: pan-y;
+  transition:
+    translate 0.22s ease,
+    scale 0.16s ease;
+}
+.fc-inner {
+  display: grid;
+  transform-style: preserve-3d;
+  transition: transform 0.62s cubic-bezier(0.3, 1.2, 0.4, 1);
+}
+.fc-scene[data-flipped="true"] .fc-inner {
+  transform: rotateY(180deg);
+}
+
+.fc-face {
+  grid-area: 1 / 1;
+  position: relative;
+  overflow: hidden;
+  width: 100%;
+  min-height: var(--fc-min-h, 21rem);
+  border-radius: var(--fc-radius);
+  border: 1px solid rgb(255 255 255 / 0.9);
+  padding: 1.35rem 1.35rem 1.15rem;
+  text-align: left;
+  color: var(--foreground);
+  cursor: pointer;
+  -webkit-backface-visibility: hidden;
+  backface-visibility: hidden;
+  background:
+    /* top-left sheen */
+    radial-gradient(130% 75% at 0% 0%, rgb(255 255 255 / 0.9), transparent 58%),
+    /* warm accent glow pooling bottom-right */
+    radial-gradient(
+        85% 65% at 100% 100%,
+        color-mix(in oklab, var(--fc-accent) 22%, transparent),
+        transparent 72%
+      ),
+    linear-gradient(165deg, color-mix(in oklab, var(--fc-surface) 55%, white), var(--fc-surface));
+  box-shadow:
+    inset 0 2px 1px rgb(255 255 255 / 0.95),
+    inset 0 -4px 0 color-mix(in oklab, var(--fc-accent) 20%, transparent),
+    0 26px 44px -28px oklch(0.35 0.06 285 / 0.42),
+    0 10px 18px -12px oklch(0.35 0.06 285 / 0.2);
+  transition: box-shadow 0.22s ease;
+}
+.fc-back {
+  transform: rotateY(180deg);
+  background:
+    radial-gradient(130% 75% at 100% 0%, rgb(255 255 255 / 0.9), transparent 58%),
+    radial-gradient(
+      85% 65% at 0% 100%,
+      color-mix(in oklab, var(--fc-accent) 18%, transparent),
+      transparent 72%
+    ),
+    linear-gradient(
+      195deg,
+      color-mix(in oklab, var(--fc-surface) 40%, white),
+      color-mix(in oklab, var(--fc-surface) 80%, white)
+    );
+}
+.fc-face:focus-visible {
+  outline: 3px solid var(--fc-accent);
+  outline-offset: 4px;
+}
+/* Big, faint Q / A letter so the side is obvious at a glance. */
+.fc-face::after {
+  content: attr(data-side);
+  position: absolute;
+  right: 0.9rem;
+  bottom: -1.6rem;
+  font-family: var(--font-display);
+  font-size: 10rem;
+  font-weight: 900;
+  line-height: 1;
+  color: var(--fc-accent);
+  opacity: 0.11;
+  pointer-events: none;
+}
+
+/* Hover lifts the card and deepens the shadow; press sinks it. */
+@media (hover: hover) {
+  .fc-scene:hover {
+    translate: 0 -4px;
+  }
+  .fc-scene:hover .fc-face {
+    box-shadow:
+      inset 0 2px 1px rgb(255 255 255 / 0.95),
+      inset 0 -4px 0 color-mix(in oklab, var(--fc-accent) 28%, transparent),
+      0 34px 52px -30px oklch(0.35 0.06 285 / 0.48),
+      0 14px 22px -14px oklch(0.35 0.06 285 / 0.24);
+  }
+}
+.fc-scene:active {
+  translate: 0 1px;
+  scale: 0.985;
+}
+.fc-scene:active .fc-face {
+  box-shadow:
+    inset 0 2px 1px rgb(255 255 255 / 0.95),
+    inset 0 -2px 0 color-mix(in oklab, var(--fc-accent) 22%, transparent),
+    0 12px 22px -18px oklch(0.35 0.06 285 / 0.4);
+}
+
+/* Accent bar beside the question heading. */
+.fc-accent-bar {
+  flex: none;
+  width: 6px;
+  border-radius: 999px;
+  background: linear-gradient(
+    180deg,
+    var(--fc-accent),
+    color-mix(in oklab, var(--fc-accent) 45%, white)
+  );
+  box-shadow: 0 2px 6px -2px color-mix(in oklab, var(--fc-accent) 70%, transparent);
+}
+.fc-accent-bar[data-thin] {
+  width: 4px;
+  opacity: 0.75;
+}
+/* Compact preview (editor panel). */
+.fc-deck[data-size="sm"] .fc-face {
+  padding: 1rem 1rem 0.9rem;
+}
+.fc-deck[data-size="sm"] .fc-face::after {
+  font-size: 7rem;
+  bottom: -1.7rem;
+}
+.fc-badge {
+  border-radius: 999px;
+  background: rgb(255 255 255 / 0.78);
+  color: var(--fc-ink);
+  box-shadow:
+    inset 0 1px 0 rgb(255 255 255),
+    0 2px 6px -3px oklch(0.35 0.06 285 / 0.25);
+}
+.fc-badge-solid {
+  border-radius: 999px;
+  background: var(--fc-accent);
+  color: var(--foreground);
+  box-shadow:
+    inset 0 1px 0 rgb(255 255 255 / 0.55),
+    0 3px 8px -4px color-mix(in oklab, var(--fc-accent) 80%, black);
+}
+.fc-dot {
+  border-radius: 999px;
+  background: var(--fc-accent);
+  box-shadow: 0 0 0 3px color-mix(in oklab, var(--fc-accent) 25%, transparent);
+}
+/* Rounded answer containers: white slabs with a hairline and soft inset. */
+.fc-answer {
+  border-radius: 20px;
+  background: rgb(255 255 255 / 0.86);
+  border: 1px solid rgb(255 255 255);
+  box-shadow:
+    inset 0 -2px 0 color-mix(in oklab, var(--fc-accent) 12%, transparent),
+    0 6px 14px -10px oklch(0.35 0.06 285 / 0.3);
+}
+.fc-answer-num {
+  border-radius: 999px;
+  background: color-mix(in oklab, var(--fc-accent) 30%, white);
+  color: var(--fc-ink);
+}
+/* Cloze blanks (front) and reveals (back). */
+.fc-blank {
+  border-radius: 10px;
+  padding: 0 0.6em;
+  border: 2px dashed color-mix(in oklab, var(--fc-accent) 75%, white);
+  background: rgb(255 255 255 / 0.65);
+  color: var(--fc-ink);
+  white-space: nowrap;
+}
+.fc-reveal {
+  border-radius: 8px;
+  padding: 0.05em 0.4em;
+  background: color-mix(in oklab, var(--fc-accent) 30%, white);
+  color: var(--fc-ink);
+  font-weight: 900;
+  box-decoration-break: clone;
+  -webkit-box-decoration-break: clone;
+}
+.fc-hint {
+  border-radius: 999px;
+  background: rgb(255 255 255 / 0.6);
+  color: var(--fc-ink);
+}
+.fc-kbd {
+  border-radius: 6px;
+  border: 1px solid color-mix(in oklab, var(--fc-accent) 35%, white);
+  border-bottom-width: 2px;
+  background: rgb(255 255 255 / 0.85);
+  padding: 0 0.35rem;
+  font-size: 10px;
+  font-weight: 900;
+  line-height: 1.5;
+  color: var(--fc-ink);
+}
+
+/* Slide in from the side we navigated towards. */
+@keyframes fc-in-next {
+  from {
+    opacity: 0;
+    transform: translateX(44px) rotate(1.6deg);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+@keyframes fc-in-prev {
+  from {
+    opacity: 0;
+    transform: translateX(-44px) rotate(-1.6deg);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+.fc-scene[data-enter="next"] {
+  animation: fc-in-next 0.34s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+.fc-scene[data-enter="prev"] {
+  animation: fc-in-prev 0.34s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+
+/* Small deck-tinted tiles used in the deck page's card grid. */
+.fc-tile {
+  border-radius: 22px;
+  border: 1px solid rgb(255 255 255 / 0.9);
+  background:
+    radial-gradient(120% 80% at 0% 0%, rgb(255 255 255 / 0.95), transparent 60%),
+    color-mix(in oklab, var(--fc-base) 32%, white);
+  box-shadow:
+    inset 0 2px 1px rgb(255 255 255 / 0.9),
+    0 10px 22px -16px oklch(0.35 0.06 285 / 0.32);
+  transition:
+    translate 0.2s ease,
+    box-shadow 0.2s ease;
+}
+@media (hover: hover) {
+  .fc-tile:hover {
+    translate: 0 -2px;
+    box-shadow:
+      inset 0 2px 1px rgb(255 255 255 / 0.9),
+      0 16px 28px -18px oklch(0.35 0.06 285 / 0.38);
+  }
+}
+.fc-tile[data-current="true"] {
+  box-shadow:
+    inset 0 2px 1px rgb(255 255 255 / 0.9),
+    0 0 0 2.5px var(--fc-accent),
+    0 14px 26px -16px oklch(0.35 0.06 285 / 0.38);
+}
+
+/* Progress rail for the study player and review session. */
+.fc-progress {
+  border-radius: 999px;
+  background: color-mix(in oklab, var(--fc-base) 40%, var(--muted));
+  box-shadow: inset 0 2px 4px oklch(0.43 0.035 280 / 9%);
+}
+.fc-progress-fill {
+  border-radius: 999px;
+  background: linear-gradient(
+    90deg,
+    color-mix(in oklab, var(--fc-accent) 60%, white),
+    var(--fc-accent)
+  );
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.6);
+  transition: width 0.35s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+/* Deck-coloured banner on the deck page. */
+.fc-banner {
+  background:
+    radial-gradient(
+      90% 120% at 100% 0%,
+      color-mix(in oklab, var(--fc-accent) 26%, transparent),
+      transparent 62%
+    ),
+    linear-gradient(135deg, color-mix(in oklab, var(--fc-base) 85%, white), var(--cream));
+}
+
+@media (prefers-reduced-motion: reduce) {
+  /* The global rule below makes these instant; also drop the 3D tilt-in. */
+  .fc-scene[data-enter] {
+    animation: none;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,
