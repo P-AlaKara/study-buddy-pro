@@ -190,7 +190,7 @@ function clamp(value: number, minimum: number, maximum: number): number {
   return Math.min(maximum, Math.max(minimum, value));
 }
 
-function applyVitalsDelta(vitals: RuntimeVitals, delta: VitalsDelta): RuntimeVitals {
+export function applyVitalsDelta(vitals: RuntimeVitals, delta: VitalsDelta): RuntimeVitals {
   return {
     hr: Math.round(clamp(vitals.hr + (delta.hr ?? 0), 0, 260)),
     systolicBp: Math.round(clamp(vitals.systolicBp + (delta.systolicBp ?? 0), 30, 280)),

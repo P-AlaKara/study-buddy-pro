@@ -5,24 +5,27 @@ import { theMissedPeriod } from "./the-missed-period.js";
 import type { MedicalCase } from "../schema.js";
 import { validateCaseBank } from "../validator.js";
 
-export const CASE_BANK = [
+/*
+ * Seed data and test fixtures only. The live case bank is in Supabase
+ * (`public.clinical_cases`), authored in the case studio; these four cases
+ * were copied into it by migration 20261120120000_clinical_case_bank.sql and
+ * are kept so the engine tests have stable, known cases to play. The app must
+ * not import them.
+ */
+export const SEED_CASES = [
   theLongFlight,
   theTearingPain,
   theSweetBreath,
   theMissedPeriod,
 ] as const satisfies readonly MedicalCase[];
 
-const validationIssues = validateCaseBank(CASE_BANK);
+const validationIssues = validateCaseBank(SEED_CASES);
 if (validationIssues.length) {
   throw new Error(
-    `Invalid medical case bank:\n${validationIssues
+    `Invalid seed cases:\n${validationIssues
       .map((issue) => `- ${issue.path}: ${issue.message}`)
       .join("\n")}`,
   );
-}
-
-export function getCaseById(id: string): MedicalCase | undefined {
-  return CASE_BANK.find((caseDefinition) => caseDefinition.id === id || caseDefinition.slug === id);
 }
 
 export { theLongFlight, theTearingPain, theSweetBreath, theMissedPeriod };

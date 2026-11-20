@@ -1,4 +1,5 @@
 import type { GameState } from "./engine.js";
+import type { MedicalCase } from "./schema.js";
 
 const STORAGE_PREFIX = "medley.case-encounter.v1:";
 const SCHEMA_VERSION = 1 as const;
@@ -20,7 +21,30 @@ function storageKey(caseId: string): string {
  * from a single effect (never a render initializer) so the SSR markup and the
  * first client render stay identical and hydration never mismatches.
  */
-export function loadEncounter(caseId: string): { game: GameState; notes: string } | null {
+/**
+ * Whether a saved game still fits the case as it is now. Cases are edited and
+ * republished in the case studio; a save that refers to an action, diagnosis
+ * or deterioration event that no longer exists cannot be resumed safely.
+ */
+function fitsCase(game: GameState, definition: MedicalCase): boolean {
+  const actions = new Set(definition.actions.map((action) => action.id));
+  const diagnoses = new Set(definition.differential.map((item) => item.id));
+  const rules = new Set(definition.deteriorationRules.map((rule) => rule.id));
+  return (
+    game.completedActions.every((entry) => actions.has(entry.actionId)) &&
+    game.discoveredEvidence.every((entry) => actions.has(entry.actionId)) &&
+    game.harmfulActionIds.every((id) => actions.has(id)) &&
+    game.committedTreatmentIds.every((id) => actions.has(id)) &&
+    game.differential.every((entry) => diagnoses.has(entry.diagnosisId)) &&
+    (game.committedDiagnosisId === null || diagnoses.has(game.committedDiagnosisId)) &&
+    game.appliedDeteriorationRuleIds.every((id) => rules.has(id))
+  );
+}
+
+export function loadEncounter(
+  caseId: string,
+  definition?: MedicalCase,
+): { game: GameState; notes: string } | null {
   if (typeof window === "undefined") return null;
   try {
     const raw = window.localStorage.getItem(storageKey(caseId));
@@ -33,6 +57,7 @@ export function loadEncounter(caseId: string): { game: GameState; notes: string 
     ) {
       return null;
     }
+    if (definition && !fitsCase(parsed.game, definition)) return null;
     return { game: parsed.game, notes: parsed.notes ?? "" };
   } catch {
     return null;

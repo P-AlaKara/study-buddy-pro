@@ -1,5 +1,10 @@
 import { ECG_ATTRIBUTION, ecgAltText, ecgDataUrl } from "../ecg.js";
-import type { CaseActionResult, MedicalCase } from "../schema.js";
+import type { CaseActionResult, CaseAsset, MedicalCase } from "../schema.js";
+
+/** An image's location: storage URL when uploaded, else the bundled file. */
+export function assetSrc(caseDefinition: MedicalCase, asset: CaseAsset): string {
+  return asset.url || `/cases/${caseDefinition.slug}/${asset.filename}`;
+}
 
 /** Everything the viewer needs to show one image or ECG result. */
 export interface ResultMedia {
@@ -31,7 +36,7 @@ export function resultMedia(
     : undefined;
   if (!asset) return null;
   return {
-    src: `/cases/${caseDefinition.slug}/${asset.filename}`,
+    src: assetSrc(caseDefinition, asset),
     altText: asset.altText,
     attribution: asset.requiredAttributionText,
     sourceUrl: asset.sourceUrl,

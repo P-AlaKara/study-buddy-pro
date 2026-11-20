@@ -67,6 +67,7 @@ export const theLongFlight: MedicalCase = {
     {
       id: "ask_onset",
       category: "ask",
+      group: "Presenting complaint",
       label: "Ask how this began",
       timeCostMin: 1,
       moneyCost: 0,
@@ -93,6 +94,7 @@ export const theLongFlight: MedicalCase = {
     {
       id: "ask_travel",
       category: "ask",
+      group: "Risk factors & exposures",
       label: "Ask about recent travel",
       timeCostMin: 1,
       moneyCost: 0,
@@ -117,6 +119,7 @@ export const theLongFlight: MedicalCase = {
     {
       id: "ask_medications",
       category: "ask",
+      group: "Medications & allergies",
       label: "Ask about medications",
       timeCostMin: 1,
       moneyCost: 0,
@@ -137,6 +140,7 @@ export const theLongFlight: MedicalCase = {
     {
       id: "ask_cough_fever",
       category: "ask",
+      group: "Associated symptoms",
       label: "Ask about cough and fever",
       timeCostMin: 1,
       moneyCost: 0,
@@ -154,6 +158,7 @@ export const theLongFlight: MedicalCase = {
     {
       id: "ask_leg_symptoms",
       category: "ask",
+      group: "Associated symptoms",
       label: "Ask about leg symptoms",
       timeCostMin: 1,
       moneyCost: 0,
@@ -178,6 +183,7 @@ export const theLongFlight: MedicalCase = {
     {
       id: "ask_anxiety_history",
       category: "ask",
+      group: "Past medical & surgical history",
       label: "Ask about anxiety or panic attacks",
       timeCostMin: 1,
       moneyCost: 0,
@@ -201,6 +207,7 @@ export const theLongFlight: MedicalCase = {
     {
       id: "check_vitals",
       category: "examine",
+      group: "General & observations",
       label: "Repeat vital signs",
       timeCostMin: 1,
       moneyCost: 0,
@@ -244,11 +251,11 @@ export const theLongFlight: MedicalCase = {
       supports: ["pulmonary_embolism", "panic_attack"],
       against: ["pneumonia"],
       triggersEvent: "",
-      isCritical: true,
     },
     {
       id: "examine_lungs",
       category: "examine",
+      group: "Respiratory",
       label: "Examine the chest",
       timeCostMin: 2,
       moneyCost: 0,
@@ -275,6 +282,7 @@ export const theLongFlight: MedicalCase = {
     {
       id: "examine_legs",
       category: "examine",
+      group: "Limbs & peripheral vascular",
       label: "Examine both legs",
       timeCostMin: 2,
       moneyCost: 0,
@@ -293,6 +301,7 @@ export const theLongFlight: MedicalCase = {
     {
       id: "examine_heart",
       category: "examine",
+      group: "Cardiovascular",
       label: "Examine the cardiovascular system",
       timeCostMin: 2,
       moneyCost: 0,
@@ -319,6 +328,7 @@ export const theLongFlight: MedicalCase = {
     {
       id: "order_cxr",
       category: "test",
+      group: "Imaging",
       label: "Chest X-ray",
       timeCostMin: 4,
       moneyCost: 85,
@@ -344,6 +354,7 @@ export const theLongFlight: MedicalCase = {
     {
       id: "order_ecg",
       category: "test",
+      group: "Bedside tests",
       label: "12-lead ECG",
       timeCostMin: 3,
       moneyCost: 45,
@@ -382,6 +393,7 @@ export const theLongFlight: MedicalCase = {
     {
       id: "order_bloods",
       category: "test",
+      group: "Laboratory tests",
       label: "D-dimer, troponin, FBC and CRP",
       timeCostMin: 6,
       moneyCost: 110,
@@ -426,6 +438,7 @@ export const theLongFlight: MedicalCase = {
     {
       id: "order_abg",
       category: "test",
+      group: "Bedside tests",
       label: "Arterial blood gas",
       timeCostMin: 4,
       moneyCost: 70,
@@ -502,6 +515,7 @@ export const theLongFlight: MedicalCase = {
     {
       id: "order_doppler",
       category: "test",
+      group: "Imaging",
       label: "Left leg Doppler ultrasound",
       timeCostMin: 12,
       moneyCost: 180,
@@ -520,6 +534,7 @@ export const theLongFlight: MedicalCase = {
     {
       id: "order_ctpa",
       category: "test",
+      group: "Imaging",
       label: "CT pulmonary angiogram",
       timeCostMin: 18,
       moneyCost: 420,
@@ -554,6 +569,7 @@ export const theLongFlight: MedicalCase = {
     {
       id: "order_abdominal_ultrasound",
       category: "test",
+      group: "Imaging",
       label: "Abdominal ultrasound",
       timeCostMin: 15,
       moneyCost: 160,
@@ -571,6 +587,7 @@ export const theLongFlight: MedicalCase = {
     {
       id: "give_oxygen",
       category: "treat",
+      group: "Resuscitation & stabilisation",
       label: "Give supplemental oxygen",
       timeCostMin: 1,
       moneyCost: 15,
@@ -593,12 +610,12 @@ export const theLongFlight: MedicalCase = {
       supports: [],
       against: [],
       triggersEvent: "oxygen_started",
-      isCritical: true,
       vitalsEffect: { spo2: 4, rr: -2 },
     },
     {
       id: "gain_iv_access",
       category: "treat",
+      group: "Resuscitation & stabilisation",
       label: "Gain IV access",
       timeCostMin: 2,
       moneyCost: 20,
@@ -611,11 +628,11 @@ export const theLongFlight: MedicalCase = {
       supports: [],
       against: [],
       triggersEvent: "iv_access_ready",
-      isCritical: true,
     },
     {
       id: "start_monitoring",
       category: "treat",
+      group: "Resuscitation & stabilisation",
       label: "Start continuous monitoring",
       timeCostMin: 1,
       moneyCost: 10,
@@ -629,11 +646,11 @@ export const theLongFlight: MedicalCase = {
       supports: [],
       against: [],
       triggersEvent: "monitoring_started",
-      isCritical: true,
     },
     {
       id: "start_anticoagulation",
       category: "treat",
+      group: "Medications",
       label: "Start therapeutic anticoagulation",
       timeCostMin: 2,
       moneyCost: 95,
@@ -662,6 +679,7 @@ export const theLongFlight: MedicalCase = {
     {
       id: "give_thrombolysis",
       category: "treat",
+      group: "Medications",
       label: "Give systemic thrombolysis",
       timeCostMin: 3,
       moneyCost: 680,
@@ -690,6 +708,7 @@ export const theLongFlight: MedicalCase = {
     {
       id: "give_antibiotics",
       category: "treat",
+      group: "Medications",
       label: "Start broad-spectrum antibiotics",
       timeCostMin: 2,
       moneyCost: 75,
@@ -708,6 +727,7 @@ export const theLongFlight: MedicalCase = {
     {
       id: "give_anxiolytic",
       category: "treat",
+      group: "Medications",
       label: "Reassure and give an anxiolytic",
       timeCostMin: 2,
       moneyCost: 25,
@@ -736,6 +756,7 @@ export const theLongFlight: MedicalCase = {
     {
       id: "discharge_anxiety",
       category: "treat",
+      group: "Disposition",
       label: "Discharge with presumed anxiety",
       timeCostMin: 2,
       moneyCost: 0,

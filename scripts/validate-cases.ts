@@ -1,12 +1,12 @@
 import { access, readFile } from "node:fs/promises";
 import { resolve } from "node:path";
-import { CASE_BANK } from "../src/features/case-challenge/cases/index.js";
+import { SEED_CASES } from "../src/features/case-challenge/cases/index.js";
 import { validateCaseBank } from "../src/features/case-challenge/validator.js";
 
 async function main() {
-  const issues = validateCaseBank(CASE_BANK);
+  const issues = validateCaseBank(SEED_CASES);
 
-  for (const caseDefinition of CASE_BANK) {
+  for (const caseDefinition of SEED_CASES) {
     const caseFolder = resolve("public", "cases", caseDefinition.slug);
     const manifestPath = resolve(caseFolder, "assets.manifest.json");
     try {
@@ -50,7 +50,7 @@ async function main() {
     for (const issue of issues) console.error(`${issue.path}: ${issue.message}`);
     process.exitCode = 1;
   } else {
-    console.log(`Validated ${CASE_BANK.length} medical cases.`);
+    console.log(`Validated ${SEED_CASES.length} medical cases.`);
   }
 }
 

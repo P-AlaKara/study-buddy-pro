@@ -72,6 +72,7 @@ export const theTearingPain: MedicalCase = {
     {
       id: "ask_pain_character",
       category: "ask",
+      group: "Presenting complaint",
       label: "Ask him to describe the pain",
       timeCostMin: 1,
       moneyCost: 0,
@@ -110,6 +111,7 @@ export const theTearingPain: MedicalCase = {
     {
       id: "ask_hypertension",
       category: "ask",
+      group: "Past medical & surgical history",
       label: "Ask about blood pressure history",
       timeCostMin: 1,
       moneyCost: 0,
@@ -134,6 +136,7 @@ export const theTearingPain: MedicalCase = {
     {
       id: "ask_neurologic_symptoms",
       category: "ask",
+      group: "Associated symptoms",
       label: "Ask about weakness, speech, or fainting",
       timeCostMin: 1,
       moneyCost: 0,
@@ -165,6 +168,7 @@ export const theTearingPain: MedicalCase = {
     {
       id: "ask_acs_features",
       category: "ask",
+      group: "Associated symptoms",
       label: "Ask about cardiac symptoms",
       timeCostMin: 1,
       moneyCost: 0,
@@ -188,6 +192,7 @@ export const theTearingPain: MedicalCase = {
     {
       id: "ask_reflux",
       category: "ask",
+      group: "Associated symptoms",
       label: "Ask about meals and reflux",
       timeCostMin: 1,
       moneyCost: 0,
@@ -211,6 +216,7 @@ export const theTearingPain: MedicalCase = {
     {
       id: "check_vitals",
       category: "examine",
+      group: "General & observations",
       label: "Check vital signs",
       timeCostMin: 1,
       moneyCost: 0,
@@ -247,11 +253,11 @@ export const theTearingPain: MedicalCase = {
       supports: ["aortic_dissection", "acute_coronary_syndrome"],
       against: ["acid_reflux"],
       triggersEvent: "",
-      isCritical: true,
     },
     {
       id: "check_both_arm_bp",
       category: "examine",
+      group: "Cardiovascular",
       label: "Measure blood pressure in both arms",
       timeCostMin: 2,
       moneyCost: 0,
@@ -270,6 +276,7 @@ export const theTearingPain: MedicalCase = {
     {
       id: "auscultate_heart",
       category: "examine",
+      group: "Cardiovascular",
       label: "Auscultate the heart",
       timeCostMin: 2,
       moneyCost: 0,
@@ -297,6 +304,7 @@ export const theTearingPain: MedicalCase = {
     {
       id: "check_pulses",
       category: "examine",
+      group: "Cardiovascular",
       label: "Compare peripheral pulses",
       timeCostMin: 2,
       moneyCost: 0,
@@ -324,6 +332,7 @@ export const theTearingPain: MedicalCase = {
     {
       id: "perform_neuro_exam",
       category: "examine",
+      group: "Neurological",
       label: "Perform a focused neurological exam",
       timeCostMin: 3,
       moneyCost: 0,
@@ -350,6 +359,7 @@ export const theTearingPain: MedicalCase = {
     {
       id: "order_ecg",
       category: "test",
+      group: "Bedside tests",
       label: "12-lead ECG",
       timeCostMin: 3,
       moneyCost: 45,
@@ -385,6 +395,7 @@ export const theTearingPain: MedicalCase = {
     {
       id: "order_troponin",
       category: "test",
+      group: "Laboratory tests",
       label: "Troponin and baseline bloods",
       timeCostMin: 6,
       moneyCost: 95,
@@ -446,6 +457,7 @@ export const theTearingPain: MedicalCase = {
     {
       id: "order_cxr",
       category: "test",
+      group: "Imaging",
       label: "Portable chest X-ray",
       timeCostMin: 4,
       moneyCost: 85,
@@ -471,6 +483,7 @@ export const theTearingPain: MedicalCase = {
     {
       id: "order_ct_aorta",
       category: "test",
+      group: "Imaging",
       label: "CT aortic angiogram",
       timeCostMin: 16,
       moneyCost: 520,
@@ -512,6 +525,7 @@ export const theTearingPain: MedicalCase = {
     {
       id: "order_bedside_echo",
       category: "test",
+      group: "Imaging",
       label: "Bedside echocardiogram",
       timeCostMin: 8,
       moneyCost: 220,
@@ -538,6 +552,7 @@ export const theTearingPain: MedicalCase = {
     {
       id: "order_d_dimer",
       category: "test",
+      group: "Laboratory tests",
       label: "D-dimer",
       timeCostMin: 6,
       moneyCost: 60,
@@ -557,6 +572,7 @@ export const theTearingPain: MedicalCase = {
     {
       id: "order_coronary_angiography",
       category: "test",
+      group: "Referral & procedures",
       label: "Send directly for coronary angiography",
       timeCostMin: 22,
       moneyCost: 900,
@@ -576,6 +592,7 @@ export const theTearingPain: MedicalCase = {
     {
       id: "start_monitoring",
       category: "treat",
+      group: "Resuscitation & stabilisation",
       label: "Start continuous monitoring",
       timeCostMin: 1,
       moneyCost: 10,
@@ -589,11 +606,11 @@ export const theTearingPain: MedicalCase = {
       supports: [],
       against: [],
       triggersEvent: "monitoring_started",
-      isCritical: true,
     },
     {
       id: "gain_iv_access",
       category: "treat",
+      group: "Resuscitation & stabilisation",
       label: "Gain two large-bore IV lines",
       timeCostMin: 2,
       moneyCost: 25,
@@ -606,11 +623,11 @@ export const theTearingPain: MedicalCase = {
       supports: [],
       against: [],
       triggersEvent: "iv_access_ready",
-      isCritical: true,
     },
     {
       id: "give_opioid_analgesia",
       category: "treat",
+      group: "Medications",
       label: "Give titrated IV opioid analgesia",
       timeCostMin: 2,
       moneyCost: 35,
@@ -629,6 +646,7 @@ export const theTearingPain: MedicalCase = {
     {
       id: "give_beta_blocker",
       category: "treat",
+      group: "Medications",
       label: "Start IV beta-blockade",
       timeCostMin: 3,
       moneyCost: 120,
@@ -651,12 +669,12 @@ export const theTearingPain: MedicalCase = {
       supports: ["aortic_dissection"],
       against: [],
       triggersEvent: "aortic_impulse_control_started",
-      isCritical: true,
       vitalsEffect: { hr: -38, systolicBp: -46, diastolicBp: -22 },
     },
     {
       id: "give_vasodilator_alone",
       category: "treat",
+      group: "Medications",
       label: "Start an IV vasodilator (GTN infusion)",
       timeCostMin: 2,
       moneyCost: 80,
@@ -692,6 +710,7 @@ export const theTearingPain: MedicalCase = {
     {
       id: "call_cardiothoracic_surgery",
       category: "treat",
+      group: "Referral & procedures",
       label: "Call cardiothoracic surgery urgently",
       timeCostMin: 2,
       moneyCost: 0,
@@ -721,7 +740,6 @@ export const theTearingPain: MedicalCase = {
       supports: ["aortic_dissection"],
       against: [],
       triggersEvent: "surgical_pathway_activated",
-      isCritical: true,
       safeWhen: {
         anyActionIds: ["order_ct_aorta", "order_cxr", "check_both_arm_bp"],
         explanation:
@@ -731,6 +749,7 @@ export const theTearingPain: MedicalCase = {
     {
       id: "give_acs_antithrombotics",
       category: "treat",
+      group: "Medications",
       label: "Give aspirin and therapeutic heparin",
       timeCostMin: 2,
       moneyCost: 55,
@@ -750,6 +769,7 @@ export const theTearingPain: MedicalCase = {
     {
       id: "give_thrombolysis",
       category: "treat",
+      group: "Medications",
       label: "Give thrombolysis for presumed STEMI",
       timeCostMin: 3,
       moneyCost: 680,
@@ -769,6 +789,7 @@ export const theTearingPain: MedicalCase = {
     {
       id: "give_ppi",
       category: "treat",
+      group: "Medications",
       label: "Give antacid and observe",
       timeCostMin: 8,
       moneyCost: 12,
@@ -787,6 +808,7 @@ export const theTearingPain: MedicalCase = {
     {
       id: "discharge_reflux",
       category: "treat",
+      group: "Disposition",
       label: "Discharge with presumed reflux",
       timeCostMin: 2,
       moneyCost: 0,

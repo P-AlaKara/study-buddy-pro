@@ -21,7 +21,7 @@ import {
 } from "../src/features/case-challenge/engine.js";
 import { renderEcgSvg } from "../src/features/case-challenge/ecg.js";
 import {
-  CASE_BANK,
+  SEED_CASES,
   theLongFlight,
   theMissedPeriod,
   theSweetBreath,
@@ -391,9 +391,9 @@ test("treats a vasodilator as harmful only before beta-blockade", () => {
 });
 
 test("ships four valid cases across distinct specialties", () => {
-  assert.equal(CASE_BANK.length, 4);
-  assert.deepEqual(validateCaseBank(CASE_BANK), []);
-  const specialties = new Set(CASE_BANK.flatMap((item) => item.specialty));
+  assert.equal(SEED_CASES.length, 4);
+  assert.deepEqual(validateCaseBank(SEED_CASES), []);
+  const specialties = new Set(SEED_CASES.flatMap((item) => item.specialty));
   for (const expected of [
     "Pulmonology",
     "Cardiology",

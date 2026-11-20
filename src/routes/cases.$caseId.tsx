@@ -2,7 +2,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { ArrowLeft } from "lucide-react";
 import { CaseChallengeScreen } from "@/features/case-challenge/components/case-challenge-screen";
 import { CaseMascotState } from "@/features/case-challenge/components/dr-ambrose";
-import { getCaseById } from "@/features/case-challenge/cases";
+import { getPublishedCase } from "@/features/case-challenge/cases.functions";
 
 export const Route = createFileRoute("/cases/$caseId")({
   head: () => ({
@@ -22,19 +22,19 @@ export const Route = createFileRoute("/cases/$caseId")({
       { name: "twitter:card", content: "summary_large_image" },
     ],
   }),
+  loader: ({ params }) => getPublishedCase({ data: { idOrSlug: params.caseId } }),
   pendingComponent: CaseLoading,
   component: CasePlayer,
 });
 
 function CasePlayer() {
-  const { caseId } = Route.useParams();
-  const caseDefinition = getCaseById(caseId);
+  const playable = Route.useLoaderData();
 
-  if (!caseDefinition) {
+  if (!playable) {
     return (
       <section className="case-panel mx-auto max-w-xl p-8 text-center">
         <CaseMascotState title="Case not found" expression="concerned">
-          This case is not in the current challenge bank.
+          This case is not in the case library. It may have been removed.
         </CaseMascotState>
         <Link to="/cases" className="case-primary-button mt-6 inline-flex px-5 py-3">
           <ArrowLeft className="size-4" /> Back to cases
@@ -43,7 +43,13 @@ function CasePlayer() {
     );
   }
 
-  return <CaseChallengeScreen caseDefinition={caseDefinition} />;
+  return (
+    <CaseChallengeScreen
+      key={playable.definition.id}
+      caseDefinition={playable.definition}
+      nextCase={playable.nextCase}
+    />
+  );
 }
 
 function CaseLoading() {

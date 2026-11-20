@@ -16,6 +16,7 @@ import {
   tagEvidence,
   type GameState,
 } from "../engine.js";
+import type { NextCase } from "../case-summary.js";
 import type { ActionCategory, CaseAction, MedicalCase } from "../schema.js";
 import { clearEncounter, loadEncounter, saveEncounter } from "../use-case-persistence.js";
 import { CaseDebrief } from "./case-debrief.js";
@@ -40,7 +41,14 @@ import {
   type RightTab,
 } from "./case-constants.js";
 
-export function CaseChallengeScreen({ caseDefinition }: { caseDefinition: MedicalCase }) {
+export function CaseChallengeScreen({
+  caseDefinition,
+  nextCase = null,
+}: {
+  caseDefinition: MedicalCase;
+  /** The case after this one, for the debrief's "Next case" link. */
+  nextCase?: NextCase | null;
+}) {
   const [game, setGame] = useState<GameState>(() => createInitialState(caseDefinition));
   const [actionCategory, setActionCategory] = useState<ActionCategory>("ask");
   const [activeTool, setActiveTool] = useState<RightTab>("chart");
@@ -99,7 +107,7 @@ export function CaseChallengeScreen({ caseDefinition }: { caseDefinition: Medica
   // case change, so it is the single source of truth for (re)initialisation —
   // no competing reset effect to race with the restore.
   useEffect(() => {
-    const saved = loadEncounter(caseDefinition.id);
+    const saved = loadEncounter(caseDefinition.id, caseDefinition);
     const firstMount = hydratedCaseRef.current === null;
     if (saved) {
       // A reload mid-commit would otherwise leave the encounter frozen with the
@@ -367,6 +375,7 @@ export function CaseChallengeScreen({ caseDefinition }: { caseDefinition: Medica
       <CaseDebrief
         game={game}
         caseDefinition={caseDefinition}
+        nextCase={nextCase}
         onRetry={() => {
           clearEncounter(caseDefinition.id);
           setGame(createInitialState(caseDefinition));

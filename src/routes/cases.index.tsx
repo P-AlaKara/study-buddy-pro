@@ -9,7 +9,7 @@ import {
   Droplets,
   Stethoscope,
 } from "lucide-react";
-import { CASE_BANK } from "@/features/case-challenge/cases";
+import { listPublishedCases } from "@/features/case-challenge/cases.functions";
 import { CaseMascotState, DrAmbrose } from "@/features/case-challenge/components/dr-ambrose";
 import { CASE_LIBRARY_INSTRUCTIONS } from "@/features/case-challenge/config";
 import { useCaseStudioAccess } from "@/features/case-studio/use-case-studio-access";
@@ -40,6 +40,7 @@ export const Route = createFileRoute("/cases/")({
       { name: "twitter:card", content: "summary_large_image" },
     ],
   }),
+  loader: () => listPublishedCases(),
   pendingComponent: CasesLoading,
   component: CaseLibrary,
 });
@@ -52,6 +53,7 @@ function CaseLibrary() {
   const [specialty, setSpecialty] = useState("all");
   const [instructionsExpanded, setInstructionsExpanded] = useState(true);
   const canManageCases = useCaseStudioAccess();
+  const cases = Route.useLoaderData();
 
   useEffect(() => {
     const savedPreference = window.localStorage.getItem(INSTRUCTIONS_STORAGE_KEY);
@@ -72,18 +74,18 @@ function CaseLibrary() {
   }
 
   const specialties = useMemo(
-    () => ["all", ...new Set(CASE_BANK.flatMap((item) => item.specialty))],
-    [],
+    () => ["all", ...new Set(cases.flatMap((item) => item.specialty))],
+    [cases],
   );
   const difficulties = useMemo(
     () =>
       [
         "all",
-        ...new Set(CASE_BANK.map((item) => String(item.difficulty))),
+        ...new Set(cases.map((item) => String(item.difficulty))),
       ].sort() as DifficultyFilter[],
-    [],
+    [cases],
   );
-  const shown = CASE_BANK.filter(
+  const shown = cases.filter(
     (item) =>
       (difficulty === "all" || item.difficulty === Number(difficulty)) &&
       (specialty === "all" || item.specialty.includes(specialty)),
@@ -203,7 +205,7 @@ function CaseLibrary() {
 
         <div className="mt-5 grid gap-4 md:grid-cols-2">
           {shown.map((item) => {
-            const bankIndex = CASE_BANK.findIndex((candidate) => candidate.id === item.id);
+            const bankIndex = cases.findIndex((candidate) => candidate.id === item.id);
             const style = CARD_STYLES[bankIndex % CARD_STYLES.length] ?? CARD_STYLES[0];
             const CardIcon = style.icon;
             return (
@@ -269,8 +271,7 @@ function CaseLibrary() {
       </section>
 
       <p className="text-center text-[11px] font-bold text-slate-500">
-        Educational use only, not medical advice · Cases are written for clinician review before
-        release.
+        Educational use only, not medical advice.
       </p>
     </div>
   );

@@ -73,6 +73,7 @@ export const theSweetBreath: MedicalCase = {
     {
       id: "ask_onset",
       category: "ask",
+      group: "Presenting complaint",
       label: "Ask how this began",
       timeCostMin: 1,
       moneyCost: 0,
@@ -96,6 +97,7 @@ export const theSweetBreath: MedicalCase = {
     {
       id: "ask_thirst_urination",
       category: "ask",
+      group: "Associated symptoms",
       label: "Ask about thirst and passing urine",
       timeCostMin: 1,
       moneyCost: 0,
@@ -122,6 +124,7 @@ export const theSweetBreath: MedicalCase = {
     {
       id: "ask_weight_loss",
       category: "ask",
+      group: "Associated symptoms",
       label: "Ask about weight and energy",
       timeCostMin: 1,
       moneyCost: 0,
@@ -146,6 +149,7 @@ export const theSweetBreath: MedicalCase = {
     {
       id: "ask_sick_contacts",
       category: "ask",
+      group: "Risk factors & exposures",
       label: "Ask about food and sick contacts",
       timeCostMin: 1,
       moneyCost: 0,
@@ -169,6 +173,7 @@ export const theSweetBreath: MedicalCase = {
     {
       id: "ask_medical_history",
       category: "ask",
+      group: "Past medical & surgical history",
       label: "Ask about past illness and family history",
       timeCostMin: 1,
       moneyCost: 0,
@@ -192,6 +197,7 @@ export const theSweetBreath: MedicalCase = {
     {
       id: "ask_alcohol_drugs",
       category: "ask",
+      group: "Family & social history",
       label: "Ask about alcohol and drugs",
       timeCostMin: 1,
       moneyCost: 0,
@@ -208,6 +214,7 @@ export const theSweetBreath: MedicalCase = {
     {
       id: "check_vitals",
       category: "examine",
+      group: "General & observations",
       label: "Check vital signs",
       timeCostMin: 1,
       moneyCost: 0,
@@ -244,11 +251,11 @@ export const theSweetBreath: MedicalCase = {
       supports: ["diabetic_ketoacidosis", "gastroenteritis"],
       against: [],
       triggersEvent: "",
-      isCritical: true,
     },
     {
       id: "examine_breathing",
       category: "examine",
+      group: "Respiratory",
       label: "Observe his breathing and smell his breath",
       timeCostMin: 1,
       moneyCost: 0,
@@ -276,6 +283,7 @@ export const theSweetBreath: MedicalCase = {
     {
       id: "examine_hydration",
       category: "examine",
+      group: "General & observations",
       label: "Assess hydration",
       timeCostMin: 1,
       moneyCost: 0,
@@ -302,6 +310,7 @@ export const theSweetBreath: MedicalCase = {
     {
       id: "examine_abdomen",
       category: "examine",
+      group: "Abdominal",
       label: "Examine the abdomen",
       timeCostMin: 2,
       moneyCost: 0,
@@ -319,6 +328,7 @@ export const theSweetBreath: MedicalCase = {
     {
       id: "examine_mental_state",
       category: "examine",
+      group: "Neurological",
       label: "Assess conscious level",
       timeCostMin: 1,
       moneyCost: 0,
@@ -345,6 +355,7 @@ export const theSweetBreath: MedicalCase = {
     {
       id: "bedside_glucose",
       category: "test",
+      group: "Bedside tests",
       label: "Finger-prick glucose and ketones",
       timeCostMin: 1,
       moneyCost: 5,
@@ -389,6 +400,7 @@ export const theSweetBreath: MedicalCase = {
     {
       id: "order_vbg",
       category: "test",
+      group: "Bedside tests",
       label: "Venous blood gas",
       timeCostMin: 3,
       moneyCost: 40,
@@ -458,6 +470,7 @@ export const theSweetBreath: MedicalCase = {
     {
       id: "urine_dipstick",
       category: "test",
+      group: "Bedside tests",
       label: "Urine dipstick",
       timeCostMin: 2,
       moneyCost: 10,
@@ -485,6 +498,7 @@ export const theSweetBreath: MedicalCase = {
     {
       id: "order_bloods",
       category: "test",
+      group: "Laboratory tests",
       label: "U&E, FBC, amylase and CRP",
       timeCostMin: 6,
       moneyCost: 110,
@@ -529,6 +543,7 @@ export const theSweetBreath: MedicalCase = {
     {
       id: "order_ecg",
       category: "test",
+      group: "Bedside tests",
       label: "12-lead ECG",
       timeCostMin: 3,
       moneyCost: 45,
@@ -547,6 +562,7 @@ export const theSweetBreath: MedicalCase = {
     {
       id: "order_cxr",
       category: "test",
+      group: "Imaging",
       label: "Chest X-ray (look for a precipitant)",
       timeCostMin: 4,
       moneyCost: 85,
@@ -571,6 +587,7 @@ export const theSweetBreath: MedicalCase = {
     {
       id: "order_abdominal_ultrasound",
       category: "test",
+      group: "Imaging",
       label: "Abdominal ultrasound",
       timeCostMin: 15,
       moneyCost: 160,
@@ -596,6 +613,7 @@ export const theSweetBreath: MedicalCase = {
     {
       id: "order_ct_abdomen",
       category: "test",
+      group: "Imaging",
       label: "CT abdomen with contrast",
       timeCostMin: 20,
       moneyCost: 420,
@@ -621,6 +639,7 @@ export const theSweetBreath: MedicalCase = {
     {
       id: "start_monitoring",
       category: "treat",
+      group: "Resuscitation & stabilisation",
       label: "Start continuous monitoring",
       timeCostMin: 1,
       moneyCost: 10,
@@ -634,11 +653,11 @@ export const theSweetBreath: MedicalCase = {
       supports: [],
       against: [],
       triggersEvent: "monitoring_started",
-      isCritical: true,
     },
     {
       id: "gain_iv_access",
       category: "treat",
+      group: "Resuscitation & stabilisation",
       label: "Gain two IV lines",
       timeCostMin: 2,
       moneyCost: 20,
@@ -652,11 +671,11 @@ export const theSweetBreath: MedicalCase = {
       supports: [],
       against: [],
       triggersEvent: "iv_access_ready",
-      isCritical: true,
     },
     {
       id: "start_iv_fluids",
       category: "treat",
+      group: "Fluids, electrolytes & blood",
       label: "Start IV fluid resuscitation",
       timeCostMin: 2,
       moneyCost: 25,
@@ -680,12 +699,12 @@ export const theSweetBreath: MedicalCase = {
       supports: [],
       against: [],
       triggersEvent: "fluids_started",
-      isCritical: true,
       vitalsEffect: { hr: -12, systolicBp: 10, diastolicBp: 6 },
     },
     {
       id: "replace_potassium",
       category: "treat",
+      group: "Fluids, electrolytes & blood",
       label: "Add potassium to the fluids",
       timeCostMin: 2,
       moneyCost: 15,
@@ -709,6 +728,7 @@ export const theSweetBreath: MedicalCase = {
     {
       id: "start_insulin_infusion",
       category: "treat",
+      group: "Medications",
       label: "Start a fixed-rate insulin infusion",
       timeCostMin: 2,
       moneyCost: 40,
@@ -732,7 +752,6 @@ export const theSweetBreath: MedicalCase = {
       supports: ["diabetic_ketoacidosis"],
       against: [],
       triggersEvent: "insulin_started",
-      isCritical: true,
       penalizeWhenUnsafe: true,
       vitalsEffect: { rr: -3, hr: -4 },
       safeWhen: {
@@ -745,6 +764,7 @@ export const theSweetBreath: MedicalCase = {
     {
       id: "give_antiemetic",
       category: "treat",
+      group: "Medications",
       label: "Give an IV antiemetic",
       timeCostMin: 1,
       moneyCost: 12,
@@ -761,6 +781,7 @@ export const theSweetBreath: MedicalCase = {
     {
       id: "give_bicarbonate",
       category: "treat",
+      group: "Medications",
       label: "Give IV sodium bicarbonate",
       timeCostMin: 2,
       moneyCost: 30,
@@ -779,6 +800,7 @@ export const theSweetBreath: MedicalCase = {
     {
       id: "give_oral_rehydration_only",
       category: "treat",
+      group: "Fluids, electrolytes & blood",
       label: "Oral rehydration and observe",
       timeCostMin: 10,
       moneyCost: 5,
@@ -798,6 +820,7 @@ export const theSweetBreath: MedicalCase = {
     {
       id: "request_surgical_review",
       category: "treat",
+      group: "Referral & procedures",
       label: "Refer to surgeons for a possible acute abdomen",
       timeCostMin: 10,
       moneyCost: 0,
@@ -816,6 +839,7 @@ export const theSweetBreath: MedicalCase = {
     {
       id: "discharge_gastroenteritis",
       category: "treat",
+      group: "Disposition",
       label: "Discharge with antiemetics for gastroenteritis",
       timeCostMin: 2,
       moneyCost: 0,

@@ -68,6 +68,7 @@ export const theMissedPeriod: MedicalCase = {
     {
       id: "ask_pain_onset",
       category: "ask",
+      group: "Presenting complaint",
       label: "Ask how the pain began",
       timeCostMin: 1,
       moneyCost: 0,
@@ -93,6 +94,7 @@ export const theMissedPeriod: MedicalCase = {
     {
       id: "ask_menstrual_history",
       category: "ask",
+      group: "Sexual & reproductive history",
       label: "Ask about her last period",
       timeCostMin: 1,
       moneyCost: 0,
@@ -117,6 +119,7 @@ export const theMissedPeriod: MedicalCase = {
     {
       id: "ask_shoulder_tip_pain",
       category: "ask",
+      group: "Associated symptoms",
       label: "Ask about pain anywhere else",
       timeCostMin: 1,
       moneyCost: 0,
@@ -143,6 +146,7 @@ export const theMissedPeriod: MedicalCase = {
     {
       id: "ask_vaginal_bleeding",
       category: "ask",
+      group: "Associated symptoms",
       label: "Ask about vaginal bleeding or discharge",
       timeCostMin: 1,
       moneyCost: 0,
@@ -160,6 +164,7 @@ export const theMissedPeriod: MedicalCase = {
     {
       id: "ask_gi_symptoms",
       category: "ask",
+      group: "Associated symptoms",
       label: "Ask about appetite, nausea and bowels",
       timeCostMin: 1,
       moneyCost: 0,
@@ -177,6 +182,7 @@ export const theMissedPeriod: MedicalCase = {
     {
       id: "ask_sexual_history",
       category: "ask",
+      group: "Sexual & reproductive history",
       label: "Take a sexual and contraceptive history",
       timeCostMin: 2,
       moneyCost: 0,
@@ -201,6 +207,7 @@ export const theMissedPeriod: MedicalCase = {
     {
       id: "check_vitals",
       category: "examine",
+      group: "General & observations",
       label: "Check vital signs",
       timeCostMin: 1,
       moneyCost: 0,
@@ -230,11 +237,11 @@ export const theMissedPeriod: MedicalCase = {
       supports: ["ectopic_pregnancy", "ruptured_ovarian_cyst"],
       against: ["pelvic_inflammatory_disease"],
       triggersEvent: "",
-      isCritical: true,
     },
     {
       id: "check_postural_bp",
       category: "examine",
+      group: "General & observations",
       label: "Check a postural blood pressure",
       timeCostMin: 2,
       moneyCost: 0,
@@ -252,6 +259,7 @@ export const theMissedPeriod: MedicalCase = {
     {
       id: "examine_general",
       category: "examine",
+      group: "General & observations",
       label: "General examination",
       timeCostMin: 1,
       moneyCost: 0,
@@ -269,6 +277,7 @@ export const theMissedPeriod: MedicalCase = {
     {
       id: "examine_abdomen",
       category: "examine",
+      group: "Abdominal",
       label: "Examine the abdomen",
       timeCostMin: 2,
       moneyCost: 0,
@@ -295,6 +304,7 @@ export const theMissedPeriod: MedicalCase = {
     {
       id: "bimanual_exam",
       category: "examine",
+      group: "Pelvic & genitourinary",
       label: "Gentle bimanual pelvic examination",
       timeCostMin: 3,
       moneyCost: 0,
@@ -313,6 +323,7 @@ export const theMissedPeriod: MedicalCase = {
     {
       id: "urine_pregnancy_test",
       category: "test",
+      group: "Bedside tests",
       label: "Urine pregnancy test",
       timeCostMin: 2,
       moneyCost: 5,
@@ -331,6 +342,7 @@ export const theMissedPeriod: MedicalCase = {
     {
       id: "serum_hcg",
       category: "test",
+      group: "Laboratory tests",
       label: "Serum β-hCG",
       timeCostMin: 8,
       moneyCost: 60,
@@ -350,6 +362,7 @@ export const theMissedPeriod: MedicalCase = {
     {
       id: "order_fbc_group",
       category: "test",
+      group: "Laboratory tests",
       label: "FBC, group and cross-match",
       timeCostMin: 6,
       moneyCost: 90,
@@ -390,6 +403,7 @@ export const theMissedPeriod: MedicalCase = {
     {
       id: "bedside_ultrasound",
       category: "test",
+      group: "Imaging",
       label: "Bedside (FAST) ultrasound",
       timeCostMin: 5,
       moneyCost: 120,
@@ -424,6 +438,7 @@ export const theMissedPeriod: MedicalCase = {
     {
       id: "transvaginal_ultrasound",
       category: "test",
+      group: "Imaging",
       label: "Formal transvaginal ultrasound",
       timeCostMin: 14,
       moneyCost: 220,
@@ -454,6 +469,7 @@ export const theMissedPeriod: MedicalCase = {
     {
       id: "order_urinalysis",
       category: "test",
+      group: "Laboratory tests",
       label: "Urine dipstick and microscopy",
       timeCostMin: 3,
       moneyCost: 10,
@@ -479,6 +495,7 @@ export const theMissedPeriod: MedicalCase = {
     {
       id: "order_ct_abdomen",
       category: "test",
+      group: "Imaging",
       label: "CT abdomen and pelvis",
       timeCostMin: 20,
       moneyCost: 420,
@@ -498,6 +515,7 @@ export const theMissedPeriod: MedicalCase = {
     {
       id: "start_monitoring",
       category: "treat",
+      group: "Resuscitation & stabilisation",
       label: "Start continuous monitoring",
       timeCostMin: 1,
       moneyCost: 10,
@@ -511,11 +529,11 @@ export const theMissedPeriod: MedicalCase = {
       supports: [],
       against: [],
       triggersEvent: "monitoring_started",
-      isCritical: true,
     },
     {
       id: "gain_iv_access",
       category: "treat",
+      group: "Resuscitation & stabilisation",
       label: "Gain two large-bore IV lines",
       timeCostMin: 2,
       moneyCost: 25,
@@ -529,11 +547,11 @@ export const theMissedPeriod: MedicalCase = {
       supports: [],
       against: [],
       triggersEvent: "iv_access_ready",
-      isCritical: true,
     },
     {
       id: "start_fluid_resuscitation",
       category: "treat",
+      group: "Fluids, electrolytes & blood",
       label: "Give a warmed crystalloid bolus",
       timeCostMin: 2,
       moneyCost: 25,
@@ -557,12 +575,12 @@ export const theMissedPeriod: MedicalCase = {
       supports: [],
       against: [],
       triggersEvent: "resuscitation_started",
-      isCritical: true,
       vitalsEffect: { hr: -8, systolicBp: 8, diastolicBp: 4 },
     },
     {
       id: "transfuse_blood",
       category: "treat",
+      group: "Fluids, electrolytes & blood",
       label: "Activate major haemorrhage and transfuse",
       timeCostMin: 3,
       moneyCost: 350,
@@ -585,12 +603,12 @@ export const theMissedPeriod: MedicalCase = {
       supports: [],
       against: [],
       triggersEvent: "transfusion_started",
-      isCritical: true,
       vitalsEffect: { hr: -10, systolicBp: 10, diastolicBp: 6 },
     },
     {
       id: "call_gynaecology",
       category: "treat",
+      group: "Referral & procedures",
       label: "Call gynaecology for emergency laparoscopy",
       timeCostMin: 2,
       moneyCost: 0,
@@ -620,7 +638,6 @@ export const theMissedPeriod: MedicalCase = {
       supports: ["ectopic_pregnancy"],
       against: [],
       triggersEvent: "surgical_pathway_activated",
-      isCritical: true,
       safeWhen: {
         anyActionIds: [
           "urine_pregnancy_test",
@@ -635,6 +652,7 @@ export const theMissedPeriod: MedicalCase = {
     {
       id: "give_analgesia",
       category: "treat",
+      group: "Medications",
       label: "Give titrated IV analgesia",
       timeCostMin: 2,
       moneyCost: 30,
@@ -653,6 +671,7 @@ export const theMissedPeriod: MedicalCase = {
     {
       id: "give_methotrexate",
       category: "treat",
+      group: "Medications",
       label: "Give methotrexate for the ectopic",
       timeCostMin: 3,
       moneyCost: 90,
@@ -671,6 +690,7 @@ export const theMissedPeriod: MedicalCase = {
     {
       id: "refer_for_appendicectomy",
       category: "treat",
+      group: "Referral & procedures",
       label: "Refer to the surgeons for appendicectomy",
       timeCostMin: 12,
       moneyCost: 0,
@@ -689,6 +709,7 @@ export const theMissedPeriod: MedicalCase = {
     {
       id: "give_antibiotics_pid",
       category: "treat",
+      group: "Medications",
       label: "Start antibiotics for pelvic infection",
       timeCostMin: 2,
       moneyCost: 45,
@@ -707,6 +728,7 @@ export const theMissedPeriod: MedicalCase = {
     {
       id: "discharge_with_analgesia",
       category: "treat",
+      group: "Disposition",
       label: "Discharge with analgesia and a surgical clinic letter",
       timeCostMin: 2,
       moneyCost: 0,

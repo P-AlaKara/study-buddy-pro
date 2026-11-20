@@ -2542,3 +2542,23 @@ body:has(.case-immersive) .feedback-fab {
     scroll-behavior: auto !important;
   }
 }
+
+/* Case studio: briefly ring a field or card that a check or search jumped to. */
+@keyframes studio-flash {
+  from {
+    box-shadow: 0 0 0 4px rgb(124 99 224 / 0.55);
+  }
+  to {
+    box-shadow: 0 0 0 4px rgb(124 99 224 / 0);
+  }
+}
+.studio-flash {
+  border-radius: 20px;
+  animation: studio-flash 1.8s ease-out;
+}
+@media (prefers-reduced-motion: reduce) {
+  .studio-flash {
+    animation: none;
+    box-shadow: 0 0 0 3px rgb(124 99 224 / 0.6);
+  }
+}

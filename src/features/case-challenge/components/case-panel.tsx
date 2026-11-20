@@ -1,4 +1,4 @@
-import { ChevronRight, FileText } from "lucide-react";
+import { ChevronRight } from "lucide-react";
 import type { GameState } from "../engine.js";
 import type { MedicalCase } from "../schema.js";
 import { WORKSPACE_TOOLS, workspaceToolMeta, type RightTab } from "./case-constants.js";
@@ -124,12 +124,6 @@ export function CasePanel({
             );
           })}
         </ul>
-        <p className="mt-2.5 flex items-center gap-1.5 px-1.5 text-[10px] font-bold text-[var(--hud-muted)]">
-          <FileText className="size-3.5" />
-          {caseDefinition.reviewStatus === "clinician_reviewed"
-            ? "Clinician reviewed"
-            : "Clinician review required"}
-        </p>
       </section>
     </nav>
   );

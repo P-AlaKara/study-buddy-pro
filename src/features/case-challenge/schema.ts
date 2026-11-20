@@ -154,6 +154,12 @@ export interface ActionSafetyGate {
 export interface CaseAction {
   id: string;
   category: ActionCategory;
+  /**
+   * Clinical heading the action is filed under in the case studio, e.g.
+   * "Associated symptoms", "Cardiovascular" or "Imaging". Authoring and review
+   * only: the engine and the student encounter ignore it.
+   */
+  group?: string;
   label: string;
   timeCostMin: number;
   moneyCost: number;
@@ -170,7 +176,6 @@ export interface CaseAction {
   against: string[];
   triggersEvent: string;
   isKeyClue?: boolean;
-  isCritical?: boolean;
   isUnnecessary?: boolean;
   harmful?: boolean;
   penalizeWhenUnsafe?: boolean;
@@ -216,6 +221,12 @@ export interface CaseScoring {
 export interface CaseAsset {
   id: string;
   filename: string;
+  /**
+   * Where the image is served from: its public URL in the `case-images`
+   * storage bucket (uploaded in the case studio), or a same-origin path.
+   * When absent the file is read from `public/cases/<slug>/<filename>`.
+   */
+  url?: string;
   sourceUrl: string;
   author: string;
   license: string;

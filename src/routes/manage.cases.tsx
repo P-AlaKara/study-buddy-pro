@@ -1,5 +1,6 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { ArrowLeft, Lock } from "lucide-react";
+import { z } from "zod";
 import { StudyApp } from "@/components/study-app";
 import { CaseStudioScreen } from "@/features/case-studio/components/case-studio-screen";
 import { getCaseStudioAccess } from "@/features/case-studio/access.functions";
@@ -9,8 +10,18 @@ import { getCaseStudioAccess } from "@/features/case-studio/access.functions";
  * requires a signed-in account; this guard additionally asks the server whether
  * that account is on the content-creator allowlist (CONTENT_CREATOR_EMAILS).
  * Everyone else sees a restricted notice instead of the studio.
+ *
+ * Search params keep the creator's place: which case (`bank:<id>` or
+ * `draft:<id>`), whether they are building or reviewing, and the step.
  */
+const search = z.object({
+  case: z.string().optional().catch(undefined),
+  mode: z.enum(["build", "review"]).optional().catch(undefined),
+  step: z.string().optional().catch(undefined),
+});
+
 export const Route = createFileRoute("/manage/cases")({
+  validateSearch: search,
   beforeLoad: async () => {
     let canManageCases = false;
     try {
@@ -25,7 +36,7 @@ export const Route = createFileRoute("/manage/cases")({
       { title: "Manage cases | Medley" },
       {
         name: "description",
-        content: "Validate the clinical case bank and build new cases.",
+        content: "Build clinical cases step by step and review them as clinical encounters.",
       },
       { name: "robots", content: "noindex" },
     ],
@@ -35,9 +46,27 @@ export const Route = createFileRoute("/manage/cases")({
 
 function ManageCasesPage() {
   const { canManageCases } = Route.useRouteContext();
+  const location = Route.useSearch();
+  const navigate = useNavigate({ from: "/manage/cases" });
   return (
     <StudyApp view="manage">
-      {canManageCases ? <CaseStudioScreen /> : <RestrictedNotice />}
+      {canManageCases ? (
+        <CaseStudioScreen
+          location={location}
+          onNavigate={(next, options) =>
+            void navigate({
+              search: {
+                ...(next.case ? { case: next.case } : {}),
+                ...(next.mode ? { mode: next.mode } : {}),
+                ...(next.step ? { step: next.step } : {}),
+              },
+              replace: options?.replace ?? false,
+            })
+          }
+        />
+      ) : (
+        <RestrictedNotice />
+      )}
     </StudyApp>
   );
 }

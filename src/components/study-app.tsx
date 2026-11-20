@@ -41,8 +41,7 @@ import {
   StudentUtilities,
 } from "@/components/gamification";
 import { DR_AMBROSE, DrAmbrose } from "@/features/case-challenge/components/dr-ambrose";
-import { PatientAvatar } from "@/features/case-challenge/components/patient-avatar";
-import { FEATURED_CASE } from "@/features/case-challenge/featured-case";
+import { FeaturedCaseCard } from "@/features/case-challenge/components/featured-case-card";
 import { EXAM_GENERATOR_ENABLED } from "@/features/exam-generator/feature-flag";
 import { useCaseStudioAccess } from "@/features/case-studio/use-case-studio-access";
 
@@ -89,7 +88,6 @@ const studentNav: AppNavItem<NavKey>[] = [
 const coachNav: AppNavItem<NavKey>[] = [
   { key: "usmle", label: "USMLE Prep", to: "/usmle", icon: GraduationCap },
 ];
-const FEATURED_CASE_AVATAR_SIZE = "!w-14 sm:!w-20";
 const subjects = [
   "Anatomy",
   "Biochemistry",
@@ -391,51 +389,7 @@ export function StudyApp({ view, children }: { view: View; children?: ReactNode 
             </div>
             <div className="grid gap-5 lg:grid-cols-[minmax(0,2fr)_minmax(320px,1fr)]">
               <div className="space-y-6">
-                <section className="clay-card overflow-hidden bg-lavender-soft p-5 md:p-6">
-                  <span className="inline-flex rounded-full bg-card/75 px-3 py-1 text-[11px] font-black uppercase tracking-wider text-ink-soft">
-                    ✦ Weekly case
-                  </span>
-                  <div className="mt-4 grid grid-cols-[auto_minmax(0,1fr)] items-start gap-3 sm:gap-5">
-                    <PatientAvatar
-                      patient={FEATURED_CASE.patient}
-                      expression={FEATURED_CASE.patient.initialExpression}
-                      respiratoryRate={FEATURED_CASE.vitalsTimeline[0]?.rr ?? 16}
-                      decorative
-                      className={`${FEATURED_CASE_AVATAR_SIZE} mx-0 shrink-0`}
-                    />
-                    <div className="min-w-0">
-                      <h2 className="font-display text-2xl font-black leading-tight md:text-3xl">
-                        {FEATURED_CASE.title}
-                      </h2>
-                      <p className="mt-2 line-clamp-2 text-sm leading-relaxed text-ink-soft md:text-base">
-                        {FEATURED_CASE.intro}
-                      </p>
-                      <div className="mt-3 flex flex-wrap gap-1.5 text-[11px] font-bold text-ink-soft sm:text-xs">
-                        <span className="rounded-full bg-card/70 px-2.5 py-1">
-                          Level {FEATURED_CASE.difficulty}
-                        </span>
-                        {FEATURED_CASE.specialty.map((specialty) => (
-                          <span key={specialty} className="rounded-full bg-card/70 px-2.5 py-1">
-                            {specialty}
-                          </span>
-                        ))}
-                      </div>
-                      <Button
-                        variant="lavender"
-                        className="mt-4"
-                        aria-label={`Start case: ${FEATURED_CASE.title}`}
-                        onClick={() =>
-                          navigate({
-                            to: "/cases/$caseId",
-                            params: { caseId: FEATURED_CASE.id },
-                          })
-                        }
-                      >
-                        Start case <ArrowRight size={17} />
-                      </Button>
-                    </div>
-                  </div>
-                </section>
+                <FeaturedCaseCard />
                 <section>
                   <SectionHeading title="Pick up where you left off" />
                   <div className="grid gap-4 sm:grid-cols-2">

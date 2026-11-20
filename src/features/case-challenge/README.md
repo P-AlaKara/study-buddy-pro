@@ -30,7 +30,7 @@ Radiology images live in `public/cases/<slug>/` with a matching `assets.manifest
 
 Run `npm test` after changing the schema, validator, cases, or engine. Tests cover action application, deterioration, interrupted actions, safe-treatment gates, differential history, hints, scoring, win/loss/penalised paths for every shipped case, and validation failures.
 
-The bank ships four cases (`cases/index.ts`): pulmonary embolism, type A aortic dissection, diabetic ketoacidosis and a ruptured ectopic pregnancy. Content creators inspect and author cases in the case studio (`src/features/case-studio/`, served at `/manage/cases` behind the `CONTENT_CREATOR_EMAILS` allowlist); see `CASE_AUTHORING_GUIDE.md`.
+Cases live in Supabase (`public.clinical_cases`) and are created, reviewed and published in the case studio (`src/features/case-studio/`, served at `/manage/cases` behind the `CONTENT_CREATOR_EMAILS` allowlist); see its README. Students read published cases through `cases.functions.ts` (library, player, featured case). Case images are uploaded to the `case-images` storage bucket; an asset's `url` points there, and older assets without one load from `public/cases/<slug>/`. The four files in `cases/` (pulmonary embolism, type A aortic dissection, diabetic ketoacidosis, ruptured ectopic pregnancy) are now seed data and test fixtures only (`SEED_CASES`); the app does not import them. Actions may carry an optional `group` (clinical heading such as "Associated symptoms") used only by the studio.
 
 ## Encounter UI
 

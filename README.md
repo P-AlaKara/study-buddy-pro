@@ -151,6 +151,8 @@ The Exam Generator (shown as **Exam Generator** in the navigation) is always ena
 
 Apply the migrations in `supabase/migrations` to the configured Supabase project before testing data-backed features. The Exam Generator migration replaces the former Study with Annie tables and persists only generated exams, never uploaded documents. It also revokes access to the old `annie-notes` storage bucket; that now-unused bucket should be emptied and removed from the Supabase dashboard (hosted Supabase does not allow deleting storage objects from SQL).
 
+Case Challenge cases live in Supabase (`public.clinical_cases`, images in the public `case-images` bucket) and are written and published in the case studio. Migration `20261120120000_clinical_case_bank.sql` creates both and seeds the four original cases. After applying it, run `bun scripts/upload-case-images.ts` (preview) and then `bun scripts/upload-case-images.ts --apply` to move their images from `public/cases/` into storage.
+
 ### Useful commands
 
 ```sh

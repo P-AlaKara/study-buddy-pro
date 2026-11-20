@@ -352,11 +352,13 @@ export const searchLibrary = createServerFn({ method: "GET" })
     const db = await adminDb();
     const term = `%${data.term.toLowerCase()}%`;
     const [cases, questions, decks] = await Promise.all([
+      // Published Case Challenge cases (by title and specialty; never the diagnosis).
       db
-        .from("cases")
-        .select("id,title,specialty,topic")
-        .or(`title.ilike.${term},topic.ilike.${term},specialty.ilike.${term}`)
-        .limit(6),
+        .from("clinical_cases")
+        .select(
+          "id,title:published->>title,specialty:published->specialty,setting:published->>setting",
+        )
+        .not("published", "is", null),
       db
         .from("quiz_questions")
         .select("id,question_text,subject,topic")
@@ -373,7 +375,23 @@ export const searchLibrary = createServerFn({ method: "GET" })
       .filter((d: any) => d.is_official || d.owner_student_id === context.profileId)
       .slice(0, 6);
     return {
-      cases: cases.data ?? [],
+      cases: (
+        (cases.data ?? []) as { id: string; title: string; specialty: string[]; setting: string }[]
+      )
+        .filter((item) =>
+          [item.title, ...(item.specialty ?? [])].some((value) =>
+            String(value ?? "")
+              .toLowerCase()
+              .includes(data.term.toLowerCase()),
+          ),
+        )
+        .slice(0, 6)
+        .map((item) => ({
+          id: item.id,
+          title: item.title,
+          specialty: (item.specialty ?? []).join(", "),
+          topic: item.setting ?? "",
+        })),
       questions: questions.data ?? [],
       decks: deckRows,
     };

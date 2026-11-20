@@ -7,48 +7,50 @@ import {
 import { validateCase, type CaseValidationIssue } from "@/features/case-challenge/validator";
 
 /*
- * Draft storage and helpers for the case studio.
+ * Case helpers shared by the case studio and the case store on the server.
  *
- * The case bank is source code (`src/features/case-challenge/cases/*.ts`), so a
- * draft is not "published" by the studio: it is validated here, exported as a
- * TypeScript module and committed by a developer. Drafts autosave to this
- * browser's localStorage so a creator can work across sessions; "Export" and
- * "Import JSON" move them between people or machines.
+ * Cases live in Supabase (`public.clinical_cases`, see
+ * `src/server/cases/case-store.server.ts`). Drafts used to live only in the
+ * browser; `loadLegacyDrafts` reads any left behind so the studio can move
+ * them into the shared library.
  */
 
-const DRAFTS_KEY = "medley.case-studio.drafts.v1";
+const LEGACY_DRAFTS_KEY = "medley.case-studio.drafts.v1";
 
-export interface CaseDraft {
+export interface LegacyDraft {
   definition: MedicalCase;
   updatedAt: string;
+  revisionOf?: string | undefined;
 }
 
-export function loadDrafts(): CaseDraft[] {
+export function loadLegacyDrafts(): LegacyDraft[] {
   if (typeof window === "undefined") return [];
   try {
-    const raw = window.localStorage.getItem(DRAFTS_KEY);
+    const raw = window.localStorage.getItem(LEGACY_DRAFTS_KEY);
     if (!raw) return [];
     const parsed = JSON.parse(raw) as unknown;
     if (!Array.isArray(parsed)) return [];
     return parsed.filter(
-      (entry): entry is CaseDraft =>
+      (entry): entry is LegacyDraft =>
         !!entry &&
         typeof entry === "object" &&
-        typeof (entry as CaseDraft).updatedAt === "string" &&
-        isRecord((entry as CaseDraft).definition) &&
-        typeof (entry as CaseDraft).definition.id === "string",
+        isRecord((entry as LegacyDraft).definition) &&
+        typeof (entry as LegacyDraft).definition.id === "string",
     );
   } catch {
     return [];
   }
 }
 
-export function saveDrafts(drafts: readonly CaseDraft[]): void {
+/** Forget browser-only drafts once they are in the shared library. */
+export function clearLegacyDrafts(ids: readonly string[]): void {
   if (typeof window === "undefined") return;
   try {
-    window.localStorage.setItem(DRAFTS_KEY, JSON.stringify(drafts));
+    const remaining = loadLegacyDrafts().filter((draft) => !ids.includes(draft.definition.id));
+    if (remaining.length) window.localStorage.setItem(LEGACY_DRAFTS_KEY, JSON.stringify(remaining));
+    else window.localStorage.removeItem(LEGACY_DRAFTS_KEY);
   } catch {
-    // Private mode / quota: the studio keeps working in memory.
+    // Nothing to clean up.
   }
 }
 
@@ -144,14 +146,21 @@ export function blankCase(slug: string): MedicalCase {
   };
 }
 
-/** Copy a bank case into a new draft with a fresh id and slug. */
+/**
+ * Copy a case to start a new one. The server assigns the real id and slug;
+ * images keep pointing at the files the source case uses.
+ */
 export function duplicateCase(source: MedicalCase, slug: string): MedicalCase {
+  const copy = structuredClone(source);
   return {
-    ...structuredClone(source),
+    ...copy,
     id: newCaseId(),
     slug,
     title: `${source.title} (copy)`,
     reviewStatus: "needs_clinician_review",
+    assets: copy.assets.map((asset) =>
+      asset.url ? asset : { ...asset, url: `/cases/${source.slug}/${asset.filename}` },
+    ),
   };
 }
 
@@ -176,7 +185,8 @@ const ARRAY_FIELDS = [
   "assets",
 ] as const;
 
-function shapeIssues(value: unknown): StudioIssue[] {
+/** Structural problems that would stop the editor or the engine from reading a case. */
+export function checkCaseShape(value: unknown): StudioIssue[] {
   const issues: StudioIssue[] = [];
   if (!isRecord(value)) {
     return [{ severity: "error", path: "case", message: "A case must be a JSON object." }];
@@ -238,81 +248,106 @@ function shapeIssues(value: unknown): StudioIssue[] {
   return issues;
 }
 
+const CATEGORY_PLURAL: Record<ActionCategory, string> = {
+  ask: "history questions",
+  examine: "examinations",
+  test: "tests",
+  treat: "treatments",
+};
+
+/*
+ * Authoring-quality suggestions. Unlike validator errors these never block a
+ * case; they are worded for clinicians and their paths tell the studio which
+ * step to open (`actions.@<flag>` paths point at a step, not one action).
+ */
 function qualityWarnings(definition: MedicalCase): StudioIssue[] {
   const warnings: StudioIssue[] = [];
   const warn = (path: string, message: string) =>
     warnings.push({ severity: "warning", path, message });
 
-  if (definition.reviewStatus !== "clinician_reviewed") {
-    warn("reviewStatus", "Needs clinician review before release.");
-  }
   for (const category of ACTION_CATEGORIES) {
     if (!definition.actions.some((action) => action.category === category)) {
-      warn("actions", `No "${category}" actions; every category should offer something.`);
+      warn(`actions.@${category}`, `No ${CATEGORY_PLURAL[category]} yet.`);
     }
   }
   const keyClues = definition.actions.filter((action) => action.isKeyClue);
-  if (keyClues.length < 2) warn("actions", "Fewer than two key clues makes the case guessable.");
+  if (keyClues.length < 2) {
+    warn(
+      "actions.@keyClue",
+      "Mark at least two findings as key clues so one lucky question can't give the case away.",
+    );
+  }
   if (
     keyClues.length &&
     Math.min(...keyClues.map((action) => action.timeCostMin)) >
       definition.scoring.earlyClueCutoffMinute
   ) {
-    warn("scoring.earlyClueCutoffMinute", "No key clue can be found before the early-clue cutoff.");
+    warn(
+      "scoring.earlyClueCutoffMinute",
+      `No key clue can be found by minute ${definition.scoring.earlyClueCutoffMinute}, so the early-clue bonus can never be earned.`,
+    );
   }
   if (!definition.deteriorationRules.length) {
-    warn("deteriorationRules", "No deterioration rules: nothing is time-critical.");
+    warn(
+      "deteriorationRules",
+      "Nothing is time-critical yet. Add at least one deterioration event.",
+    );
   } else if (!definition.deteriorationRules.some((rule) => rule.lossAtMinute !== undefined)) {
-    warn("deteriorationRules", "No rule has a lossAtMinute, so the patient can never be lost.");
+    warn("deteriorationRules", "No event can lose the patient, so delay never ends the case.");
   }
   if (!definition.actions.some((action) => action.harmful)) {
-    warn("actions", "No harmful actions: there is no penalised path to learn from.");
+    warn("actions.@harmful", "Add at least one harmful action so students meet a penalised path.");
   }
   if (!definition.actions.some((action) => action.immediateFailure)) {
-    warn("actions", "No immediate-failure action (e.g. a discharge) defines a loss ending.");
+    warn("actions.@fatal", "Add an action that ends the case, such as an unsafe discharge.");
   }
   if (!definition.actions.some((action) => action.isUnnecessary)) {
-    warn("actions", "No unnecessary test to penalise over-investigation.");
-  }
-  if (!definition.actions.some((action) => action.isCritical)) {
-    warn("actions", "Mark stabilising actions (monitoring, access, oxygen…) as critical.");
+    warn("actions.@unnecessary", "Add an unnecessary test to discourage over-investigation.");
   }
   if (!definition.patient.presentingTags?.length) {
-    warn("patient.presentingTags", "Add presenting-feature chips for the ward overlay.");
+    warn("patient.presentingTags", "Add a few key features to show on the patient card.");
   }
   if (!definition.patient.personality.trim()) {
-    warn("patient.personality", "Describe the patient's voice so replies stay in character.");
+    warn(
+      "patient.personality",
+      "Describe how the patient speaks so their replies stay in character.",
+    );
   }
   if (!definition.patient.chiefComplaint.trim()) {
-    warn("patient.chiefComplaint", "Add a chief complaint.");
+    warn("patient.chiefComplaint", "Add the presenting complaint.");
   }
   for (const action of definition.actions) {
-    if (!action.label.trim()) warn(`actions.${action.id}`, "Action has no label.");
+    if (!action.label.trim()) warn(`actions.${action.id}.label`, "This action has no wording yet.");
     if (!action.result.content.trim()) {
-      warn(`actions.${action.id}.result`, "Result text is empty.");
+      warn(`actions.${action.id}.result`, "The response students see is empty.");
     }
     if (action.clueTier !== "none" && !action.supports.length && !action.against.length) {
-      warn(`actions.${action.id}`, "Evidence that supports or refutes nothing cannot be tagged.");
+      warn(
+        `actions.${action.id}.evidence`,
+        "This clue isn't linked to any diagnosis, so students can't use it as evidence.",
+      );
     }
   }
-  if (definition.vitalsTimeline.length < 2) {
-    warn("vitalsTimeline", "Add a later snapshot so authors can see the deterioration arc.");
-  }
   if (!definition.solution.whyNotTempting.trim()) {
-    warn("solution.whyNotTempting", "Explain why the tempting diagnosis fails.");
+    warn(
+      "solution.whyNotTempting",
+      "Explain why the tempting diagnosis is wrong (shown in the debrief).",
+    );
   }
   if (definition.solution.teachingPoints.some((point) => !point.trim())) {
     warn("solution.teachingPoints", "A teaching point is empty.");
   }
   for (const asset of definition.assets) {
-    if (asset.isPlaceholder) warn(`assets.${asset.id}`, "Placeholder asset; see TODO_ASSETS.md.");
+    if (asset.isPlaceholder) {
+      warn(`assets.${asset.id}`, "This image is a placeholder; its licence is not confirmed yet.");
+    }
   }
   return warnings;
 }
 
 /** Everything the studio knows about a case definition, errors first. */
 export function inspectCase(value: unknown): StudioIssue[] {
-  const shape = shapeIssues(value);
+  const shape = checkCaseShape(value);
   if (shape.length) return shape;
   const definition = value as MedicalCase;
   try {
@@ -320,6 +355,16 @@ export function inspectCase(value: unknown): StudioIssue[] {
       ...issue,
       severity: "error",
     }));
+    // An image added in the studio but never uploaded has nothing to show.
+    for (const asset of definition.assets) {
+      if (!asset.url && !asset.filename) {
+        errors.push({
+          severity: "error",
+          path: `assets.${asset.id}`,
+          message: "Upload the image file, or remove this image.",
+        });
+      }
+    }
     return [...errors, ...qualityWarnings(definition)];
   } catch (error) {
     return [
@@ -340,117 +385,11 @@ export function parseCaseJson(text: string): MedicalCase {
   } catch (error) {
     throw new Error(`Not valid JSON: ${error instanceof Error ? error.message : String(error)}`);
   }
-  const shape = shapeIssues(parsed);
+  const shape = checkCaseShape(parsed);
   if (shape.length) {
     throw new Error(shape.map((issue) => `${issue.path}: ${issue.message}`).join("\n"));
   }
   return parsed as MedicalCase;
-}
-
-/*
- * ---- Structure summary ----------------------------------------------------
- */
-
-export interface CaseSummary {
-  actionsByCategory: Record<ActionCategory, number>;
-  clueTiers: Record<string, number>;
-  keyClues: number;
-  harmful: number;
-  unnecessary: number;
-  critical: number;
-  gated: number;
-  variants: number;
-  /** Case minutes of the cheapest route through every key treatment. */
-  earliestLoss: number | undefined;
-  totalActionMinutes: number;
-}
-
-export function summarizeCase(definition: MedicalCase): CaseSummary {
-  const actionsByCategory = { ask: 0, examine: 0, test: 0, treat: 0 };
-  const clueTiers: Record<string, number> = {};
-  let keyClues = 0;
-  let harmful = 0;
-  let unnecessary = 0;
-  let critical = 0;
-  let gated = 0;
-  let variants = 0;
-  let totalActionMinutes = 0;
-  for (const action of definition.actions) {
-    actionsByCategory[action.category] += 1;
-    clueTiers[action.clueTier] = (clueTiers[action.clueTier] ?? 0) + 1;
-    if (action.isKeyClue) keyClues += 1;
-    if (action.harmful) harmful += 1;
-    if (action.isUnnecessary) unnecessary += 1;
-    if (action.isCritical) critical += 1;
-    if (action.safeWhen) gated += 1;
-    variants += action.variants?.length ?? 0;
-    totalActionMinutes += action.timeCostMin;
-  }
-  const losses = definition.deteriorationRules
-    .map((rule) => rule.lossAtMinute)
-    .filter((minute): minute is number => minute !== undefined);
-  return {
-    actionsByCategory,
-    clueTiers,
-    keyClues,
-    harmful,
-    unnecessary,
-    critical,
-    gated,
-    variants,
-    earliestLoss: losses.length ? Math.min(...losses) : undefined,
-    totalActionMinutes,
-  };
-}
-
-/*
- * ---- Export ---------------------------------------------------------------
- */
-
-export function toCamelCase(text: string): string {
-  const words = text
-    .replace(/[^A-Za-z0-9]+/g, " ")
-    .trim()
-    .split(/\s+/)
-    .filter(Boolean);
-  if (!words.length) return "untitledCase";
-  const [first, ...rest] = words;
-  const camel =
-    first!.toLowerCase() +
-    rest.map((word) => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase()).join("");
-  return /^[0-9]/.test(camel) ? `case${camel}` : camel;
-}
-
-export function toKebabCase(text: string): string {
-  const kebab = text
-    .replace(/[^A-Za-z0-9]+/g, "-")
-    .replace(/^-+|-+$/g, "")
-    .toLowerCase();
-  return kebab || "untitled-case";
-}
-
-export function exportFileName(definition: MedicalCase): string {
-  return `${toKebabCase(definition.title || definition.slug)}.ts`;
-}
-
-export function exportVariableName(definition: MedicalCase): string {
-  return toCamelCase(definition.title || definition.slug);
-}
-
-/** A ready-to-commit module for `src/features/case-challenge/cases/`. */
-export function toTypeScriptModule(definition: MedicalCase): string {
-  const name = exportVariableName(definition);
-  return [
-    'import type { MedicalCase } from "../schema.js";',
-    "",
-    `export const ${name}: MedicalCase = ${JSON.stringify(definition, null, 2)};`,
-    "",
-  ].join("\n");
-}
-
-/** The `public/cases/<slug>/assets.manifest.json` that mirrors the case assets. */
-export function toAssetManifest(definition: MedicalCase): string {
-  return `${JSON.stringify(definition.assets, null, 2)}\n`;
 }
 
 export function downloadTextFile(filename: string, content: string, type = "text/plain"): void {

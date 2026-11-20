@@ -22,7 +22,7 @@ import {
   type ScoreBreakdown,
   type TimelineEvent,
 } from "../engine.js";
-import { CASE_BANK } from "../cases/index.js";
+import type { NextCase } from "../case-summary.js";
 import type { MedicalCase } from "../schema.js";
 import { CaseImageViewer } from "./case-image-viewer.js";
 import { resultMedia } from "./result-media.js";
@@ -31,16 +31,16 @@ import { DrAmbrose, type AmbroseExpression } from "./dr-ambrose.js";
 export function CaseDebrief({
   game,
   caseDefinition,
+  nextCase = null,
   onRetry,
 }: {
   game: GameState;
   caseDefinition: MedicalCase;
+  nextCase?: NextCase | null;
   onRetry: () => void;
 }) {
   const [shareOpen, setShareOpen] = useState(false);
   const debrief = createDebrief(game, caseDefinition);
-  const index = CASE_BANK.findIndex((candidate) => candidate.id === caseDefinition.id);
-  const nextCase = CASE_BANK[(index + 1) % CASE_BANK.length];
   const completedActionIds = new Set(game.completedActions.map((entry) => entry.actionId));
   // The images exactly as they were when ordered (an ECG at that moment's rate).
   const reviewedArtifacts = caseDefinition.actions.flatMap((action) => {
@@ -294,7 +294,7 @@ export function CaseDebrief({
       </div>
 
       <p className="text-center text-[11px] font-bold text-slate-500">
-        Educational use only, not medical advice · Case content requires qualified clinician review.
+        Educational use only, not medical advice.
       </p>
 
       <ShareResultDialog
